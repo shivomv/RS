@@ -1,6 +1,6 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
 const app = require('./app');
-require('dotenv').config();
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/rs_industries';
 const PORT = process.env.PORT || 5000;
