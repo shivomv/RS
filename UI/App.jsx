@@ -1,64 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, StatusBar, Text, TextInput, View } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/Feather';
-
-const API_URL = 'https://rs-gamma-olive.vercel.app/api';
-
-const fallbackProducts = [
-  { id: '1', name: 'Industrial Floor Cleaner', category: 'Floor Cleaners', price: 280, stockQuantity: 48, description: 'Heavy-duty cleaner for commercial floors.', imageUrl: '' },
-  { id: '2', name: 'Bulk Glass Cleaner', category: 'Glass Cleaners', price: 190, stockQuantity: 32, description: 'Streak-free formula for large surfaces.', imageUrl: '' },
-  { id: '3', name: 'Premium Detergent', category: 'Detergents', price: 420, stockQuantity: 65, description: 'High-performance detergent for daily operations.', imageUrl: '' },
-  { id: '4', name: 'Warehouse Hardware Kit', category: 'Hardware', price: 760, stockQuantity: 14, description: 'Reliable essentials for maintenance teams.', imageUrl: '' },
-];
+import React from 'react';
+import 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { RootNavigator } from './src/navigation/RootNavigator';
 
 export default function App() {
-  const [screen, setScreen] = useState('splash');
-  const [session, setSession] = useState(null);
-  const [products, setProducts] = useState(fallbackProducts);
-  const [cart, setCart] = useState([]);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setScreen('login'), 1000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!session) return;
-    fetch(`${API_URL}/products`)
-      .then((response) => (response.ok ? response.json() : []))
-      .then((remoteProducts) => {
-        if (Array.isArray(remoteProducts) && remoteProducts.length > 0) {
-          setProducts(remoteProducts.map((product) => ({ ...product, id: product._id || product.id })));
-        }
-      })
-      .catch(() => undefined);
-  }, [session]);
-
-  const login = (mobile, role) => {
-    setSession({ mobile, role });
-    setScreen(role === 'admin' ? 'admin' : 'home');
-  };
-
-  const logout = () => {
-    setSession(null);
-    setCart([]);
-    setScreen('login');
-  };
-
-  const addToCart = (product) => {
-    setCart((currentCart) => {
-      const existing = currentCart.find((item) => item.id === product.id);
-      if (existing) return currentCart.map((item) => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
-      return [...currentCart, { ...product, quantity: 1 }];
-    });
-  };
-
-  if (screen === 'splash') return <SplashScreen />;
-  if (screen === 'login' || screen === 'register') return <AuthScreen mode={screen} onLogin={login} onRegister={() => setScreen('login')} />;
-  if (session?.role === 'admin') return <AdminShell screen={screen} setScreen={setScreen} onLogout={logout} products={products} />;
-  return <BuyerShell screen={screen} setScreen={setScreen} products={products} cart={cart} selectedProduct={selectedProduct} setSelectedProduct={setSelectedProduct} addToCart={addToCart} onLogout={logout} />;
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <RootNavigator />
+    </GestureHandlerRootView>
+  );
 }
 
 function SplashScreen() {
