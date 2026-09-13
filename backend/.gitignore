@@ -1,8 +1,10 @@
 # Dependencies
 node_modules/
-**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Environment
+# Environment variables
 .env
 .env.local
 .env.*.local
@@ -13,28 +15,24 @@ node_modules/
 *.swp
 *.swo
 *~
+.DS_Store
 
 # OS
-.DS_Store
 Thumbs.db
 
 # Logs
 logs/
 *.log
 
-# Build artifacts
-dist/
-build/
-*.o
-*.a
-*.so
+# Runtime data
+pids/
+*.pid
+*.seed
 
-# Testing
+# Coverage
 coverage/
 .nyc_output/
 
 # Misc
-*.swp
-*.swo
-*~
-.DS_Store
+dist/
+build/
