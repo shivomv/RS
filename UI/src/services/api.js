@@ -7,7 +7,7 @@ const API_BASE_URL = ENV?.API_BASE_URL || (Platform.OS === 'android' ? 'http://1
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 6000,
+  timeout: 20000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
