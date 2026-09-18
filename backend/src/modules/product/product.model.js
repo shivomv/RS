@@ -5,8 +5,16 @@ const productSchema = new mongoose.Schema({
   description: { type: String },
   category: { type: String, required: true },
   price: { type: Number, required: true },
-  imageUrl: { type: String },
-  stockQuantity: { type: Number, default: 0 },
+  mrp: { type: Number, required: true },
+  badge: { type: String, default: 'Wholesale' },
+  subtitle: { type: String, default: 'Industrial Formula' },
+  image: { type: String },
+  stockQuantity: { type: Number, default: 100 },
+  packSizes: [{ type: String }],
+  tierRates: [{
+    minQty: { type: Number },
+    ratePerUnit: { type: Number },
+  }],
   isActive: { type: Boolean, default: true },
 }, { timestamps: true });
 

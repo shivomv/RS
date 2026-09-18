@@ -1,0 +1,15 @@
+{
+  "name": "rs-app",
+  "version": "1.0.0",
+  "description": "React Native app with Node.js backend",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:ui\"",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:ui": "npm start --prefix UI",
+    "start": "npm run dev",
+    "install-deps": "npm install && npm install --prefix backend && npm install --prefix UI"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

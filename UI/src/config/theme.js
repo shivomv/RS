@@ -1,23 +1,28 @@
 export const COLORS = {
   // Brand Colors
-  primary: '#003E6F',
-  primaryContainer: '#004D86',
-  secondary: '#006B5F',
+  primary: '#006948',
+  primaryContainer: '#00855d',
+  primaryFixed: '#85f8c4',
+  secondary: '#006a63',
+  secondaryContainer: '#99efe5',
 
   // Surface Hierarchy
-  surface: '#F8F9FA',
-  surfaceContainerLowest: '#FFFFFF',
-  surfaceContainerHigh: '#E7E8E9',
+  surface: '#faf8ff',
+  surfaceContainerLowest: '#ffffff',
+  surfaceContainerLow: '#f2f3ff',
+  surfaceContainerHigh: '#e2e7ff',
+  surfaceContainerHighest: '#dae2fd',
 
   // Text Colors
-  onSurface: '#191C1D',
-  onSurfaceVariant: '#40484B',
-  outlineVariant: 'rgba(64, 72, 75, 0.15)',
+  onSurface: '#131b2e',
+  onSurfaceVariant: '#3d4a42',
+  outlineVariant: '#bccac0',
+  outline: '#6d7a72',
 
   // Functional Colors
   success: '#10B981',
   warning: '#F59E0B',
-  error: '#EF4444',
+  error: '#ba1a1a',
   info: '#3B82F6',
 
   // Neutral

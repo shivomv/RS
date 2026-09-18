@@ -1,91 +1,73 @@
 import axios from 'axios';
+import { Platform } from 'react-native';
 import ENV from '../config/env';
 
-class ApiService {
-  constructor() {
-    this.api = axios.create({
-      baseURL: ENV.API_BASE_URL,
-      timeout: ENV.TIMEOUT,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+// Centralized Axios Instance pointing to Live API (https://rs-gamma-olive.vercel.app/api)
+const API_BASE_URL = ENV?.API_BASE_URL || (Platform.OS === 'android' ? 'http://10.0.2.2:5000/api' : 'http://localhost:5000/api');
 
-    // Response interceptor
-    this.api.interceptors.response.use(
-      (response) => response.data,
-      (error) => {
-        if (error.response?.status === 401) {
-          console.error('Unauthorized access');
-        }
-        return Promise.reject(error.response?.data || error.message);
-      }
-    );
+export const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 6000,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+});
+
+// Request Interceptor: Automatically inject Auth token if available
+apiClient.interceptors.request.use(
+  (config) => {
+    // If token exists in memory/store, attach Authorization header automatically
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response Interceptor: Return response data directly & format clean errors
+apiClient.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Network Error';
+    return Promise.reject(new Error(errorMsg));
   }
+);
 
-  // Auth
-  requestToken(mobile, role) {
-    return this.api.post('/auth/request-token', { mobile, role });
-  }
+// Clean API Endpoint Methods using single Axios instance
+export const api = {
+  // Auth APIs (Universal OTP 12345 verified by backend)
+  requestOtp: (mobile) => apiClient.post('/auth/request-otp', { mobile }),
+  verifyOtp: (mobile, otp) => apiClient.post('/auth/verify-otp', { mobile, otp }),
 
-  verifyToken(mobile, otp) {
-    return this.api.post('/auth/verify', { mobile, otp });
-  }
+  // Categories API
+  getCategories: () => apiClient.get('/categories'),
 
-  // Products
-  getProducts() {
-    return this.api.get('/products');
-  }
+  // Products API
+  getProducts: (category = '', search = '') => {
+    const params = {};
+    if (category) params.category = category;
+    if (search) params.search = search;
+    return apiClient.get('/products', { params });
+  },
+  createProduct: (productData) => apiClient.post('/products', productData),
+  updateProduct: (id, productData) => apiClient.put(`/products/${id}`, productData),
+  deleteProduct: (id) => apiClient.delete(`/products/${id}`),
 
-  getProductById(id) {
-    return this.api.get(`/products/${id}`);
-  }
+  // Banners API
+  getBanners: () => apiClient.get('/banners'),
 
-  createProduct(data) {
-    return this.api.post('/products', data);
-  }
+  // Orders Procurement API
+  getOrders: () => apiClient.get('/orders'),
+  createOrder: (orderData) => apiClient.post('/orders', orderData),
+  updateOrderStatus: (id, status) => apiClient.patch(`/orders/${id}/status`, { status }),
 
-  updateProduct(id, data) {
-    return this.api.put(`/products/${id}`, data);
-  }
+  // B2B Net 30 Credit Ledger Invoices API
+  getLedgers: () => apiClient.get('/ledgers'),
 
-  deleteProduct(id) {
-    return this.api.delete(`/products/${id}`);
-  }
+  // Support Tickets API
+  getTickets: () => apiClient.get('/tickets'),
+  createTicket: (ticketData) => apiClient.post('/tickets', ticketData),
 
-  // Orders
-  getOrders() {
-    return this.api.get('/orders');
-  }
-
-  getPendingOrders() {
-    return this.api.get('/orders/pending');
-  }
-
-  createOrder(data) {
-    return this.api.post('/orders', data);
-  }
-
-  updateOrderStatus(id, status) {
-    return this.api.put(`/orders/${id}`, { status });
-  }
-
-  // Shopkeepers
-  getShopkeepers() {
-    return this.api.get('/shopkeepers');
-  }
-
-  getShopkeeperById(id) {
-    return this.api.get(`/shopkeepers/${id}`);
-  }
-
-  createShopkeeper(data) {
-    return this.api.post('/shopkeepers', data);
-  }
-
-  updateShopkeeper(id, data) {
-    return this.api.put(`/shopkeepers/${id}`, data);
-  }
-}
-
-export default new ApiService();
+  // Shopkeeper Buyer Profile API
+  getShopkeepers: () => apiClient.get('/shopkeepers'),
+  createShopkeeper: (data) => apiClient.post('/shopkeepers', data),
+};

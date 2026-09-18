@@ -1,25 +1,55 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, StatusBar } from 'react-native';
-import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
+import { useAuthStore } from '../../store/authStore';
+import { useOrderStore } from '../../store/orderStore';
+import { useProductStore } from '../../store/productStore';
+import { useShopkeeperStore } from '../../store/shopkeeperStore';
 
 const AdminDashboardScreen = ({ navigation }) => {
+  const { logout } = useAuthStore();
+  const { orders, fetchOrders } = useOrderStore();
+  const { products, fetchProducts } = useProductStore();
+  const { shopkeepers, fetchShopkeepers } = useShopkeeperStore();
+
+  useEffect(() => {
+    fetchOrders();
+    fetchProducts();
+    fetchShopkeepers();
+  }, [fetchOrders, fetchProducts, fetchShopkeepers]);
+
+  const totalRev = orders.reduce((sum, o) => sum + (o.total || o.totalAmount || 0), 0);
+  const revenueDisplay = totalRev >= 1000 ? `₹${(totalRev / 1000).toFixed(1)}K` : `₹${totalRev}`;
+  const lowStockCount = products.filter((p) => (p.stockQuantity ?? 100) < 50).length;
+
+  const handleLogout = () => {
+    logout();
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+  };
+
   return (
-    <SafeAreaProvider>
-      <SafeAreaView className="flex-1 bg-slate-950">
+    <SafeAreaView className="flex-1 bg-slate-950">
         <StatusBar barStyle="light-content" backgroundColor="#020617" />
 
-        <ScrollView className="flex-1 px-5" contentContainerStyle={{ paddingBottom: 30 }}>
-          <Text className="text-blue-400 text-xs font-black tracking-widest mt-8">RS INDUSTRIES / ADMIN</Text>
-          <Text className="text-white text-3xl font-black mt-3">Operations overview</Text>
+        <ScrollView className="flex-1 px-5 pb-7">
+          <View className="flex-row justify-between items-center mt-6">
+            <View>
+              <Text className="text-blue-400 text-xs font-black tracking-widest">RS INDUSTRIES / ADMIN</Text>
+              <Text className="text-white text-3xl font-black mt-1">Operations overview</Text>
+            </View>
+            <Pressable onPress={handleLogout} className="bg-slate-800 p-3 rounded-xl active:opacity-80">
+              <Icon name="log-out" size={20} color="#f87171" />
+            </Pressable>
+          </View>
           <Text className="text-slate-400 mt-2">Monitor inventory, partners, and fulfilment.</Text>
 
-          {/* Stats Grid */}
+          {/* Dynamic Stats Grid */}
           <View className="flex-row flex-wrap justify-between mt-8 mb-8">
-            <AdminStat label="ORDERS TODAY" value="24" />
-            <AdminStat label="REVENUE" value="₹84.2K" />
-            <AdminStat label="PARTNERS" value="128" />
-            <AdminStat label="LOW STOCK" value="07" />
+            <AdminStat label="TOTAL ORDERS" value={String(orders.length)} />
+            <AdminStat label="REVENUE" value={revenueDisplay} />
+            <AdminStat label="PARTNERS" value={String(shopkeepers.length)} />
+            <AdminStat label="LOW STOCK" value={String(lowStockCount).padStart(2, '0')} />
           </View>
 
           {/* Management Actions */}
@@ -28,7 +58,7 @@ const AdminDashboardScreen = ({ navigation }) => {
           <AdminAction
             icon="package"
             label="Product catalog"
-            detail="24 active SKUs"
+            detail="Manage products & inventory"
             onPress={() => navigation.navigate('ProductManagement')}
           />
           <AdminAction
@@ -37,20 +67,14 @@ const AdminDashboardScreen = ({ navigation }) => {
             detail="Manage partner accounts"
             onPress={() => navigation.navigate('ShopkeeperManagement')}
           />
-          <AdminAction
-            icon="truck"
-            label="Order queue"
-            detail="12 orders need attention"
-            onPress={() => {}}
-          />
         </ScrollView>
       </SafeAreaView>
-    </SafeAreaProvider>
   );
 };
 
 const AdminStat = ({ label, value }) => (
-  <View className="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-[48%] mb-3">
+  // eslint-disable-next-line react-native/no-inline-styles
+  <View style={{ width: '48%' }} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-3">
     <Text className="text-slate-500 text-xs font-bold tracking-wider">{label}</Text>
     <Text className="text-white text-2xl font-black mt-2">{value}</Text>
   </View>
