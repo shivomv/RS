@@ -6,6 +6,8 @@ import RSLogo from '../../components/RSLogo';
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
 import { useOrderStore } from '../../store/orderStore';
+import { apiClient } from '../../services/api';
+import ENV from '../../config/env';
 
 export default function ProfileScreen({ navigation }) {
   const { session, logout } = useAuthStore();
@@ -79,6 +81,17 @@ export default function ProfileScreen({ navigation }) {
         {/* Account & Company Info */}
         <View className="px-4 gap-2.5">
           <Text className="text-sm font-bold text-[#131b2e] mb-1">Company Details</Text>
+
+          {/* Debug API Base URL Card */}
+          <View className="bg-[#f2f3ff] rounded-2xl p-3.5 border border-[#dae2fd]">
+            <View className="flex-row items-center gap-2 mb-1">
+              <Icon name="dns" size={16} color="#006948" />
+              <Text className="text-xs font-bold text-[#006948]">Active API Base URL (Debug Mode)</Text>
+            </View>
+            <Text className="text-[11px] font-mono font-bold text-[#131b2e]" numberOfLines={2}>
+              {apiClient?.defaults?.baseURL || ENV?.API_BASE_URL || 'https://rs-gamma-olive.vercel.app/api'}
+            </Text>
+          </View>
 
           <View className="bg-white rounded-2xl p-3.5 shadow-sm flex-row items-center border border-[#eaedff]">
             <Icon name="business" size={20} color="#006948" />
