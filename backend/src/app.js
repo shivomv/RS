@@ -30,4 +30,8 @@ app.get('/', (req, res) => {
   res.json({ message: 'RS Industries Enterprise 14-Collection API is running' });
 });
 
+app.get('/api', (req, res) => {
+  res.json({ status: 'online', message: 'RS Industries API is running' });
+});
+
 module.exports = app;

@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
 import { useAuthStore } from '../../store/authStore';
+import { api } from '../../services/api';
 
 export default function SplashScreen({ navigation }) {
   const { session } = useAuthStore();
