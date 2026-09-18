@@ -24,6 +24,10 @@ export default function SplashScreen({ navigation }) {
       { text: 'Factory Hub Ready • Express active', percent: 100 },
     ];
     let idx = 0;
+    // Pre-fetch catalog in background while splash animates
+    api.getProducts().catch(() => {});
+    api.getCategories().catch(() => {});
+
     const interval = setInterval(() => {
       idx++;
       if (idx < steps.length) {
@@ -31,11 +35,25 @@ export default function SplashScreen({ navigation }) {
         setStatusText(steps[idx].text);
       } else {
         clearInterval(interval);
+        // Fast auto-proceed after progress reaches 100%
+        setTimeout(() => {
+          if (session) {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: session.role === 'admin' ? 'Admin' : 'Shopkeeper' }],
+            });
+          } else {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Shopkeeper' }],
+            });
+          }
+        }, 300);
       }
-    }, 800);
+    }, 150);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [navigation, session]);
 
   const handleProceed = () => {
     if (session) {
