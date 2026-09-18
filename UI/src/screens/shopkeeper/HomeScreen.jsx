@@ -177,7 +177,7 @@ export default function ShopkeeperHomeScreen({ navigation }) {
                 <Pressable
                   key={cat._id || cat.slug || idx}
                   className="items-center mr-4 w-[74px]"
-                  onPress={() => navigation.navigate('Catalog')}
+                  onPress={() => navigation.navigate('Catalog', { categoryId: cat.name || cat.title || cat.slug })}
                 >
                   <View className="w-16 h-16 rounded-2xl bg-white p-2 shadow-sm justify-center items-center mb-1.5 border border-[#eaedff]">
                     {cat.img || cat.image || cat.iconUrl ? (
