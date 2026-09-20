@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const mongoose = require('mongoose');
 
 // Import Master API Router
 const apiRoutes = require('./routes');
@@ -26,15 +27,48 @@ app.use(express.urlencoded({ extended: true }));
 // Mount Master API Router for all 15 domain modules under /api
 app.use('/api', apiRoutes);
 
-// Health Check Root Route
-app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'RS Industries Enterprise Scalable API Engine is running',
+// Health Check Helper
+const getHealthStatus = async (req) => {
+  const dbStateMap = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+  const readyState = mongoose.connection.readyState;
+  const dbStatus = dbStateMap[readyState] || 'unknown';
+
+  let dbStats = { connected: readyState === 1 };
+  if (readyState === 1) {
+    try {
+      dbStats = {
+        connected: true,
+        dbName: mongoose.connection.name,
+        host: mongoose.connection.host,
+      };
+    } catch (e) {
+      dbStats.error = e.message;
+    }
+  }
+
+  return {
+    success: readyState === 1,
+    message: 'RS Industries API Engine is running',
     version: '2.0.0',
+    dbHealth: {
+      status: dbStatus,
+      readyState,
+      ...dbStats
+    },
     correlationId: req.correlationId,
     timestamp: new Date().toISOString()
-  });
+  };
+};
+
+// Health Check Routes
+app.get('/', async (req, res) => {
+  const health = await getHealthStatus(req);
+  res.status(health.success ? 200 : 503).json(health);
+});
+
+app.get('/health', async (req, res) => {
+  const health = await getHealthStatus(req);
+  res.status(health.success ? 200 : 503).json(health);
 });
 
 // 404 Catch-All Route Handler

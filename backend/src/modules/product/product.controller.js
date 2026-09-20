@@ -5,7 +5,7 @@ const Category = require('../category/category.model');
 exports.getAllProducts = async (req, res) => {
   try {
     const { category, search } = req.query;
-    let query = { isActive: true };
+    let query = {};
 
     if (category && category.trim().toUpperCase() !== 'ALL') {
       const catInput = category.trim();
@@ -51,8 +51,8 @@ exports.getAllProducts = async (req, res) => {
     const products = await Product.find(query).populate('categoryRef').sort({ createdAt: -1 });
     return res.json(products || []);
   } catch (err) {
-    console.warn('[ProductController] DB product query error, returning empty list:', err.message);
-    return res.json([]);
+    console.error('[ProductController] DB product query error:', err.message);
+    return res.status(500).json({ error: err.message || 'Failed to fetch products' });
   }
 };
 
