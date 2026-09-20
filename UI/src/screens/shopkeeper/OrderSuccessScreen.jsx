@@ -26,7 +26,7 @@ export default function OrderSuccessScreen({ route, navigation }) {
         </View>
 
         <Text className="text-2xl font-extrabold text-[#131b2e] text-center mb-1">
-          B2B Order Placed Successfully!
+          Order Placed Successfully!
         </Text>
         <Text className="text-xs text-[#3d4a42] text-center mb-4 leading-relaxed">
           Your order <Text className="font-bold text-[#006948]">#{orderData.id}</Text> has been verified by RS Industries dispatch team.

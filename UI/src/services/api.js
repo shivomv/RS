@@ -74,4 +74,9 @@ export const api = {
   // Shopkeeper Buyer Profile API
   getShopkeepers: () => apiClient.get('/shopkeepers'),
   createShopkeeper: (data) => apiClient.post('/shopkeepers', data),
+
+  // Cart API
+  getCart: (shopkeeperId) => apiClient.get('/cart', { params: { shopkeeperId } }),
+  syncCart: (shopkeeperId, items) => apiClient.post('/cart/sync', { shopkeeperId, items }),
+  clearCartBackend: (shopkeeperId) => apiClient.post('/cart/clear', { shopkeeperId }),
 };

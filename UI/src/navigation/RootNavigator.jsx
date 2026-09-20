@@ -15,8 +15,6 @@ import CartScreen from '../screens/shopkeeper/CartScreen';
 import OrdersScreen from '../screens/shopkeeper/OrdersScreen';
 import ProfileScreen from '../screens/shopkeeper/ProfileScreen';
 import ProductDetailScreen from '../screens/shopkeeper/ProductDetailScreen';
-import BulkPriceOptimizerScreen from '../screens/shopkeeper/BulkPriceOptimizerScreen';
-import OutstandingScreen from '../screens/shopkeeper/OutstandingScreen';
 import OrderDetailScreen from '../screens/shopkeeper/OrderDetailScreen';
 import CheckoutPaymentScreen from '../screens/shopkeeper/CheckoutPaymentScreen';
 import OrderSuccessScreen from '../screens/shopkeeper/OrderSuccessScreen';
@@ -101,8 +99,6 @@ export const RootNavigator = () => {
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="Shopkeeper" component={BuyerTabs} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
-      <Stack.Screen name="BulkPriceOptimizer" component={BulkPriceOptimizerScreen} />
-      <Stack.Screen name="Outstanding" component={OutstandingScreen} />
       <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
       <Stack.Screen name="CheckoutPayment" component={CheckoutPaymentScreen} />
       <Stack.Screen name="OrderSuccess" component={OrderSuccessScreen} />

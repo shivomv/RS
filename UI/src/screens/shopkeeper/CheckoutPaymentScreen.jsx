@@ -5,13 +5,15 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
 import { useCartStore } from '../../store/cartStore';
 import { useOrderStore } from '../../store/orderStore';
+import { useAuthStore } from '../../store/authStore';
 
 export default function CheckoutPaymentScreen({ navigation }) {
   const { items, totalAmount, clearCart } = useCartStore();
   const { addOrder } = useOrderStore();
+  const { session } = useAuthStore();
 
   const [selectedPayment, setSelectedPayment] = useState('upi');
-  const [selectedAddress, setSelectedAddress] = useState('Indiranagar Facilities Ltd, Plot 42, 10th Main, Indiranagar, Bengaluru - 560038');
+  const [selectedAddress] = useState('Indiranagar Facilities Ltd, Plot 42, 10th Main, Indiranagar, Bengaluru - 560038');
 
   const subtotal = totalAmount();
   const gstTax = Math.round(subtotal * 0.18);
@@ -23,22 +25,105 @@ export default function CheckoutPaymentScreen({ navigation }) {
       return;
     }
 
-    const newOrder = {
+    // Freeze Immutable Itemized Product Snapshot
+    const itemSnapshots = items.map((i) => {
+      const uPrice = i.price || i.product?.price || 99;
+      const qty = i.quantity || 1;
+      return {
+        id: i._id || i.product?._id || `item-${Math.random()}`,
+        productId: i._id || i.product?._id,
+        name: i.name || i.product?.name || 'Ultra-Clean Floor Cleaner',
+        subtitle: i.size || i.product?.size || '500ml',
+        size: i.size || i.product?.size || '500ml',
+        unitPrice: uPrice,
+        price: uPrice,
+        qty: qty,
+        quantity: qty,
+        lineTotal: uPrice * qty,
+        image: i.image || i.product?.image || '',
+      };
+    });
+
+    // Freeze Immutable Address & Buyer Snapshot
+    const addressSnapshot = {
+      fullAddress: selectedAddress,
+      capturedAt: new Date().toISOString(),
+    };
+
+    const buyerSnapshot = {
+      name: session?.user?.name || session?.user?.shopName || 'Registered Customer',
+      mobile: session?.mobile || session?.user?.mobile || '9876543210',
+    };
+
+    const financialSnapshot = {
+      subtotal,
+      gstAmount: gstTax,
+      totalAmount: total,
+    };
+
+    const newOrder = Object.freeze({
       id: `RS-ORD-${Math.floor(1000 + Math.random() * 9000)}`,
       date: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
       status: 'Dispatching',
+      subtotal,
       total,
       gst: gstTax,
-      paymentMethod: selectedPayment === 'upi' ? 'UPI' : selectedPayment === 'credit' ? 'B2B Net 30 Credit' : 'NEFT / RTGS',
+      paymentMethod: selectedPayment === 'upi' ? 'UPI' : 'Net Banking / Cash',
       deliveryAddress: selectedAddress,
-      items: [...items],
-    };
+      deliveryAddressSnapshot: addressSnapshot,
+      buyerSnapshot: buyerSnapshot,
+      financialSnapshot: financialSnapshot,
+      items: itemSnapshots,
+    });
 
     addOrder(newOrder);
     clearCart();
 
     navigation.replace('OrderSuccess', { order: newOrder });
   };
+
+  // Render Guest Account Login Required View if user is not logged in
+  if (!session) {
+    return (
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#faf8ff]">
+        <View className="bg-white border-b border-[#dae2fd] px-4 py-3 flex-row items-center justify-between shadow-sm z-10">
+          <View className="flex-row items-center gap-2">
+            <Pressable
+              onPress={() => navigation.goBack()}
+              className="w-9 h-9 rounded-full bg-[#f2f3ff] justify-center items-center active:opacity-70"
+            >
+              <Icon name="arrow-back" size={20} color="#131b2e" />
+            </Pressable>
+            <Text className="text-base font-bold text-[#131b2e]">Checkout</Text>
+          </View>
+          <RSLogo size="sm" showText={false} />
+        </View>
+
+        <ScrollView
+          contentContainerStyle={{ padding: 24, paddingBottom: 60, alignItems: 'center' }}
+          className="flex-1"
+        >
+          <View className="w-20 h-20 rounded-full bg-[#006948]/10 justify-center items-center mb-4 mt-8">
+            <Icon name="lock-outline" size={44} color="#006948" />
+          </View>
+          <Text className="text-lg font-black text-[#131b2e] text-center">
+            Login Required to Place Order
+          </Text>
+          <Text className="text-xs text-[#3d4a42] text-center mt-2 px-2 leading-relaxed">
+            Please log in or create an account with your registered mobile number to proceed to checkout and complete your order.
+          </Text>
+
+          <Pressable
+            onPress={() => navigation.navigate('Login', { returnScreen: 'CheckoutPayment' })}
+            className="bg-[#006948] w-full rounded-2xl py-3.5 items-center justify-center flex-row gap-2 mt-8 shadow-md"
+          >
+            <Icon name="login" size={20} color="#ffffff" />
+            <Text className="text-sm text-white font-extrabold">Log In / Register</Text>
+          </Pressable>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-[#faf8ff]">
@@ -51,7 +136,7 @@ export default function CheckoutPaymentScreen({ navigation }) {
           >
             <Icon name="arrow-back" size={20} color="#131b2e" />
           </Pressable>
-          <Text className="text-base font-bold text-[#131b2e]">B2B Checkout</Text>
+          <Text className="text-base font-bold text-[#131b2e]">Checkout</Text>
         </View>
         <RSLogo size="sm" showText={false} />
       </View>
@@ -99,33 +184,7 @@ export default function CheckoutPaymentScreen({ navigation }) {
             </View>
           </Pressable>
 
-          {/* Option 2: B2B Net 30 Credit Ledger */}
-          <Pressable
-            onPress={() => setSelectedPayment('credit')}
-            className={`p-3.5 rounded-xl border mb-2.5 flex-row items-center justify-between ${
-              selectedPayment === 'credit' ? 'border-[#006948] bg-[#f0fff8]' : 'border-[#eaedff] bg-white'
-            }`}
-          >
-            <View className="flex-row items-center gap-3">
-              <View className="w-9 h-9 rounded-full bg-[#e2e7ff] justify-center items-center">
-                <Icon name="account-balance-wallet" size={20} color="#006948" />
-              </View>
-              <View>
-                <View className="flex-row items-center gap-1.5">
-                  <Text className="text-xs font-bold text-[#131b2e]">B2B Credit Ledger (Net 30)</Text>
-                  <View className="bg-[#99efe5] px-1 py-0.2 rounded">
-                    <Text className="text-[8px] text-[#006f67] font-bold">Approved</Text>
-                  </View>
-                </View>
-                <Text className="text-[10px] text-[#6d7a72]">Pay on invoice within 30 days</Text>
-              </View>
-            </View>
-            <View className={`w-5 h-5 rounded-full border justify-center items-center ${selectedPayment === 'credit' ? 'border-[#006948] bg-[#006948]' : 'border-[#6d7a72]'}`}>
-              {selectedPayment === 'credit' && <Icon name="check" size={12} color="#ffffff" />}
-            </View>
-          </Pressable>
-
-          {/* Option 3: NEFT / RTGS Bank Transfer */}
+          {/* Option 2: Cash on Delivery / Bank Transfer */}
           <Pressable
             onPress={() => setSelectedPayment('neft')}
             className={`p-3.5 rounded-xl border flex-row items-center justify-between ${
@@ -137,8 +196,8 @@ export default function CheckoutPaymentScreen({ navigation }) {
                 <Icon name="account-balance" size={20} color="#3d4a42" />
               </View>
               <View>
-                <Text className="text-xs font-bold text-[#131b2e]">Net Banking / NEFT / RTGS</Text>
-                <Text className="text-[10px] text-[#6d7a72]">Direct bank transfer for bulk drums</Text>
+                <Text className="text-xs font-bold text-[#131b2e]">Net Banking / NEFT / Cash</Text>
+                <Text className="text-[10px] text-[#6d7a72]">Direct payment on dispatch or delivery</Text>
               </View>
             </View>
             <View className={`w-5 h-5 rounded-full border justify-center items-center ${selectedPayment === 'neft' ? 'border-[#006948] bg-[#006948]' : 'border-[#6d7a72]'}`}>
@@ -181,7 +240,7 @@ export default function CheckoutPaymentScreen({ navigation }) {
           onPress={handleConfirmOrder}
           className="bg-[#006948] px-6 py-3.5 rounded-xl flex-row items-center gap-2 shadow-md active:opacity-90"
         >
-          <Text className="text-white font-bold text-xs uppercase tracking-wider">Confirm B2B Order</Text>
+          <Text className="text-white font-bold text-xs uppercase tracking-wider">Confirm Order</Text>
           <Icon name="arrow-forward" size={16} color="#ffffff" />
         </Pressable>
       </View>

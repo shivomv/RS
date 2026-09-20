@@ -12,12 +12,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import FeatherIcon from 'react-native-vector-icons/Feather';
 import RSLogo from '../../components/RSLogo';
-import { ProductCardSkeleton, CategorySkeleton, BannerSkeleton } from '../../components/Skeleton';
+import { ProductCardSkeleton, CategorySkeleton } from '../../components/Skeleton';
 import { useCartStore } from '../../store/cartStore';
+import { useAuthStore } from '../../store/authStore';
 import { api } from '../../services/api';
 
 export default function ShopkeeperHomeScreen({ navigation }) {
   const { items, addItem, removeItem, updateQuantity, totalAmount, itemCount } = useCartStore();
+  const { session } = useAuthStore();
   const [dbProducts, setDbProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -82,33 +84,22 @@ export default function ShopkeeperHomeScreen({ navigation }) {
               <Icon name="notifications-none" size={22} color="#3d4a42" />
               <View className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#ba1a1a]" />
             </TouchableOpacity>
-            <TouchableOpacity activeOpacity={0.7} className="w-10 h-10 rounded-full overflow-hidden border border-[#bccac0]">
-              <Image
-                source={{
-                  uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDO2ijUAJMNwM-QODTNqSRCuJgJck70ZUjFztadUdQ6FY5QFQu1PRfZXrHv48QsDfm2odixXZVku1HckHrgpzBJXDjUuSQvqGsjB-N20z0l40gEeMYHfDd2UGxvKusUOYDZockQrFLPsfy6Mrv8tAG9ouXqm6-sobkEwc13Pinr0UynpcUjCcmLovh45QuDwt8IRv9A2Z1Yh6Uxjz6IeRLO0kDvVPUD7AcwYTdY6Ts-67cMaQugjx_D',
-                }}
-                className="w-full h-full"
-              />
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Profile')}
+              activeOpacity={0.7}
+              className="w-10 h-10 rounded-full overflow-hidden border border-[#bccac0] justify-center items-center bg-[#f2f3ff]"
+            >
+              {session ? (
+                <Image
+                  source={{
+                    uri: session.user?.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDO2ijUAJMNwM-QODTNqSRCuJgJck70ZUjFztadUdQ6FY5QFQu1PRfZXrHv48QsDfm2odixXZVku1HckHrgpzBJXDjUuSQvqGsjB-N20z0l40gEeMYHfDd2UGxvKusUOYDZockQrFLPsfy6Mrv8tAG9ouXqm6-sobkEwc13Pinr0UynpcUjCcmLovh45QuDwt8IRv9A2Z1Yh6Uxjz6IeRLO0kDvVPUD7AcwYTdY6Ts-67cMaQugjx_D',
+                  }}
+                  className="w-full h-full"
+                />
+              ) : (
+                <Icon name="person-outline" size={22} color="#006948" />
+              )}
             </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Delivery location bar */}
-        <View className="flex-row items-center justify-between mt-3 pt-2 border-t border-[#f2f3ff]">
-          <TouchableOpacity activeOpacity={0.7} className="flex-row items-center gap-1.5 flex-1">
-            <Icon name="location-on" size={18} color="#006948" />
-            <View className="flex-1">
-              <Text className="text-[11px] text-[#3d4a42] font-semibold">Delivering to</Text>
-              <Text className="text-xs text-[#131b2e] font-bold" numberOfLines={1}>
-                Indiranagar, Bengaluru - 560038
-              </Text>
-            </View>
-            <Icon name="keyboard-arrow-down" size={18} color="#3d4a42" />
-          </TouchableOpacity>
-          <View className="bg-[#99efe5] px-2 py-0.5 rounded-full border border-[#006f67]/20">
-            <Text className="text-[10px] text-[#006f67] font-bold uppercase tracking-wider">
-              B2B & Retail
-            </Text>
           </View>
         </View>
       </View>
@@ -407,7 +398,7 @@ export default function ShopkeeperHomeScreen({ navigation }) {
         {/* Custom Enterprise Barrels Card */}
         <View className="px-4 pt-2 pb-6">
           <TouchableOpacity
-            onPress={() => navigation.navigate('BulkPriceOptimizer')}
+            onPress={() => navigation.navigate('Catalog')}
             activeOpacity={0.7}
             className="bg-white rounded-2xl p-4 shadow-sm flex-row items-center gap-3 border border-[#eaedff]"
           >

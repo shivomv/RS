@@ -4,36 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
 import { AddressSkeleton } from '../../components/Skeleton';
-import { api } from '../../services/api';
+import { useAuthStore } from '../../store/authStore';
 
 export default function AddressListScreen({ navigation }) {
+  const { session } = useAuthStore();
   const [loading, setLoading] = useState(true);
-  const [addresses, setAddresses] = useState([
-    {
-      id: '1',
-      title: 'Indiranagar Facilities Ltd (Default)',
-      address: 'Plot 42, 10th Main, Indiranagar, Bengaluru, Karnataka - 560038',
-      type: 'Central Warehouse',
-      contact: '+91 98765 43210',
-      isDefault: true,
-    },
-    {
-      id: '2',
-      title: 'Peenya Factory Godown',
-      address: 'Shed 14, Industrial Suburb, Peenya 1st Stage, Bengaluru - 560058',
-      type: 'Manufacturing Plant',
-      contact: '+91 98765 99887',
-      isDefault: false,
-    },
-    {
-      id: '3',
-      title: 'Whitefield Commercial Office',
-      address: 'Unit 302, Tech Park Tower, EPIP Zone, Whitefield, Bengaluru - 560066',
-      type: 'Corporate Office',
-      contact: '+91 98765 11223',
-      isDefault: false,
-    },
-  ]);
+  const [addresses, setAddresses] = useState([]);
 
   // Hardware Android Back Button Handler
   useEffect(() => {
@@ -51,6 +27,11 @@ export default function AddressListScreen({ navigation }) {
   }, [navigation]);
 
   useEffect(() => {
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
     let isMounted = true;
     setLoading(true);
     const timer = setTimeout(() => {
@@ -60,7 +41,7 @@ export default function AddressListScreen({ navigation }) {
       isMounted = false;
       clearTimeout(timer);
     };
-  }, []);
+  }, [session]);
 
   const handleSetDefault = (id) => {
     setAddresses((prev) =>
@@ -81,6 +62,53 @@ export default function AddressListScreen({ navigation }) {
       },
     ]);
   };
+
+  if (!session) {
+    return (
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#faf8ff]">
+        <View className="bg-white border-b border-[#dae2fd] px-4 py-3 flex-row items-center justify-between shadow-sm z-10">
+          <View className="flex-row items-center gap-2">
+            <TouchableOpacity
+              onPress={() => {
+                if (navigation.canGoBack()) {
+                  navigation.goBack();
+                } else {
+                  navigation.navigate('ShopHome');
+                }
+              }}
+              activeOpacity={0.7}
+              className="w-9 h-9 rounded-full bg-[#f2f3ff] justify-center items-center border border-[#dae2fd]"
+            >
+              <Icon name="arrow-back" size={20} color="#131b2e" />
+            </TouchableOpacity>
+            <RSLogo size="sm" showText={false} />
+            <Text className="text-base font-bold text-[#131b2e] ml-1">Shipping Addresses</Text>
+          </View>
+        </View>
+
+        <ScrollView contentContainerStyle={{ padding: 24, alignItems: 'center' }} className="flex-1">
+          <View className="w-20 h-20 rounded-full bg-[#006948]/10 justify-center items-center mb-4 mt-8">
+            <Icon name="location-on" size={44} color="#006948" />
+          </View>
+          <Text className="text-lg font-black text-[#131b2e] text-center">
+            Log In to Manage Shipping Addresses
+          </Text>
+          <Text className="text-xs text-[#3d4a42] text-center mt-2 px-2 leading-relaxed">
+            Please log in with your registered mobile number to save and manage your facility delivery addresses.
+          </Text>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Login', { returnScreen: 'AddressList' })}
+            activeOpacity={0.85}
+            className="bg-[#006948] w-full rounded-2xl py-3.5 items-center justify-center flex-row gap-2 mt-8 shadow-md"
+          >
+            <Icon name="login" size={20} color="#ffffff" />
+            <Text className="text-sm text-white font-extrabold">Log In / Register</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#faf8ff]">
@@ -131,7 +159,7 @@ export default function AddressListScreen({ navigation }) {
             <AddressSkeleton />
             <AddressSkeleton />
           </View>
-        ) : (
+        ) : addresses.length > 0 ? (
           addresses.map((item) => (
             <View
               key={item.id}
@@ -177,6 +205,12 @@ export default function AddressListScreen({ navigation }) {
               </View>
             </View>
           ))
+        ) : (
+          <View className="py-12 bg-white/60 rounded-2xl items-center justify-center border border-dashed border-[#bccac0]/50 mt-4">
+            <Icon name="location-off" size={32} color="#6d7a72" />
+            <Text className="text-xs text-[#131b2e] font-bold mt-2">No saved addresses yet</Text>
+            <Text className="text-[10px] text-[#6d7a72] mt-0.5">Tap 'Add Address' to save a delivery facility.</Text>
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>

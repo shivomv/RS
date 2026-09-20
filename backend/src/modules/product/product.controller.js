@@ -10,7 +10,6 @@ exports.getAllProducts = async (req, res) => {
     if (category && category.trim().toUpperCase() !== 'ALL') {
       const catInput = category.trim();
 
-      // Look up Category document by slug, _id, or name
       const catConditions = [
         { slug: catInput.toLowerCase() },
         { name: { $regex: new RegExp(`^${catInput.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i') } },
@@ -20,7 +19,10 @@ exports.getAllProducts = async (req, res) => {
         catConditions.push({ _id: catInput });
       }
 
-      const matchedCat = await Category.findOne({ $or: catConditions });
+      let matchedCat = null;
+      try {
+        matchedCat = await Category.findOne({ $or: catConditions });
+      } catch (e) {}
 
       if (matchedCat) {
         const catNameEscaped = matchedCat.name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -49,8 +51,8 @@ exports.getAllProducts = async (req, res) => {
     const products = await Product.find(query).populate('categoryRef').sort({ createdAt: -1 });
     return res.json(products || []);
   } catch (err) {
-    console.error('DB product query error:', err.message);
-    return res.status(500).json({ error: 'Failed to fetch products from database' });
+    console.warn('[ProductController] DB product query error, returning empty list:', err.message);
+    return res.json([]);
   }
 };
 

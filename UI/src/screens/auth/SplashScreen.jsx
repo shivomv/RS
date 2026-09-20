@@ -131,7 +131,7 @@ export default function SplashScreen({ navigation }) {
           <View className="mt-2 bg-[#006948] px-3 py-1 rounded-full flex-row items-center gap-1 shadow-sm">
             <Icon name="precision-manufacturing" size={12} color="#ffffff" />
             <Text className="text-[10px] font-extrabold text-white uppercase tracking-wider">
-              Direct Factory to Consumer & B2B
+              Direct Factory to Consumer & Wholesale
             </Text>
           </View>
 
@@ -221,7 +221,7 @@ export default function SplashScreen({ navigation }) {
             Made in India 🇮🇳 • ISO 9001:2015 • Non-Toxic & Pet Safe
           </Text>
           <Text className="text-[9px] text-[#6d7a72] mt-0.5">
-            RS Industries Pvt Ltd • GST B2B Compliant
+            RS Industries Pvt Ltd • GST Compliant
           </Text>
         </View>
       </View>

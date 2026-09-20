@@ -117,40 +117,55 @@ export default function OrderDetailScreen({ route, navigation }) {
           </Pressable>
         </View>
 
-        {/* Delivery Address */}
+        {/* Delivery Address Snapshot */}
         <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-[#eaedff]">
           <View className="flex-row items-center gap-1.5 mb-1.5">
             <Icon name="location-on" size={18} color="#006948" />
-            <Text className="text-xs font-bold text-[#131b2e]">Delivery Destination</Text>
+            <Text className="text-xs font-bold text-[#131b2e]">Delivery Destination (Snapshot)</Text>
           </View>
-          <Text className="text-xs text-[#3d4a42] leading-relaxed">{orderData.deliveryAddress}</Text>
+          <Text className="text-xs text-[#3d4a42] leading-relaxed">
+            {orderData.deliveryAddressSnapshot?.fullAddress || orderData.deliveryAddress}
+          </Text>
         </View>
 
-        {/* Itemized Order Breakdown */}
+        {/* Itemized Product Snapshot Breakdown */}
         <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-[#eaedff]">
-          <Text className="text-xs font-bold text-[#131b2e] mb-3">Items Ordered ({orderData.items.length})</Text>
+          <Text className="text-xs font-bold text-[#131b2e] mb-3">
+            Items Ordered ({orderData.items?.length || 0}) • Historical Snapshot
+          </Text>
 
-          {orderData.items.map((item) => (
-            <View key={item.id} className="flex-row items-center justify-between py-2 border-b border-[#f2f3ff]">
-              <View className="flex-1 pr-2">
-                <Text className="text-xs font-bold text-[#131b2e]">{item.name}</Text>
-                <Text className="text-[10px] text-[#6d7a72]">
-                  {item.subtitle} • Qty: {item.qty}
-                </Text>
+          {(orderData.items || []).map((item, idx) => {
+            const itemQty = item.qty || item.quantity || 1;
+            const itemPrice = item.unitPrice || item.price || (item.product?.price) || 99;
+            const lineTotal = item.lineTotal || (itemPrice * itemQty);
+            const subTitleText = item.subtitle || item.size || item.product?.size || '';
+
+            return (
+              <View key={item.id || item._id || idx} className="flex-row items-center justify-between py-2 border-b border-[#f2f3ff]">
+                <View className="flex-1 pr-2">
+                  <Text className="text-xs font-bold text-[#131b2e]">{item.name || item.product?.name || 'Product'}</Text>
+                  <Text className="text-[10px] text-[#6d7a72]">
+                    {subTitleText ? `${subTitleText} • ` : ''}Unit: ₹{itemPrice} • Qty: {itemQty}
+                  </Text>
+                </View>
+                <Text className="text-xs font-extrabold text-[#131b2e]">₹{lineTotal}</Text>
               </View>
-              <Text className="text-xs font-extrabold text-[#131b2e]">₹{item.price * item.qty}</Text>
-            </View>
-          ))}
+            );
+          })}
 
-          {/* Payment Summary */}
+          {/* Payment Financial Snapshot */}
           <View className="mt-3 pt-2 gap-1.5">
             <View className="flex-row justify-between">
               <Text className="text-xs text-[#6d7a72]">Items Subtotal</Text>
-              <Text className="text-xs font-semibold text-[#131b2e]">₹{orderData.total - orderData.gst}</Text>
+              <Text className="text-xs font-semibold text-[#131b2e]">
+                ₹{orderData.financialSnapshot?.subtotal || (orderData.total - orderData.gst)}
+              </Text>
             </View>
             <View className="flex-row justify-between">
-              <Text className="text-xs text-[#6d7a72]">B2B GST Tax (18%)</Text>
-              <Text className="text-xs font-semibold text-[#131b2e]">₹{orderData.gst}</Text>
+              <Text className="text-xs text-[#6d7a72]">GST Tax (18%)</Text>
+              <Text className="text-xs font-semibold text-[#131b2e]">
+                ₹{orderData.financialSnapshot?.gstAmount || orderData.gst}
+              </Text>
             </View>
             <View className="flex-row justify-between">
               <Text className="text-xs text-[#6d7a72]">Delivery Charges</Text>
@@ -158,7 +173,9 @@ export default function OrderDetailScreen({ route, navigation }) {
             </View>
             <View className="flex-row justify-between pt-2 border-t border-[#f2f3ff] mt-1">
               <Text className="text-sm font-bold text-[#131b2e]">Total Amount Paid</Text>
-              <Text className="text-base font-extrabold text-[#006948]">₹{orderData.total}</Text>
+              <Text className="text-base font-extrabold text-[#006948]">
+                ₹{orderData.financialSnapshot?.totalAmount || orderData.total}
+              </Text>
             </View>
           </View>
         </View>

@@ -30,7 +30,7 @@ app.use('/api', apiRoutes);
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'RS Industries Enterprise Scalable B2B API Engine is running',
+    message: 'RS Industries Enterprise Scalable API Engine is running',
     version: '2.0.0',
     correlationId: req.correlationId,
     timestamp: new Date().toISOString()

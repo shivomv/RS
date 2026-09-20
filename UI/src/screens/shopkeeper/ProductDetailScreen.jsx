@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   Pressable,
-  TextInput,
   Image,
   BackHandler,
 } from 'react-native';
@@ -20,8 +19,6 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [selectedSize, setSelectedSize] = useState('500ml');
   const [basePrice, setBasePrice] = useState(product?.price || 99);
   const [quantity, setQuantity] = useState(1);
-  const [activeTab, setActiveTab] = useState('packs'); // 'packs' or 'calc'
-  const [customQty, setCustomQty] = useState('35');
   const [toastMessage, setToastMessage] = useState(null);
 
   // Hardware Android Back Button Handler
@@ -61,20 +58,6 @@ export default function ProductDetailScreen({ route, navigation }) {
     triggerToast(`Added Pack of ${packCount} (₹${packPrice}) to cart!`);
   };
 
-  const computeCustom = () => {
-    const qty = parseInt(customQty, 10) || 1;
-    let rate = 95;
-    if (qty >= 100) rate = 75;
-    else if (qty >= 50) rate = 80;
-    else if (qty >= 20) rate = 85;
-    else if (qty >= 10) rate = 90;
-
-    const total = qty * rate;
-    const baseTotal = qty * 99;
-    const savings = baseTotal - total;
-    return { rate, total, savings };
-  };
-
   const triggerToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2400);
@@ -91,8 +74,6 @@ export default function ProductDetailScreen({ route, navigation }) {
     });
     triggerToast(`Added ${quantity} × ${selectedSize} (₹${itemTotal}) to cart!`);
   };
-
-  const customCalcData = computeCustom();
 
   return (
     <SafeAreaView className="flex-1 bg-[#faf8ff]">
@@ -255,174 +236,104 @@ export default function ProductDetailScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* How much do you need? (Bulk Packs & Calculator) */}
+        {/* Predefined Bulk Packs */}
         <View className="px-4 pt-4">
           <View className="bg-[#f2f3ff] p-3.5 rounded-2xl gap-3">
-            <View className="flex-row items-center justify-between">
-              <View>
-                <Text className="text-sm font-bold text-[#131b2e]">How much do you need?</Text>
-                <Text className="text-[10px] text-[#3d4a42]">
-                  Volume discounts computed for {selectedSize}
-                </Text>
-              </View>
-              <Pressable
-                onPress={() => navigation.navigate('BulkPriceOptimizer')}
-                className="flex-row items-center gap-1 bg-[#006948]/10 px-2 py-1 rounded-full"
-              >
-                <Icon name="calculate" size={14} color="#006948" />
-                <Text className="text-[10px] text-[#006948] font-bold">Optimizer</Text>
-              </Pressable>
+            <View>
+              <Text className="text-sm font-bold text-[#131b2e]">Predefined Bulk Packs</Text>
+              <Text className="text-[10px] text-[#3d4a42]">
+                Volume discounts computed for {selectedSize}
+              </Text>
             </View>
 
-            {/* Segmented Tabs */}
-            <View className="flex-row bg-[#e2e7ff] p-1 rounded-xl">
-              <Pressable
-                onPress={() => setActiveTab('packs')}
-                className={`flex-1 py-1.5 rounded-lg justify-center items-center ${
-                  activeTab === 'packs' ? 'bg-white shadow-sm' : ''
-                }`}
-              >
-                <Text
-                  className={`text-xs font-bold ${
-                    activeTab === 'packs' ? 'text-[#006948]' : 'text-[#3d4a42]'
-                  }`}
-                >
-                  Predefined Bulk Packs
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setActiveTab('calc')}
-                className={`flex-1 py-1.5 rounded-lg justify-center items-center ${
-                  activeTab === 'calc' ? 'bg-white shadow-sm' : ''
-                }`}
-              >
-                <Text
-                  className={`text-xs font-bold ${
-                    activeTab === 'calc' ? 'text-[#006948]' : 'text-[#3d4a42]'
-                  }`}
-                >
-                  Custom Calculator
-                </Text>
-              </Pressable>
-            </View>
-
-            {activeTab === 'packs' ? (
-              <View className="gap-2">
-                {/* Pack 10 */}
-                <View className="bg-white p-3 rounded-xl flex-row items-center justify-between shadow-sm">
-                  <View>
-                    <Text className="text-xs font-bold text-[#131b2e]">
-                      Pack of 10 <Text className="text-[10px] font-normal text-[#3d4a42]">(10 × 500ml)</Text>
-                    </Text>
-                    <View className="flex-row items-center gap-2 mt-0.5">
-                      <Text className="text-sm font-bold text-[#131b2e]">₹900</Text>
-                      <View className="bg-[#eaedff] px-1.5 py-0.2 rounded">
-                        <Text className="text-[9px] text-[#006948] font-bold">₹90 / pc</Text>
-                      </View>
-                      <Text className="text-[10px] text-[#006a63]">Save ₹90</Text>
+            <View className="gap-2">
+              {/* Pack 10 */}
+              <View className="bg-white p-3 rounded-xl flex-row items-center justify-between shadow-sm">
+                <View>
+                  <Text className="text-xs font-bold text-[#131b2e]">
+                    Pack of 10 <Text className="text-[10px] font-normal text-[#3d4a42]">(10 × 500ml)</Text>
+                  </Text>
+                  <View className="flex-row items-center gap-2 mt-0.5">
+                    <Text className="text-sm font-bold text-[#131b2e]">₹900</Text>
+                    <View className="bg-[#eaedff] px-1.5 py-0.2 rounded">
+                      <Text className="text-[9px] text-[#006948] font-bold">₹90 / pc</Text>
                     </View>
-                  </View>
-                  <Pressable
-                    onPress={() => handleAddBundle(10, 900)}
-                    className="bg-[#006948] px-3 py-1.5 rounded-lg"
-                  >
-                    <Text className="text-xs text-white font-bold">Add Pack</Text>
-                  </Pressable>
-                </View>
-
-                {/* Pack 20 (Best Value) */}
-                <View className="bg-white p-3 rounded-xl flex-row items-center justify-between shadow-sm border border-[#99efe5]">
-                  <View>
-                    <View className="flex-row items-center gap-1.5">
-                      <Text className="text-xs font-bold text-[#131b2e]">Pack of 20</Text>
-                      <View className="bg-[#006a63] px-1.5 rounded">
-                        <Text className="text-[8px] text-white font-bold uppercase">Best Value</Text>
-                      </View>
-                    </View>
-                    <View className="flex-row items-center gap-2 mt-0.5">
-                      <Text className="text-sm font-bold text-[#131b2e]">₹1,700</Text>
-                      <View className="bg-[#99efe5] px-1.5 py-0.2 rounded">
-                        <Text className="text-[9px] text-[#006f67] font-bold">₹85 / pc</Text>
-                      </View>
-                      <Text className="text-[10px] text-[#006a63] font-bold">Save ₹280</Text>
-                    </View>
-                  </View>
-                  <Pressable
-                    onPress={() => handleAddBundle(20, 1700)}
-                    className="bg-[#006948] px-3 py-1.5 rounded-lg"
-                  >
-                    <Text className="text-xs text-white font-bold">Add Pack</Text>
-                  </Pressable>
-                </View>
-
-                {/* Pack 50 */}
-                <View className="bg-white p-3 rounded-xl flex-row items-center justify-between shadow-sm">
-                  <View>
-                    <Text className="text-xs font-bold text-[#131b2e]">Pack of 50</Text>
-                    <View className="flex-row items-center gap-2 mt-0.5">
-                      <Text className="text-sm font-bold text-[#131b2e]">₹4,000</Text>
-                      <View className="bg-[#eaedff] px-1.5 py-0.2 rounded">
-                        <Text className="text-[9px] text-[#006948] font-bold">₹80 / pc</Text>
-                      </View>
-                      <Text className="text-[10px] text-[#006a63]">Save ₹950</Text>
-                    </View>
-                  </View>
-                  <Pressable
-                    onPress={() => handleAddBundle(50, 4000)}
-                    className="bg-[#006948] px-3 py-1.5 rounded-lg"
-                  >
-                    <Text className="text-xs text-white font-bold">Add Pack</Text>
-                  </Pressable>
-                </View>
-
-                {/* Pack 100 */}
-                <View className="bg-white p-3 rounded-xl flex-row items-center justify-between shadow-sm">
-                  <View>
-                    <Text className="text-xs font-bold text-[#131b2e]">Pack of 100</Text>
-                    <View className="flex-row items-center gap-2 mt-0.5">
-                      <Text className="text-sm font-bold text-[#131b2e]">₹7,500</Text>
-                      <View className="bg-[#85f8c4] px-1.5 py-0.2 rounded">
-                        <Text className="text-[9px] text-[#002114] font-bold">₹75 / pc</Text>
-                      </View>
-                      <Text className="text-[10px] text-[#006948] font-bold">Save ₹2,400</Text>
-                    </View>
-                  </View>
-                  <Pressable
-                    onPress={() => handleAddBundle(100, 7500)}
-                    className="bg-[#006948] px-3 py-1.5 rounded-lg"
-                  >
-                    <Text className="text-xs text-white font-bold">Add Pack</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ) : (
-              <View className="bg-white p-4 rounded-xl gap-3 shadow-sm">
-                <Text className="text-xs font-bold text-[#131b2e]">Enter Target Units Needed</Text>
-                <View className="flex-row items-center gap-3">
-                  <TextInput
-                    value={customQty}
-                    onChangeText={setCustomQty}
-                    keyboardType="numeric"
-                    className="w-20 bg-[#f2f3ff] rounded-lg text-center font-bold text-base text-[#131b2e] py-1.5"
-                  />
-                  <View>
-                    <Text className="text-sm font-bold text-[#006948]">
-                      ₹{customCalcData.total.toLocaleString('en-IN')} Total
-                    </Text>
-                    <Text className="text-[10px] text-[#3d4a42]">
-                      ₹{customCalcData.rate}/piece • Save ₹{customCalcData.savings.toLocaleString('en-IN')}
-                    </Text>
+                    <Text className="text-[10px] text-[#006a63]">Save ₹90</Text>
                   </View>
                 </View>
                 <Pressable
-                  onPress={() => handleAddBundle(parseInt(customQty, 10) || 1, customCalcData.total)}
-                  className="bg-[#006a63] py-2.5 rounded-lg items-center flex-row justify-center gap-1"
+                  onPress={() => handleAddBundle(10, 900)}
+                  className="bg-[#006948] px-3 py-1.5 rounded-lg"
                 >
-                  <Icon name="calculate" size={16} color="#ffffff" />
-                  <Text className="text-xs text-white font-bold">Add Custom Bulk Lot</Text>
+                  <Text className="text-xs text-white font-bold">Add Pack</Text>
                 </Pressable>
               </View>
-            )}
+
+              {/* Pack 20 (Best Value) */}
+              <View className="bg-white p-3 rounded-xl flex-row items-center justify-between shadow-sm border border-[#99efe5]">
+                <View>
+                  <View className="flex-row items-center gap-1.5">
+                    <Text className="text-xs font-bold text-[#131b2e]">Pack of 20</Text>
+                    <View className="bg-[#006a63] px-1.5 rounded">
+                      <Text className="text-[8px] text-white font-bold uppercase">Best Value</Text>
+                    </View>
+                  </View>
+                  <View className="flex-row items-center gap-2 mt-0.5">
+                    <Text className="text-sm font-bold text-[#131b2e]">₹1,700</Text>
+                    <View className="bg-[#99efe5] px-1.5 py-0.2 rounded">
+                      <Text className="text-[9px] text-[#006f67] font-bold">₹85 / pc</Text>
+                    </View>
+                    <Text className="text-[10px] text-[#006a63] font-bold">Save ₹280</Text>
+                  </View>
+                </View>
+                <Pressable
+                  onPress={() => handleAddBundle(20, 1700)}
+                  className="bg-[#006948] px-3 py-1.5 rounded-lg"
+                >
+                  <Text className="text-xs text-white font-bold">Add Pack</Text>
+                </Pressable>
+              </View>
+
+              {/* Pack 50 */}
+              <View className="bg-white p-3 rounded-xl flex-row items-center justify-between shadow-sm">
+                <View>
+                  <Text className="text-xs font-bold text-[#131b2e]">Pack of 50</Text>
+                  <View className="flex-row items-center gap-2 mt-0.5">
+                    <Text className="text-sm font-bold text-[#131b2e]">₹4,000</Text>
+                    <View className="bg-[#eaedff] px-1.5 py-0.2 rounded">
+                      <Text className="text-[9px] text-[#006948] font-bold">₹80 / pc</Text>
+                    </View>
+                    <Text className="text-[10px] text-[#006a63]">Save ₹950</Text>
+                  </View>
+                </View>
+                <Pressable
+                  onPress={() => handleAddBundle(50, 4000)}
+                  className="bg-[#006948] px-3 py-1.5 rounded-lg"
+                >
+                  <Text className="text-xs text-white font-bold">Add Pack</Text>
+                </Pressable>
+              </View>
+
+              {/* Pack 100 */}
+              <View className="bg-white p-3 rounded-xl flex-row items-center justify-between shadow-sm">
+                <View>
+                  <Text className="text-xs font-bold text-[#131b2e]">Pack of 100</Text>
+                  <View className="flex-row items-center gap-2 mt-0.5">
+                    <Text className="text-sm font-bold text-[#131b2e]">₹7,500</Text>
+                    <View className="bg-[#85f8c4] px-1.5 py-0.2 rounded">
+                      <Text className="text-[9px] text-[#002114] font-bold">₹75 / pc</Text>
+                    </View>
+                    <Text className="text-[10px] text-[#006948] font-bold">Save ₹2,400</Text>
+                  </View>
+                </View>
+                <Pressable
+                  onPress={() => handleAddBundle(100, 7500)}
+                  className="bg-[#006948] px-3 py-1.5 rounded-lg"
+                >
+                  <Text className="text-xs text-white font-bold">Add Pack</Text>
+                </Pressable>
+              </View>
+            </View>
           </View>
         </View>
 

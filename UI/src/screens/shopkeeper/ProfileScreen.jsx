@@ -4,13 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
 import { useAuthStore } from '../../store/authStore';
-import { useCartStore } from '../../store/cartStore';
-import { useOrderStore } from '../../store/orderStore';
 
 export default function ProfileScreen({ navigation }) {
   const { session, logout } = useAuthStore();
-  const { items } = useCartStore();
-  const { orders } = useOrderStore();
 
   // Hardware Android Back Button Handler
   useEffect(() => {
@@ -41,6 +37,55 @@ export default function ProfileScreen({ navigation }) {
     ]);
   };
 
+  // Render Guest Account Login Required View if user is not logged in
+  if (!session) {
+    return (
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#faf8ff]">
+        {/* Top Header */}
+        <View className="bg-white border-b border-[#dae2fd] px-4 py-3 flex-row items-center justify-between shadow-sm z-10">
+          <RSLogo size="md" />
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Login', { returnScreen: 'Profile' })}
+            activeOpacity={0.7}
+            className="bg-[#006948] px-3.5 py-1.5 rounded-full flex-row items-center gap-1 shadow-sm"
+          >
+            <Icon name="login" size={16} color="#ffffff" />
+            <Text className="text-xs text-white font-bold">Log In</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          className="flex-1 px-4 pt-6"
+        >
+          {/* Guest Account Banner Card */}
+          <View className="bg-white rounded-3xl p-6 items-center shadow-sm border border-[#eaedff] mb-4">
+            <View className="w-20 h-20 rounded-full bg-[#006948]/10 justify-center items-center mb-4">
+              <Icon name="person-outline" size={44} color="#006948" />
+            </View>
+            <Text className="text-lg font-black text-[#131b2e] text-center">
+              Welcome to RS Industries Portal
+            </Text>
+            <Text className="text-xs text-[#3d4a42] text-center mt-1.5 px-2 leading-relaxed">
+              Log in with your registered mobile number to track dispatches, inspect GST tax invoices, and access your profile.
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Login', { returnScreen: 'Profile' })}
+              activeOpacity={0.85}
+              className="bg-[#006948] w-full rounded-2xl py-3.5 items-center justify-center flex-row gap-2 mt-6 shadow-md"
+            >
+              <Icon name="login" size={20} color="#ffffff" />
+              <Text className="text-sm text-white font-extrabold">Log In / Register</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // Render Full User Profile View for Authenticated Partners
   return (
     <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#faf8ff]">
       {/* Top Header */}
@@ -60,80 +105,32 @@ export default function ProfileScreen({ navigation }) {
         {/* User Card */}
         <View className="bg-[#006948] px-6 py-6 items-center">
           <View className="w-20 h-20 rounded-full overflow-hidden border-2 border-white mb-3 shadow-md bg-white/20 justify-center items-center">
-            {session ? (
-              <Image
-                source={{
-                  uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDO2ijUAJMNwM-QODTNqSRCuJgJck70ZUjFztadUdQ6FY5QFQu1PRfZXrHv48QsDfm2odixXZVku1HckHrgpzBJXDjUuSQvqGsjB-N20z0l40gEeMYHfDd2UGxvKusUOYDZockQrFLPsfy6Mrv8tAG9ouXqm6-sobkEwc13Pinr0UynpcUjCcmLovh45QuDwt8IRv9A2Z1Yh6Uxjz6IeRLO0kDvVPUD7AcwYTdY6Ts-67cMaQugjx_D',
-                }}
-                className="w-full h-full"
-              />
-            ) : (
-              <Icon name="person" size={40} color="#ffffff" />
-            )}
+            <Image
+              source={{
+                uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDO2ijUAJMNwM-QODTNqSRCuJgJck70ZUjFztadUdQ6FY5QFQu1PRfZXrHv48QsDfm2odixXZVku1HckHrgpzBJXDjUuSQvqGsjB-N20z0l40gEeMYHfDd2UGxvKusUOYDZockQrFLPsfy6Mrv8tAG9ouXqm6-sobkEwc13Pinr0UynpcUjCcmLovh45QuDwt8IRv9A2Z1Yh6Uxjz6IeRLO0kDvVPUD7AcwYTdY6Ts-67cMaQugjx_D',
+              }}
+              className="w-full h-full"
+            />
           </View>
           <Text className="text-white text-lg font-bold">
-            {session ? session.user?.name || 'Registered B2B Partner' : 'Guest Buyer Account'}
+            {session.user?.name || session.user?.shopName || 'Registered Customer'}
           </Text>
           <Text className="text-[#85f8c4] text-xs font-semibold mt-0.5">
-            {session ? `Mobile: ${session.mobile} • Role: ${session.role}` : 'Sign in to access B2B credit & orders'}
+            Mobile: {session.mobile || session.user?.mobile} • Role: {session.role || session.user?.role || 'buyer'}
           </Text>
-        </View>
-
-        {/* Financial Ledger & Credit Quick Access */}
-        <View className="px-4 py-3 -mt-4">
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Outstanding')}
-            activeOpacity={0.85}
-            className="bg-white rounded-2xl p-4 shadow-md flex-row items-center justify-between border border-[#eaedff]"
-          >
-            <View className="flex-row items-center gap-3">
-              <View className="w-11 h-11 rounded-xl bg-[#006948]/10 justify-center items-center">
-                <Icon name="account-balance-wallet" size={22} color="#006948" />
-              </View>
-              <View>
-                <Text className="text-xs font-extrabold text-[#131b2e]">Credit Line & Ledger</Text>
-                <Text className="text-[10px] text-[#3d4a42]">₹12,500 Outstanding • ₹50,000 Limit</Text>
-              </View>
-            </View>
-            <Icon name="chevron-right" size={22} color="#006948" />
-          </TouchableOpacity>
         </View>
 
         {/* Quick Settings Links */}
         <View className="px-4 py-2">
           <View className="bg-white rounded-2xl p-2 shadow-sm border border-[#eaedff]">
             <TouchableOpacity
-              onPress={() => navigation.navigate('AddressList')}
-              activeOpacity={0.7}
-              className="flex-row items-center justify-between p-3 border-b border-[#f2f3ff]"
-            >
-              <View className="flex-row items-center gap-3">
-                <Icon name="location-on" size={20} color="#3d4a42" />
-                <Text className="text-xs font-bold text-[#131b2e]">Manage Shipping Addresses</Text>
-              </View>
-              <Icon name="chevron-right" size={20} color="#6d7a72" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
               onPress={() => navigation.navigate('Support')}
-              activeOpacity={0.7}
-              className="flex-row items-center justify-between p-3 border-b border-[#f2f3ff]"
-            >
-              <View className="flex-row items-center gap-3">
-                <Icon name="headset-mic" size={20} color="#3d4a42" />
-                <Text className="text-xs font-bold text-[#131b2e]">B2B Support & Ticket Helpdesk</Text>
-              </View>
-              <Icon name="chevron-right" size={20} color="#6d7a72" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => navigation.navigate('BulkPriceOptimizer')}
               activeOpacity={0.7}
               className="flex-row items-center justify-between p-3"
             >
               <View className="flex-row items-center gap-3">
-                <Icon name="calculate" size={20} color="#3d4a42" />
-                <Text className="text-xs font-bold text-[#131b2e]">Bulk Price Optimizer</Text>
+                <Icon name="headset-mic" size={20} color="#3d4a42" />
+                <Text className="text-xs font-bold text-[#131b2e]">Support & Ticket Helpdesk</Text>
               </View>
               <Icon name="chevron-right" size={20} color="#6d7a72" />
             </TouchableOpacity>

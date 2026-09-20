@@ -14,12 +14,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import { useAuthStore } from '../../store/authStore';
 
-export default function RegisterScreen({ navigation }) {
+export default function RegisterScreen({ route, navigation }) {
   const [shopName, setShopName] = useState('');
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const returnScreen = route?.params?.returnScreen;
+  const returnParams = route?.params?.returnParams;
 
   // Validation errors
   const [shopNameError, setShopNameError] = useState('');
@@ -27,6 +30,53 @@ export default function RegisterScreen({ navigation }) {
   const [passwordError, setPasswordError] = useState('');
 
   const { login } = useAuthStore();
+
+  const handleRegisterSuccess = () => {
+    if (returnScreen) {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+        if (
+          returnScreen !== 'Profile' &&
+          returnScreen !== 'Orders' &&
+          returnScreen !== 'ShopHome' &&
+          returnScreen !== 'Cart' &&
+          returnScreen !== 'Catalog'
+        ) {
+          navigation.navigate(returnScreen, returnParams || {});
+        }
+      } else {
+        if (
+          returnScreen !== 'ShopHome' &&
+          returnScreen !== 'Profile' &&
+          returnScreen !== 'Orders' &&
+          returnScreen !== 'Cart' &&
+          returnScreen !== 'Catalog'
+        ) {
+          navigation.reset({
+            index: 0,
+            routes: [
+              { name: 'Shopkeeper' },
+              { name: returnScreen, params: returnParams || {} },
+            ],
+          });
+        } else {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Shopkeeper' }],
+          });
+        }
+      }
+    } else {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Shopkeeper' }],
+        });
+      }
+    }
+  };
 
   const validateShopName = (text) => {
     setShopName(text);
@@ -92,10 +142,7 @@ export default function RegisterScreen({ navigation }) {
     setTimeout(() => {
       setLoading(false);
       login(cleanMobile, 'shopkeeper', 'mock-token-' + Date.now());
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Shopkeeper' }],
-      });
+      handleRegisterSuccess();
     }, 800);
   };
 

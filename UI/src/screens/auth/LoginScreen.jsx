@@ -14,7 +14,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
 import { useAuthStore } from '../../store/authStore';
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen({ route, navigation }) {
   const { verifyOtpBackend, requestOtpBackend, login } = useAuthStore();
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState('12345');
@@ -22,6 +22,9 @@ export default function LoginScreen({ navigation }) {
   const [persona, setPersona] = useState('personal'); // 'personal' or 'b2b'
   const [otpMethod, setOtpMethod] = useState('whatsapp'); // 'whatsapp' or 'sms'
   const [errorMsg, setErrorMsg] = useState('');
+
+  const returnScreen = route?.params?.returnScreen;
+  const returnParams = route?.params?.returnParams;
 
   const handleMobileChange = (text) => {
     const cleaned = text.replace(/\D/g, '');
@@ -32,12 +35,56 @@ export default function LoginScreen({ navigation }) {
     setMobile('');
   };
 
+  const handleLoginSuccess = () => {
+    if (returnScreen) {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+        if (
+          returnScreen !== 'Profile' &&
+          returnScreen !== 'Orders' &&
+          returnScreen !== 'ShopHome' &&
+          returnScreen !== 'Cart' &&
+          returnScreen !== 'Catalog'
+        ) {
+          navigation.navigate(returnScreen, returnParams || {});
+        }
+      } else {
+        if (
+          returnScreen !== 'ShopHome' &&
+          returnScreen !== 'Profile' &&
+          returnScreen !== 'Orders' &&
+          returnScreen !== 'Cart' &&
+          returnScreen !== 'Catalog'
+        ) {
+          navigation.reset({
+            index: 0,
+            routes: [
+              { name: 'Shopkeeper' },
+              { name: returnScreen, params: returnParams || {} },
+            ],
+          });
+        } else {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Shopkeeper' }],
+          });
+        }
+      }
+    } else {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Shopkeeper' }],
+        });
+      }
+    }
+  };
+
   const handleLogin = () => {
     login(mobile || '9876543210', 'buyer', 'token-guest');
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Shopkeeper' }],
-    });
+    handleLoginSuccess();
   };
 
   const handleRequestOtp = async () => {
@@ -57,10 +104,7 @@ export default function LoginScreen({ navigation }) {
     try {
       setErrorMsg('');
       await verifyOtpBackend(targetMobile, targetOtp);
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Shopkeeper' }],
-      });
+      handleLoginSuccess();
     } catch (err) {
       setErrorMsg(err.message || 'Invalid OTP. Please enter 12345');
     }

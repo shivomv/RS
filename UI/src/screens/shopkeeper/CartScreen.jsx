@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  TextInput,
   Alert,
   BackHandler,
 } from 'react-native';
@@ -13,14 +12,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
 import { useCartStore } from '../../store/cartStore';
-import { useOrderStore } from '../../store/orderStore';
+import { useAuthStore } from '../../store/authStore';
 
 export default function CartScreen({ navigation }) {
-  const { items, removeItem, updateQuantity, clearCart } = useCartStore();
-  const { addOrder } = useOrderStore();
+  const { session } = useAuthStore();
+  const { clearCart } = useCartStore();
 
   const [gstRequested, setGstRequested] = useState(true);
-  const [couponApplied, setCouponApplied] = useState(true);
+  const [couponApplied] = useState(false);
   const [floorCleanerQty, setFloorCleanerQty] = useState(1);
   const [disinfectantQty, setDisinfectantQty] = useState(2);
 
@@ -48,6 +47,20 @@ export default function CartScreen({ navigation }) {
   const totalSavings = bulkDiscount + couponDiscount;
 
   const handleCheckout = () => {
+    if (!session) {
+      Alert.alert(
+        'Login Required',
+        'Please log in or create an account to proceed to checkout.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Log In / Register',
+            onPress: () => navigation.navigate('Login', { returnScreen: 'CheckoutPayment' }),
+          },
+        ]
+      );
+      return;
+    }
     navigation.navigate('CheckoutPayment');
   };
 
@@ -265,7 +278,7 @@ export default function CartScreen({ navigation }) {
               </View>
 
               <View className="flex-row justify-between">
-                <Text className="text-xs text-[#006948] font-bold">B2B Tier Discount</Text>
+                <Text className="text-xs text-[#006948] font-bold">Tier Discount</Text>
                 <Text className="text-xs text-[#006948] font-bold">-₹{bulkDiscount}</Text>
               </View>
 

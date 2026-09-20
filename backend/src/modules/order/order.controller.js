@@ -1,72 +1,79 @@
 const Order = require('./order.model');
 
-const fallbackOrders = [
-  {
-    _id: 'RS-ORD-8942',
-    orderId: 'RS-ORD-8942',
-    buyerName: 'Indiranagar Facilities Ltd',
-    buyerPhone: '+919876543210',
-    totalAmount: 3450,
-    gstAmount: 621,
-    status: 'dispatching',
-    paymentMethod: 'UPI',
-    deliveryAddress: 'Plot 42, 10th Main, Indiranagar, Bengaluru - 560038',
-    driverName: 'Ramesh Kumar (RS Dispatch)',
-    driverPhone: '+91 98765 12345',
-    items: [
-      { name: 'RS Pro Citrus Floor Cleaner', subtitle: '500ml Bottle', quantity: 10, price: 99 },
-      { name: 'PowerShield Pine Disinfectant', subtitle: '1L Disinfectant', quantity: 5, price: 149 },
-      { name: 'Commercial Kitchen Degreaser', subtitle: '5L Canister', quantity: 2, price: 580 },
-    ],
-    createdAt: new Date(),
-  },
-  {
-    _id: 'RS-ORD-8102',
-    orderId: 'RS-ORD-8102',
-    buyerName: 'Peenya Factory Warehouse',
-    buyerPhone: '+919876599887',
-    totalAmount: 14500,
-    gstAmount: 2610,
-    status: 'delivered',
-    paymentMethod: 'B2B Credit Ledger (Net 30)',
-    deliveryAddress: 'Shed 14, Peenya 1st Stage, Bengaluru - 560058',
-    driverName: 'Suresh Gowda',
-    driverPhone: '+91 98765 44332',
-    items: [
-      { name: 'RS Master Barrel 200L', subtitle: 'Industrial Drum', quantity: 1, price: 14500 },
-    ],
-    createdAt: new Date(Date.now() - 86400000 * 2),
-  }
-];
-
 exports.getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find().sort({ createdAt: -1 });
-    if (orders && orders.length > 0) {
-      return res.json(orders);
-    }
-    return res.json(fallbackOrders);
+    return res.json(orders || []);
   } catch (err) {
-    return res.json(fallbackOrders);
+    console.warn('[OrderController] DB error:', err.message);
+    return res.json([]);
   }
 };
 
 exports.createOrder = async (req, res) => {
   try {
     const orderData = req.body;
-    orderData.orderId = orderData.id || `RS-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+    orderData.orderId = orderData.orderId || orderData.id || `RS-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    // Build Itemized Product Snapshot
+    if (Array.isArray(orderData.items)) {
+      orderData.items = orderData.items.map((i) => {
+        const uPrice = i.unitPrice || i.price || i.product?.price || 99;
+        const qty = i.quantity || i.qty || 1;
+        return {
+          product: i.product?._id || i.product || i._id,
+          productId: String(i.productId || i.product?._id || i._id || ''),
+          name: i.name || i.product?.name || 'Product',
+          subtitle: i.subtitle || i.size || i.product?.size || '',
+          size: i.size || i.product?.size || '500ml',
+          image: i.image || i.product?.image || '',
+          categoryName: i.categoryName || i.product?.category || '',
+          unitPrice: uPrice,
+          quantity: qty,
+          lineTotal: uPrice * qty,
+          price: uPrice,
+        };
+      });
+    }
+
+    // Build Delivery Address Snapshot
+    if (!orderData.deliveryAddressSnapshot) {
+      orderData.deliveryAddressSnapshot = {
+        fullAddress: orderData.deliveryAddress || 'Indiranagar, Bengaluru - 560038',
+        capturedAt: new Date(),
+      };
+    }
+
+    // Build Buyer Snapshot
+    if (!orderData.buyerSnapshot) {
+      orderData.buyerSnapshot = {
+        name: orderData.buyerName || 'Indiranagar Facilities Ltd',
+        mobile: orderData.buyerPhone || '+919876543210',
+      };
+    }
+
+    // Build Financial Summary Snapshot
+    const sub = orderData.subtotal || orderData.items?.reduce((s, i) => s + (i.unitPrice * i.quantity), 0) || 0;
+    const gst = orderData.gstAmount || orderData.gst || Math.round(sub * 0.18);
+    const tot = orderData.totalAmount || orderData.total || (sub + gst);
+
+    orderData.financialSnapshot = orderData.financialSnapshot || {
+      subtotal: sub,
+      gstAmount: gst,
+      gstPercentage: 18,
+      deliveryFee: 0,
+      discountAmount: 0,
+      totalAmount: tot,
+    };
+
+    orderData.subtotal = sub;
+    orderData.gstAmount = gst;
+    orderData.totalAmount = tot;
+
     const newOrder = await Order.create(orderData);
-    fallbackOrders.unshift(newOrder);
     res.status(201).json(newOrder);
   } catch (err) {
-    const newOrder = {
-      _id: `RS-ORD-${Math.floor(1000 + Math.random() * 9000)}`,
-      orderId: `RS-ORD-${Math.floor(1000 + Math.random() * 9000)}`,
-      createdAt: new Date(),
-      ...req.body,
-    };
-    fallbackOrders.unshift(newOrder);
-    res.status(201).json(newOrder);
+    res.status(400).json({ error: err.message || 'Failed to create order' });
   }
 };
 
@@ -74,16 +81,16 @@ exports.updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    const order = await Order.findByIdAndUpdate(id, { status }, { new: true });
-    
-    // Update memory fallback too
-    const match = fallbackOrders.find((o) => o._id === id || o.orderId === id);
-    if (match) match.status = status;
-
-    res.json(order || match || { _id: id, status });
+    const order = await Order.findOneAndUpdate(
+      { $or: [{ _id: id }, { orderId: id }] },
+      { status },
+      { new: true }
+    );
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    res.json(order);
   } catch (err) {
-    const match = fallbackOrders.find((o) => o._id === req.params.id || o.orderId === req.params.id);
-    if (match) match.status = req.body.status;
-    res.json(match || { _id: req.params.id, status: req.body.status });
+    res.status(400).json({ error: err.message || 'Failed to update order status' });
   }
 };

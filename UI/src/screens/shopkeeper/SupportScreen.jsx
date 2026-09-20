@@ -26,16 +26,12 @@ export default function SupportScreen({ navigation }) {
 
   const faqs = [
     {
-      q: 'How do I request official GST E-Invoices for B2B accounting?',
+      q: 'How do I request official GST E-Invoices?',
       a: 'All orders placed under your GSTIN automatically generate a GST compliant Tax Invoice (18% IGST/CGST+SGST breakdown). Invoices are sent via email and downloadable from Order Details.',
     },
     {
       q: 'What is the return & replacement policy for 200L Bulk Drums?',
       a: 'RS Master Barrels and bulk drums come with factory seal guarantee. Damaged seals can be rejected on delivery with 100% instant refund or same-day replacement.',
-    },
-    {
-      q: 'How does Net 30 B2B Credit Ledger work?',
-      a: 'Approved corporate buyers can order without immediate payment up to their credit limit. Invoices are cleared within 30 days via NEFT or cheque.',
     },
     {
       q: 'What is the minimum order quantity (MOQ) for express delivery?',
@@ -49,7 +45,7 @@ export default function SupportScreen({ navigation }) {
       return;
     }
     try {
-      const res = await api.createTicket({ message, subject: 'B2B Support Query' });
+      const res = await api.createTicket({ message, subject: 'Support Query' });
       Alert.alert('Ticket Submitted', `Ticket #${res.ticketId || 'CONFIRMED'} received. A representative will contact you shortly.`);
       setMessage('');
     } catch (err) {

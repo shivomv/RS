@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
+import { useCartStore } from './cartStore';
 
 export const useAuthStore = create((set) => ({
   session: null,
@@ -23,16 +24,23 @@ export const useAuthStore = create((set) => ({
     try {
       const res = await api.verifyOtp(mobile, otp);
       if (res.success) {
+        const userObj = res.user;
+        const newSession = {
+          mobile: userObj?.mobile || mobile,
+          role: userObj?.role || 'buyer',
+          token: res.token,
+          user: userObj,
+        };
         set({
-          session: {
-            mobile: res.user?.mobile || mobile,
-            role: res.user?.role || 'buyer',
-            token: res.token,
-            user: res.user,
-          },
+          session: newSession,
           isLoading: false,
           error: null,
         });
+
+        // Trigger instant cart sync & clear local guest cart
+        const userId = userObj?._id || userObj?.id || mobile;
+        useCartStore.getState().syncGuestCartOnLogin(userId);
+
         return res;
       } else {
         throw new Error(res.error || 'Invalid OTP');
@@ -43,11 +51,15 @@ export const useAuthStore = create((set) => ({
     }
   },
 
-  login: (mobile, role, token) =>
+  login: (mobile, role, token) => {
+    const newSession = { mobile, role: role || 'buyer', token, user: { mobile, role: role || 'buyer' } };
     set({
-      session: { mobile, role: role || 'buyer', token },
+      session: newSession,
       error: null,
-    }),
+    });
+    // Trigger instant cart sync & clear local guest cart
+    useCartStore.getState().syncGuestCartOnLogin(mobile);
+  },
 
   logout: () =>
     set({

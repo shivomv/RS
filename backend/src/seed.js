@@ -329,7 +329,7 @@ async function runMasterSeed() {
       {
         title: 'Save up to 45% on Bulk Packs',
         subtitle: 'Direct from Factory Dispatch',
-        badge: 'Wholesale B2B',
+        badge: 'Wholesale',
         discountPercent: 45,
         targetCategory: 'Floor Cleaners',
         image: products[0].image,
@@ -360,7 +360,7 @@ async function runMasterSeed() {
     await Notification.create({
       shopkeeper: buyer._id,
       title: 'Order Dispatched!',
-      message: 'Your B2B order #RS-ORD-8942 is en route via Express 25-minute dispatch.',
+      message: 'Your order #RS-ORD-8942 is en route via Express 25-minute dispatch.',
       type: 'order',
     });
     console.log('13. Seeded Notifications.');

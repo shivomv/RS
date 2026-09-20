@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  TextInput,
   Image,
   ScrollView,
   BackHandler,
@@ -25,24 +24,55 @@ const getCategoryName = (c) => {
 
 export default function CatalogScreen({ navigation, route }) {
   const { addItem } = useCartStore();
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // Initial category selection from route or default to 'floor-cleaners'
   const routeCat = route?.params?.categoryId;
-  const initialCategory = useMemo(() => {
-    if (routeCat && String(routeCat).trim().toUpperCase() !== 'ALL') {
-      return String(routeCat).trim();
-    }
-    return 'floor-cleaners';
-  }, [routeCat]);
+  const initialCategory = (routeCat && String(routeCat).trim().toUpperCase() !== 'ALL')
+    ? String(routeCat).trim()
+    : '';
 
+  // 1. ALL useState hooks declared FIRST at top level (Strict React Rules of Hooks)
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Sync route param when user navigates from HomeScreen
+  // 2. ALL useMemo hooks declared NEXT
+  const categoryList = useMemo(() => {
+    if (!Array.isArray(categories) || categories.length === 0) {
+      return [];
+    }
+    return categories.map((c, idx) => {
+      const name = getCategoryName(c);
+      const catKey = c.slug || c._id || name;
+      return {
+        id: catKey,
+        title: name,
+        icon: c.icon || 'cleaning-services',
+        img: c.img || c.image || c.iconUrl,
+        slug: c.slug || `cat-${idx}`,
+      };
+    });
+  }, [categories]);
+
+  const activeCategoryTitle = useMemo(() => {
+    if (!selectedCategory) return 'Products';
+    const found = categoryList.find(
+      (c) => String(c.id).toLowerCase() === String(selectedCategory).toLowerCase()
+    );
+    return found?.title || selectedCategory;
+  }, [selectedCategory, categoryList]);
+
+  // 3. ALL useCallback hooks declared NEXT
+  const handleSelectCategory = useCallback(
+    (catId) => {
+      if (catId && catId !== selectedCategory) {
+        setSelectedCategory(catId);
+      }
+    },
+    [selectedCategory]
+  );
+
+  // 4. ALL useEffect hooks declared FINALLY
   useEffect(() => {
     if (routeCat && String(routeCat).trim().toUpperCase() !== 'ALL') {
       const cleanCat = String(routeCat).trim();
@@ -50,15 +80,6 @@ export default function CatalogScreen({ navigation, route }) {
     }
   }, [routeCat]);
 
-  // Debounce search input to keep text input snappy and prevent API thrashing
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(search.trim());
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [search]);
-
-  // Hardware Android Back Button Handler
   useEffect(() => {
     const onBackPress = () => {
       if (navigation.canGoBack()) {
@@ -73,30 +94,20 @@ export default function CatalogScreen({ navigation, route }) {
     return () => subscription.remove();
   }, [navigation]);
 
-  // Fallback category taxonomy list (NO 'ALL')
-  const defaultCategories = useMemo(
-    () => [
-      { id: 'floor-cleaners', title: 'Floor Cleaners', icon: 'cleaning-services', slug: 'floor-cleaners' },
-      { id: 'disinfectants', title: 'Disinfectants', icon: 'sanitizer', slug: 'disinfectants' },
-      { id: 'dishwash-degreaser', title: 'Dishwash & Degreaser', icon: 'flatware', slug: 'dishwash-degreaser' },
-      { id: 'glass-surface', title: 'Glass & Surface', icon: 'window', slug: 'glass-surface' },
-      { id: 'handwash', title: 'Handwash', icon: 'wash', slug: 'handwash' },
-      { id: 'bulk-drums', title: 'Bulk Drums', icon: 'inventory-2', slug: 'bulk-drums' },
-    ],
-    []
-  );
-
-  // 1. Fetch Category taxonomy list ONCE on mount
   useEffect(() => {
     let isMounted = true;
     api.getCategories()
       .then((catData) => {
         if (isMounted && Array.isArray(catData) && catData.length > 0) {
           setCategories(catData);
+          const firstKey = catData[0].slug || catData[0]._id || (typeof catData[0] === 'string' ? catData[0] : catData[0].name);
+          if (firstKey) {
+            setSelectedCategory((curr) => curr || firstKey);
+          }
         }
       })
       .catch((err) => {
-        console.warn('[CatalogScreen] Categories load error:', err?.message);
+        console.warn('[CatalogScreen] Categories load notice:', err?.message);
       });
 
     return () => {
@@ -104,15 +115,14 @@ export default function CatalogScreen({ navigation, route }) {
     };
   }, []);
 
-  // 2. Fetch Products strictly category-wise from Backend Database
   useEffect(() => {
+    if (!selectedCategory) return;
     let isMounted = true;
     setLoading(true);
 
     const targetCat = getCategoryName(selectedCategory).trim();
-    const catParam = targetCat && targetCat.toUpperCase() !== 'ALL' ? targetCat : 'floor-cleaners';
 
-    api.getProducts(catParam, debouncedSearch)
+    api.getProducts(targetCat)
       .then((prodData) => {
         if (isMounted) {
           setProducts(Array.isArray(prodData) ? prodData : []);
@@ -120,7 +130,7 @@ export default function CatalogScreen({ navigation, route }) {
         }
       })
       .catch((err) => {
-        console.warn('[CatalogScreen] Products fetch error:', err?.message);
+        console.warn('[CatalogScreen] Products fetch notice:', err?.message);
         if (isMounted) {
           setProducts([]);
           setLoading(false);
@@ -130,60 +140,13 @@ export default function CatalogScreen({ navigation, route }) {
     return () => {
       isMounted = false;
     };
-  }, [selectedCategory, debouncedSearch]);
-
-  // Safe category sidebar list (NO 'ALL' option)
-  const categoryList = useMemo(() => {
-    const list = [];
-
-    if (Array.isArray(categories) && categories.length > 0) {
-      categories.forEach((c, idx) => {
-        const name = getCategoryName(c);
-        const catKey = c.slug || c._id || name;
-        if (name && name.toUpperCase() !== 'ALL') {
-          list.push({
-            id: catKey,
-            title: name,
-            icon: c.icon || 'cleaning-services',
-            img: c.img || c.image || c.iconUrl,
-            slug: c.slug || `cat-${idx}`,
-          });
-        }
-      });
-    }
-
-    if (list.length === 0) {
-      defaultCategories.forEach((c) => {
-        list.push(c);
-      });
-    }
-
-    return list;
-  }, [categories, defaultCategories]);
-
-  const handleSelectCategory = useCallback(
-    (catId) => {
-      if (catId && catId !== selectedCategory) {
-        setSelectedCategory(catId);
-        if (search) setSearch('');
-      }
-    },
-    [selectedCategory, search]
-  );
-
-  const activeCategoryTitle = useMemo(() => {
-    if (debouncedSearch) return `Search Results ("${debouncedSearch}")`;
-    const found = categoryList.find(
-      (c) => String(c.id).toLowerCase() === String(selectedCategory).toLowerCase()
-    );
-    return found?.title || selectedCategory;
-  }, [debouncedSearch, selectedCategory, categoryList]);
+  }, [selectedCategory]);
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#faf8ff]">
       {/* Top Header with Navigation & Logo */}
       <View className="bg-white border-b border-[#dae2fd] px-4 py-3 shadow-sm z-10">
-        <View className="flex-row items-center justify-between mb-2.5">
+        <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-2">
             <TouchableOpacity
               onPress={() => {
@@ -212,37 +175,6 @@ export default function CatalogScreen({ navigation, route }) {
 
             <RSLogo size="md" />
           </View>
-
-          <TouchableOpacity
-            onPress={() => navigation.navigate('BulkPriceOptimizer')}
-            activeOpacity={0.7}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            className="flex-row items-center gap-1 bg-[#006948]/10 px-2.5 py-1.5 rounded-full border border-[#006948]/20"
-          >
-            <Icon name="calculate" size={16} color="#006948" />
-            <Text className="text-xs text-[#006948] font-bold">Bulk Calc</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Search Input */}
-        <View className="flex-row items-center bg-[#f2f3ff] rounded-xl px-3 h-10 border border-[#dae2fd]">
-          <Icon name="search" size={18} color="#006948" />
-          <TextInput
-            placeholder="Search category products..."
-            placeholderTextColor="#6d7a72"
-            value={search}
-            onChangeText={setSearch}
-            className="flex-1 h-full ml-2 text-xs text-[#131b2e]"
-          />
-          {search ? (
-            <TouchableOpacity
-              onPress={() => setSearch('')}
-              activeOpacity={0.7}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Icon name="close" size={16} color="#6d7a72" />
-            </TouchableOpacity>
-          ) : null}
         </View>
       </View>
 
@@ -305,7 +237,7 @@ export default function CatalogScreen({ navigation, route }) {
           </ScrollView>
         </View>
 
-        {/* Right Main Panel (Simple, High-Performance Category Grid - No Infinite Scroll Overhead) */}
+        {/* Right Main Panel (Pure Database-Driven Category Grid) */}
         <View className="flex-1 bg-[#faf8ff]">
           <ScrollView
             keyboardShouldPersistTaps="handled"
