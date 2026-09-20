@@ -15,7 +15,7 @@ import { ProductCardSkeleton } from '../../components/Skeleton';
 import { useCartStore } from '../../store/cartStore';
 import { api } from '../../services/api';
 
-// Safe helper to extract string category name from string or object
+// Safe helper to extract category name/slug/id
 const getCategoryName = (c) => {
   if (!c) return '';
   if (typeof c === 'string') return c;
@@ -26,10 +26,37 @@ const getCategoryName = (c) => {
 export default function CatalogScreen({ navigation, route }) {
   const { addItem } = useCartStore();
   const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState(route?.params?.categoryId || 'ALL');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Initial category selection from route or default to 'floor-cleaners'
+  const routeCat = route?.params?.categoryId;
+  const initialCategory = useMemo(() => {
+    if (routeCat && String(routeCat).trim().toUpperCase() !== 'ALL') {
+      return String(routeCat).trim();
+    }
+    return 'floor-cleaners';
+  }, [routeCat]);
+
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Sync route param when user navigates from HomeScreen
+  useEffect(() => {
+    if (routeCat && String(routeCat).trim().toUpperCase() !== 'ALL') {
+      const cleanCat = String(routeCat).trim();
+      setSelectedCategory(cleanCat);
+    }
+  }, [routeCat]);
+
+  // Debounce search input to keep text input snappy and prevent API thrashing
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
 
   // Hardware Android Back Button Handler
   useEffect(() => {
@@ -46,73 +73,76 @@ export default function CatalogScreen({ navigation, route }) {
     return () => subscription.remove();
   }, [navigation]);
 
-  // Default fallbacks if categories DB is empty
-  const defaultCategories = [
-    { id: 'ALL', title: 'All Products', icon: 'border-all' },
-    { id: 'Floor Cleaners', title: 'Floor Cleaners', icon: 'cleaning-services' },
-    { id: 'Disinfectants', title: 'Disinfectants', icon: 'sanitizer' },
-    { id: 'Dishwash & Degreaser', title: 'Dishwash & Degreaser', icon: 'flatware' },
-    { id: 'Glass & Surface', title: 'Glass & Surface', icon: 'window' },
-    { id: 'Handwash', title: 'Handwash', icon: 'wash' },
-    { id: 'Bulk Drums', title: 'Bulk Drums', icon: 'inventory-2' },
-  ];
+  // Fallback category taxonomy list (NO 'ALL')
+  const defaultCategories = useMemo(
+    () => [
+      { id: 'floor-cleaners', title: 'Floor Cleaners', icon: 'cleaning-services', slug: 'floor-cleaners' },
+      { id: 'disinfectants', title: 'Disinfectants', icon: 'sanitizer', slug: 'disinfectants' },
+      { id: 'dishwash-degreaser', title: 'Dishwash & Degreaser', icon: 'flatware', slug: 'dishwash-degreaser' },
+      { id: 'glass-surface', title: 'Glass & Surface', icon: 'window', slug: 'glass-surface' },
+      { id: 'handwash', title: 'Handwash', icon: 'wash', slug: 'handwash' },
+      { id: 'bulk-drums', title: 'Bulk Drums', icon: 'inventory-2', slug: 'bulk-drums' },
+    ],
+    []
+  );
 
-  // Sync route param category selection if present
-  useEffect(() => {
-    if (route?.params?.categoryId) {
-      setSelectedCategory(route.params.categoryId);
-    }
-  }, [route?.params?.categoryId]);
-
-  // Fetch Category taxonomy list on mount
+  // 1. Fetch Category taxonomy list ONCE on mount
   useEffect(() => {
     let isMounted = true;
     api.getCategories()
       .then((catData) => {
-        if (isMounted && Array.isArray(catData)) {
+        if (isMounted && Array.isArray(catData) && catData.length > 0) {
           setCategories(catData);
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.warn('[CatalogScreen] Categories load error:', err?.message);
+      });
 
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Fetch Products strictly category-wise from Backend Database
+  // 2. Fetch Products strictly category-wise from Backend Database
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
 
     const targetCat = getCategoryName(selectedCategory).trim();
-    const catParam = (targetCat && targetCat.toUpperCase() !== 'ALL') ? targetCat : '';
+    const catParam = targetCat && targetCat.toUpperCase() !== 'ALL' ? targetCat : 'floor-cleaners';
 
-    api.getProducts(catParam, search)
+    api.getProducts(catParam, debouncedSearch)
       .then((prodData) => {
         if (isMounted) {
           setProducts(Array.isArray(prodData) ? prodData : []);
           setLoading(false);
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.warn('[CatalogScreen] Products fetch error:', err?.message);
         if (isMounted) {
           setProducts([]);
           setLoading(false);
         }
       });
 
-    return () => { isMounted = false; };
-  }, [selectedCategory, search]);
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedCategory, debouncedSearch]);
 
-  // Memoized safe category list
+  // Safe category sidebar list (NO 'ALL' option)
   const categoryList = useMemo(() => {
-    const list = [{ id: 'ALL', title: 'All Products', icon: 'border-all' }];
+    const list = [];
 
     if (Array.isArray(categories) && categories.length > 0) {
       categories.forEach((c, idx) => {
         const name = getCategoryName(c);
-        if (name) {
+        const catKey = c.slug || c._id || name;
+        if (name && name.toUpperCase() !== 'ALL') {
           list.push({
-            id: name,
+            id: catKey,
             title: name,
             icon: c.icon || 'cleaning-services',
             img: c.img || c.image || c.iconUrl,
@@ -120,22 +150,34 @@ export default function CatalogScreen({ navigation, route }) {
           });
         }
       });
-    } else {
+    }
+
+    if (list.length === 0) {
       defaultCategories.forEach((c) => {
-        if (c.id !== 'ALL') list.push(c);
+        list.push(c);
       });
     }
 
     return list;
-  }, [categories]);
+  }, [categories, defaultCategories]);
 
-  // Products returned directly from category-wise backend API
-  const displayedProducts = products;
+  const handleSelectCategory = useCallback(
+    (catId) => {
+      if (catId && catId !== selectedCategory) {
+        setSelectedCategory(catId);
+        if (search) setSearch('');
+      }
+    },
+    [selectedCategory, search]
+  );
 
-  const handleSelectCategory = useCallback((catId) => {
-    setSelectedCategory(catId);
-    if (search) setSearch('');
-  }, [search]);
+  const activeCategoryTitle = useMemo(() => {
+    if (debouncedSearch) return `Search Results ("${debouncedSearch}")`;
+    const found = categoryList.find(
+      (c) => String(c.id).toLowerCase() === String(selectedCategory).toLowerCase()
+    );
+    return found?.title || selectedCategory;
+  }, [debouncedSearch, selectedCategory, categoryList]);
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#faf8ff]">
@@ -186,7 +228,7 @@ export default function CatalogScreen({ navigation, route }) {
         <View className="flex-row items-center bg-[#f2f3ff] rounded-xl px-3 h-10 border border-[#dae2fd]">
           <Icon name="search" size={18} color="#006948" />
           <TextInput
-            placeholder="Search RS Industries catalog..."
+            placeholder="Search category products..."
             placeholderTextColor="#6d7a72"
             value={search}
             onChangeText={setSearch}
@@ -214,7 +256,8 @@ export default function CatalogScreen({ navigation, route }) {
             contentContainerStyle={{ paddingVertical: 6 }}
           >
             {categoryList.map((cat) => {
-              const isSelected = String(selectedCategory).trim().toLowerCase() === String(cat.id).trim().toLowerCase();
+              const isSelected =
+                String(selectedCategory).trim().toLowerCase() === String(cat.id).trim().toLowerCase();
               return (
                 <TouchableOpacity
                   key={String(cat.id)}
@@ -235,7 +278,11 @@ export default function CatalogScreen({ navigation, route }) {
                     }`}
                   >
                     {cat.img || cat.image ? (
-                      <Image source={{ uri: cat.img || cat.image }} className="w-full h-full rounded-md" resizeMode="contain" />
+                      <Image
+                        source={{ uri: cat.img || cat.image }}
+                        className="w-full h-full rounded-md"
+                        resizeMode="contain"
+                      />
                     ) : (
                       <Icon
                         name={cat.icon || 'cleaning-services'}
@@ -258,68 +305,56 @@ export default function CatalogScreen({ navigation, route }) {
           </ScrollView>
         </View>
 
-        {/* Right Main Panel (Filtered Products Grid) */}
+        {/* Right Main Panel (Simple, High-Performance Category Grid - No Infinite Scroll Overhead) */}
         <View className="flex-1 bg-[#faf8ff]">
-          {loading ? (
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ padding: 12, paddingBottom: 40 }}
-            >
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ padding: 12, paddingBottom: 40 }}
+          >
+            {/* Category Header */}
+            <View className="flex-row items-center justify-between mb-3 pb-2 border-b border-[#dae2fd]">
+              <View className="flex-1 pr-2">
+                <Text className="text-xs font-black text-[#131b2e]" numberOfLines={1}>
+                  {activeCategoryTitle}
+                </Text>
+                <Text className="text-[10px] text-[#6d7a72] font-semibold mt-0.5">
+                  {products.length} {products.length === 1 ? 'Product Available' : 'Products Available'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Product Cards or Loading Skeleton */}
+            {loading ? (
               <View className="flex-row flex-wrap justify-between gap-y-3">
                 <ProductCardSkeleton />
                 <ProductCardSkeleton />
                 <ProductCardSkeleton />
                 <ProductCardSkeleton />
               </View>
-            </ScrollView>
-          ) : (
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ padding: 12, paddingBottom: 40 }}
-            >
-              {/* Active Category Title & Count Header */}
-              <View className="flex-row items-center justify-between mb-3 pb-2 border-b border-[#dae2fd]">
-                <View className="flex-1 pr-2">
-                  <Text className="text-xs font-black text-[#131b2e]" numberOfLines={1}>
-                    {search ? `Search Results ("${search}")` : (categoryList.find((c) => String(c.id).toLowerCase() === String(selectedCategory).toLowerCase())?.title || selectedCategory)}
-                  </Text>
-                  <Text className="text-[10px] text-[#6d7a72] font-semibold mt-0.5">
-                    {displayedProducts.length} {displayedProducts.length === 1 ? 'Product Available' : 'Products Available'}
-                  </Text>
-                </View>
-                {selectedCategory !== 'ALL' && !search && (
-                  <TouchableOpacity
-                    onPress={() => handleSelectCategory('ALL')}
-                    activeOpacity={0.7}
-                    className="px-2.5 py-1 bg-[#006948]/10 rounded-md border border-[#006948]/20"
-                  >
-                    <Text className="text-[10px] font-bold text-[#006948]">Show All</Text>
-                  </TouchableOpacity>
-                )}
+            ) : products.length > 0 ? (
+              <View className="flex-row flex-wrap justify-between gap-y-3">
+                {products.map((item, idx) => (
+                  <ProductCard
+                    key={item._id || item.id || `prod-${idx}`}
+                    item={item}
+                    navigation={navigation}
+                    addItem={addItem}
+                  />
+                ))}
               </View>
-
-              {/* Filtered Product Grid */}
-              {displayedProducts.length > 0 ? (
-                <View className="flex-row flex-wrap justify-between gap-y-3">
-                  {displayedProducts.map((item) => (
-                    <ProductCard key={item._id || item.id} item={item} navigation={navigation} addItem={addItem} />
-                  ))}
-                </View>
-              ) : (
-                <View className="py-12 bg-white/60 rounded-2xl items-center justify-center border border-dashed border-[#bccac0]/50 mt-4">
-                  <Icon name="inventory" size={32} color="#6d7a72" />
-                  <Text className="text-xs text-[#131b2e] font-bold mt-2">
-                    No products in this category
-                  </Text>
-                  <Text className="text-[10px] text-[#6d7a72] mt-0.5">
-                    Select another category from the left menu or tap 'Show All'.
-                  </Text>
-                </View>
-              )}
-            </ScrollView>
-          )}
+            ) : (
+              <View className="py-12 bg-white/60 rounded-2xl items-center justify-center border border-dashed border-[#bccac0]/50 mt-4">
+                <Icon name="inventory" size={32} color="#6d7a72" />
+                <Text className="text-xs text-[#131b2e] font-bold mt-2">
+                  No products in this category
+                </Text>
+                <Text className="text-[10px] text-[#6d7a72] mt-0.5">
+                  Select another category from the left menu.
+                </Text>
+              </View>
+            )}
+          </ScrollView>
         </View>
       </View>
     </SafeAreaView>
@@ -328,6 +363,8 @@ export default function CatalogScreen({ navigation, route }) {
 
 // Reusable Touch-Responsive Product Card Component (Memoized)
 const ProductCard = React.memo(function ProductCard({ item, navigation, addItem }) {
+  const imageUri = item?.image || item?.imageUrl || item?.img;
+
   return (
     <View className="w-[48.5%] bg-white rounded-xl p-2.5 shadow-sm justify-between border border-[#eaedff]">
       <TouchableOpacity
@@ -336,25 +373,29 @@ const ProductCard = React.memo(function ProductCard({ item, navigation, addItem 
         delayPressIn={0}
       >
         <View className="relative w-full h-24 rounded-lg bg-[#f2f3ff] justify-center items-center p-1.5 mb-1.5 overflow-hidden border border-[#eaedff]/60">
-          <Image source={{ uri: item.image }} className="w-full h-full" resizeMode="contain" />
-          {item.badge && (
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} className="w-full h-full" resizeMode="contain" />
+          ) : (
+            <Icon name="inventory-2" size={36} color="#bccac0" />
+          )}
+          {item?.badge && (
             <View className="absolute top-1 left-1 z-10 bg-[#85f8c4] px-1.5 py-0.5 rounded shadow-sm">
               <Text className="text-[8px] text-[#002114] font-bold">{item.badge}</Text>
             </View>
           )}
         </View>
         <Text className="text-[11px] font-bold text-[#131b2e]" numberOfLines={1}>
-          {item.name || item.title}
+          {item?.name || item?.title || 'Unnamed Product'}
         </Text>
         <Text className="text-[9px] text-[#3d4a42]" numberOfLines={1}>
-          {item.subtitle || item.description}
+          {item?.subtitle || item?.description || ''}
         </Text>
       </TouchableOpacity>
 
       <View className="flex-row items-center justify-between mt-2 pt-1.5 border-t border-[#f2f3ff]">
         <View className="flex-row items-baseline gap-0.5">
-          <Text className="text-xs font-extrabold text-[#131b2e]">₹{item.price}</Text>
-          {item.mrp && <Text className="text-[8px] text-[#6d7a72] line-through">₹{item.mrp}</Text>}
+          <Text className="text-xs font-extrabold text-[#131b2e]">₹{item?.price || 0}</Text>
+          {item?.mrp && <Text className="text-[8px] text-[#6d7a72] line-through">₹{item.mrp}</Text>}
         </View>
         <TouchableOpacity
           onPress={() => addItem({ ...item, quantity: 1 })}

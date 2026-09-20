@@ -3,7 +3,9 @@ const mongoose = require('mongoose');
 const productSchema = new mongoose.Schema({
   name: { type: String, required: true },
   description: { type: String },
-  category: { type: String, required: true },
+  category: { type: String, required: true }, // Name, slug, or ID
+  categorySlug: { type: String },
+  categoryRef: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
   price: { type: Number, required: true },
   mrp: { type: Number, required: true },
   badge: { type: String, default: 'Wholesale' },

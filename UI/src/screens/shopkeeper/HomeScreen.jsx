@@ -192,7 +192,7 @@ export default function ShopkeeperHomeScreen({ navigation }) {
                   activeOpacity={0.7}
                   delayPressIn={0}
                   className="items-center mr-4 w-[74px]"
-                  onPress={() => navigation.navigate('Catalog', { categoryId: cat.name || cat.title || cat.slug })}
+                  onPress={() => navigation.navigate('Catalog', { categoryId: cat.slug || cat._id || cat.name })}
                 >
                   <View className="w-16 h-16 rounded-2xl bg-white p-2 shadow-sm justify-center items-center mb-1.5 border border-[#eaedff]">
                     {cat.img || cat.image || cat.iconUrl ? (

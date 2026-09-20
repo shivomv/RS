@@ -59,6 +59,8 @@ async function runMasterSeed() {
       {
         name: 'RS Pro Citrus Floor Cleaner',
         category: 'Floor Cleaners',
+        categorySlug: 'floor-cleaners',
+        categoryRef: categories[0]._id,
         price: 99,
         mrp: 125,
         badge: 'Save 18%',
@@ -72,6 +74,8 @@ async function runMasterSeed() {
       {
         name: 'Active Bleach 10X Cleaner',
         category: 'Floor Cleaners',
+        categorySlug: 'floor-cleaners',
+        categoryRef: categories[0]._id,
         price: 135,
         mrp: 160,
         badge: 'Heavy Duty',
@@ -84,6 +88,8 @@ async function runMasterSeed() {
       {
         name: 'PowerShield Pine Disinfectant',
         category: 'Disinfectants',
+        categorySlug: 'disinfectants',
+        categoryRef: categories[1]._id,
         price: 149,
         mrp: 195,
         badge: 'Bulk Deal',
@@ -96,6 +102,8 @@ async function runMasterSeed() {
       {
         name: 'Pro Ultra Surface Sanitizer',
         category: 'Disinfectants',
+        categorySlug: 'disinfectants',
+        categoryRef: categories[1]._id,
         price: 89,
         mrp: 110,
         badge: 'Eco-Safe',
@@ -108,6 +116,8 @@ async function runMasterSeed() {
       {
         name: 'SparkleCut Dishwash Gel',
         category: 'Dishwash & Degreaser',
+        categorySlug: 'dishwash-degreaser',
+        categoryRef: categories[2]._id,
         price: 115,
         mrp: 140,
         badge: 'Kitchen Pro',
@@ -120,6 +130,8 @@ async function runMasterSeed() {
       {
         name: 'Crystal Glass Cleaner Spray',
         category: 'Glass & Surface',
+        categorySlug: 'glass-surface',
+        categoryRef: categories[3]._id,
         price: 95,
         mrp: 120,
         badge: 'Streak-Free',
@@ -132,6 +144,8 @@ async function runMasterSeed() {
       {
         name: 'SoftCare Liquid Handwash',
         category: 'Handwash',
+        categorySlug: 'handwash',
+        categoryRef: categories[4]._id,
         price: 420,
         mrp: 550,
         badge: 'Institutional',
@@ -144,6 +158,8 @@ async function runMasterSeed() {
       {
         name: 'RS Master Barrel 200L',
         category: 'Bulk Drums',
+        categorySlug: 'bulk-drums',
+        categoryRef: categories[5]._id,
         price: 14500,
         mrp: 18000,
         badge: 'Save ₹3,500',

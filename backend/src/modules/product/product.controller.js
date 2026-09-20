@@ -1,4 +1,6 @@
+const mongoose = require('mongoose');
 const Product = require('./product.model');
+const Category = require('../category/category.model');
 
 exports.getAllProducts = async (req, res) => {
   try {
@@ -6,15 +8,45 @@ exports.getAllProducts = async (req, res) => {
     let query = { isActive: true };
 
     if (category && category.trim().toUpperCase() !== 'ALL') {
-      const escapedCategory = category.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-      query.category = { $regex: new RegExp(`^${escapedCategory}$`, 'i') };
+      const catInput = category.trim();
+
+      // Look up Category document by slug, _id, or name
+      const catConditions = [
+        { slug: catInput.toLowerCase() },
+        { name: { $regex: new RegExp(`^${catInput.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i') } },
+      ];
+
+      if (mongoose.Types.ObjectId.isValid(catInput)) {
+        catConditions.push({ _id: catInput });
+      }
+
+      const matchedCat = await Category.findOne({ $or: catConditions });
+
+      if (matchedCat) {
+        const catNameEscaped = matchedCat.name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        query.$or = [
+          { categoryRef: matchedCat._id },
+          { categorySlug: matchedCat.slug },
+          { category: matchedCat.slug },
+          { category: matchedCat.name },
+          { category: { $regex: new RegExp(`^${catNameEscaped}$`, 'i') } },
+          { category: { $regex: new RegExp(`^${matchedCat.slug}$`, 'i') } },
+        ];
+      } else {
+        const catEscaped = catInput.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        query.$or = [
+          { categorySlug: catInput.toLowerCase() },
+          { category: catInput },
+          { category: { $regex: new RegExp(`^${catEscaped}$`, 'i') } },
+        ];
+      }
     }
 
     if (search && search.trim()) {
       query.name = { $regex: search.trim(), $options: 'i' };
     }
 
-    const products = await Product.find(query).sort({ createdAt: -1 });
+    const products = await Product.find(query).populate('categoryRef').sort({ createdAt: -1 });
     return res.json(products || []);
   } catch (err) {
     console.error('DB product query error:', err.message);
