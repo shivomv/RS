@@ -31,20 +31,41 @@ async function ensureDbConnected(req, res, next) {
   if (mongoose.connection.readyState === 1) {
     return next();
   }
+
   const MONGO_URI = process.env.MONGO_URI;
+  if (!MONGO_URI) {
+    console.error('❌ [DB Middleware] MONGO_URI is not set in environment variables');
+    return res.status(500).json({
+      success: false,
+      error: 'Database Configuration Error: MONGO_URI environment variable is missing in process.env',
+      code: 'DB_CONFIG_ERROR',
+      correlationId: req.correlationId
+    });
+  }
+
   try {
-    if (!isConnecting) {
+    if (!isConnecting || mongoose.connection.readyState === 0) {
       isConnecting = mongoose.connect(MONGO_URI, {
-        serverSelectionTimeoutMS: 5000,
+        bufferCommands: false,
+        serverSelectionTimeoutMS: 10000,
       });
     }
     await isConnecting;
-    isConnecting = null;
+
+    if (mongoose.connection.readyState !== 1) {
+      throw new Error(`MongoDB connection state is ${mongoose.connection.readyState}`);
+    }
+
     next();
   } catch (err) {
     isConnecting = null;
-    console.error('❌ MongoDB Connection Error in Middleware:', err.message);
-    next();
+    console.error('❌ [DB Middleware] MongoDB Connection Error:', err.message);
+    return res.status(503).json({
+      success: false,
+      error: `Database Connection Failed: ${err.message}`,
+      code: 'DB_CONNECTION_ERROR',
+      correlationId: req.correlationId
+    });
   }
 }
 
