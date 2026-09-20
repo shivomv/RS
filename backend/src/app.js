@@ -24,6 +24,32 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Serverless-Compatible MongoDB Auto-Connection Middleware
+let isConnecting = null;
+
+async function ensureDbConnected(req, res, next) {
+  if (mongoose.connection.readyState === 1) {
+    return next();
+  }
+  const MONGO_URI = process.env.MONGO_URI;
+  try {
+    if (!isConnecting) {
+      isConnecting = mongoose.connect(MONGO_URI, {
+        serverSelectionTimeoutMS: 5000,
+      });
+    }
+    await isConnecting;
+    isConnecting = null;
+    next();
+  } catch (err) {
+    isConnecting = null;
+    console.error('❌ MongoDB Connection Error in Middleware:', err.message);
+    next();
+  }
+}
+
+app.use(ensureDbConnected);
+
 // Mount Master API Router for all 15 domain modules under /api
 app.use('/api', apiRoutes);
 
