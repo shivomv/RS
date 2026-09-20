@@ -25,8 +25,6 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Serverless-Compatible MongoDB Auto-Connection Middleware
-let isConnecting = null;
-
 async function ensureDbConnected(req, res, next) {
   if (mongoose.connection.readyState === 1) {
     return next();
@@ -34,7 +32,7 @@ async function ensureDbConnected(req, res, next) {
 
   const MONGO_URI = process.env.MONGO_URI;
   if (!MONGO_URI) {
-    console.error('❌ [DB Middleware] MONGO_URI is not set in environment variables');
+    console.error('❌ [DB Middleware] MONGO_URI is not set in process.env');
     return res.status(500).json({
       success: false,
       error: 'Database Configuration Error: MONGO_URI environment variable is missing in process.env',
@@ -44,21 +42,25 @@ async function ensureDbConnected(req, res, next) {
   }
 
   try {
-    if (!isConnecting || mongoose.connection.readyState === 0) {
-      isConnecting = mongoose.connect(MONGO_URI, {
-        bufferCommands: false,
+    if (mongoose.connection.readyState === 0) {
+      await mongoose.connect(MONGO_URI, {
         serverSelectionTimeoutMS: 10000,
+        connectTimeoutMS: 10000,
       });
+    } else if (mongoose.connection.readyState === 2) {
+      let retries = 50;
+      while (mongoose.connection.readyState === 2 && retries > 0) {
+        await new Promise((r) => setTimeout(r, 100));
+        retries--;
+      }
     }
-    await isConnecting;
 
-    if (mongoose.connection.readyState !== 1) {
-      throw new Error(`MongoDB connection state is ${mongoose.connection.readyState}`);
+    if (mongoose.connection.readyState === 1) {
+      return next();
     }
 
-    next();
+    throw new Error(`MongoDB connection state is ${mongoose.connection.readyState}`);
   } catch (err) {
-    isConnecting = null;
     console.error('❌ [DB Middleware] MongoDB Connection Error:', err.message);
     return res.status(503).json({
       success: false,
@@ -76,6 +78,18 @@ app.use('/api', apiRoutes);
 
 // Health Check Helper
 const getHealthStatus = async (req) => {
+  const MONGO_URI = process.env.MONGO_URI;
+  if (mongoose.connection.readyState === 0 && MONGO_URI) {
+    try {
+      await mongoose.connect(MONGO_URI, {
+        serverSelectionTimeoutMS: 10000,
+        connectTimeoutMS: 10000,
+      });
+    } catch (e) {
+      console.error('❌ [Health Check] Auto-connect attempt failed:', e.message);
+    }
+  }
+
   const dbStateMap = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
   const readyState = mongoose.connection.readyState;
   const dbStatus = dbStateMap[readyState] || 'unknown';
