@@ -1,36 +1,54 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
-  Pressable,
+  TouchableOpacity,
   TextInput,
   Image,
   ScrollView,
-  ActivityIndicator,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
+import { ProductCardSkeleton } from '../../components/Skeleton';
 import { useCartStore } from '../../store/cartStore';
 import { api } from '../../services/api';
+
+// Safe helper to extract string category name from string or object
+const getCategoryName = (c) => {
+  if (!c) return '';
+  if (typeof c === 'string') return c;
+  if (typeof c === 'object') return c.name || c.title || c.slug || c._id || '';
+  return String(c);
+};
 
 export default function CatalogScreen({ navigation, route }) {
   const { addItem } = useCartStore();
   const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState(route?.params?.categoryId || 'Floor Cleaners');
+  const [selectedCategory, setSelectedCategory] = useState(route?.params?.categoryId || 'ALL');
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const mainScrollRef = useRef(null);
-  const sidebarScrollRef = useRef(null);
-  const sectionPositions = useRef({});
-  const sidebarPositions = useRef({});
-  const isManualScrolling = useRef(false);
-  const scrollTimer = useRef(null);
+  // Hardware Android Back Button Handler
+  useEffect(() => {
+    const onBackPress = () => {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+        return true;
+      }
+      navigation.navigate('ShopHome');
+      return true;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [navigation]);
 
   // Default fallbacks if categories DB is empty
   const defaultCategories = [
+    { id: 'ALL', title: 'All Products', icon: 'border-all' },
     { id: 'Floor Cleaners', title: 'Floor Cleaners', icon: 'cleaning-services' },
     { id: 'Disinfectants', title: 'Disinfectants', icon: 'sanitizer' },
     { id: 'Dishwash & Degreaser', title: 'Dishwash & Degreaser', icon: 'flatware' },
@@ -39,16 +57,6 @@ export default function CatalogScreen({ navigation, route }) {
     { id: 'Bulk Drums', title: 'Bulk Drums', icon: 'inventory-2' },
   ];
 
-  const categoryList = categories.length > 0
-    ? categories.map((c) => ({
-        id: c.name || c.title || c.slug || c._id,
-        title: c.name || c.title,
-        icon: c.icon || 'cleaning-services',
-        img: c.img || c.image || c.iconUrl,
-        slug: c.slug,
-      }))
-    : defaultCategories;
-
   // Sync route param category selection if present
   useEffect(() => {
     if (route?.params?.categoryId) {
@@ -56,115 +64,126 @@ export default function CatalogScreen({ navigation, route }) {
     }
   }, [route?.params?.categoryId]);
 
-  // Fetch product catalog & categories directly from Backend Database
+  // Fetch Category taxonomy list on mount
   useEffect(() => {
     let isMounted = true;
-    setLoading(true);
-
-    Promise.all([
-      api.getProducts().catch(() => []),
-      api.getCategories().catch(() => []),
-    ]).then(([prodData, catData]) => {
-      if (isMounted) {
-        setProducts(Array.isArray(prodData) ? prodData : []);
-        if (Array.isArray(catData) && catData.length > 0) {
+    api.getCategories()
+      .then((catData) => {
+        if (isMounted && Array.isArray(catData)) {
           setCategories(catData);
         }
-        setLoading(false);
-      }
-    });
+      })
+      .catch(() => {});
 
     return () => { isMounted = false; };
   }, []);
 
-  // Flexible category product matching helper
-  const getCategoryProducts = (cat) => {
-    return products.filter((p) => {
-      if (!p.category) return false;
-      const pCat = String(p.category).trim().toLowerCase();
-      const catId = String(cat.id || '').trim().toLowerCase();
-      const catTitle = String(cat.title || '').trim().toLowerCase();
-      const catSlug = String(cat.slug || '').trim().toLowerCase();
-      return (
-        pCat === catId ||
-        pCat === catTitle ||
-        pCat === catSlug ||
-        catTitle.includes(pCat) ||
-        pCat.includes(catTitle)
-      );
-    });
-  };
+  // Fetch Products strictly category-wise from Backend Database
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
 
-  // Handle Sidebar Category Press -> Scroll Main View to Category Section & Auto Scroll Sidebar
-  const handleSelectCategory = (catId) => {
+    const targetCat = getCategoryName(selectedCategory).trim();
+    const catParam = (targetCat && targetCat.toUpperCase() !== 'ALL') ? targetCat : '';
+
+    api.getProducts(catParam, search)
+      .then((prodData) => {
+        if (isMounted) {
+          setProducts(Array.isArray(prodData) ? prodData : []);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setProducts([]);
+          setLoading(false);
+        }
+      });
+
+    return () => { isMounted = false; };
+  }, [selectedCategory, search]);
+
+  // Memoized safe category list
+  const categoryList = useMemo(() => {
+    const list = [{ id: 'ALL', title: 'All Products', icon: 'border-all' }];
+
+    if (Array.isArray(categories) && categories.length > 0) {
+      categories.forEach((c, idx) => {
+        const name = getCategoryName(c);
+        if (name) {
+          list.push({
+            id: name,
+            title: name,
+            icon: c.icon || 'cleaning-services',
+            img: c.img || c.image || c.iconUrl,
+            slug: c.slug || `cat-${idx}`,
+          });
+        }
+      });
+    } else {
+      defaultCategories.forEach((c) => {
+        if (c.id !== 'ALL') list.push(c);
+      });
+    }
+
+    return list;
+  }, [categories]);
+
+  // Products returned directly from category-wise backend API
+  const displayedProducts = products;
+
+  const handleSelectCategory = useCallback((catId) => {
     setSelectedCategory(catId);
-    isManualScrolling.current = true;
-
-    // Scroll Sidebar to center selected category
-    const sidebarY = sidebarPositions.current[catId];
-    if (sidebarY !== undefined && sidebarScrollRef.current) {
-      sidebarScrollRef.current.scrollTo({ y: Math.max(0, sidebarY - 60), animated: true });
-    }
-
-    // Scroll Main Product View to target category section
-    const yPos = sectionPositions.current[catId];
-    if (yPos !== undefined && mainScrollRef.current) {
-      mainScrollRef.current.scrollTo({ y: Math.max(0, yPos - 5), animated: true });
-    }
-
-    if (scrollTimer.current) clearTimeout(scrollTimer.current);
-    scrollTimer.current = setTimeout(() => {
-      isManualScrolling.current = false;
-    }, 600);
-  };
-
-  // Handle Main List Scroll -> Auto Select Category in Sidebar & Auto Scroll Sidebar
-  const handleMainScroll = (event) => {
-    if (isManualScrolling.current || search.length > 0) return;
-
-    const scrollY = event.nativeEvent.contentOffset.y;
-    let currentCat = categoryList[0]?.id;
-
-    for (let i = 0; i < categoryList.length; i++) {
-      const catId = categoryList[i].id;
-      const pos = sectionPositions.current[catId];
-      if (pos !== undefined && scrollY >= pos - 70) {
-        currentCat = catId;
-      }
-    }
-
-    if (currentCat && currentCat !== selectedCategory) {
-      setSelectedCategory(currentCat);
-
-      const sidebarY = sidebarPositions.current[currentCat];
-      if (sidebarY !== undefined && sidebarScrollRef.current) {
-        sidebarScrollRef.current.scrollTo({ y: Math.max(0, sidebarY - 60), animated: true });
-      }
-    }
-  };
-
-  // Filter for Search Query
-  const searchFilteredProducts = search
-    ? products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
-    : null;
+    if (search) setSearch('');
+  }, [search]);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#faf8ff]">
-      {/* Top Header */}
-      <View className="bg-white border-b border-[#dae2fd] px-4 py-3 shadow-sm">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#faf8ff]">
+      {/* Top Header with Navigation & Logo */}
+      <View className="bg-white border-b border-[#dae2fd] px-4 py-3 shadow-sm z-10">
         <View className="flex-row items-center justify-between mb-2.5">
-          <RSLogo size="md" />
-          <Pressable
+          <View className="flex-row items-center gap-2">
+            <TouchableOpacity
+              onPress={() => {
+                if (navigation.canGoBack()) {
+                  navigation.goBack();
+                } else {
+                  navigation.navigate('ShopHome');
+                }
+              }}
+              activeOpacity={0.7}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              className="w-9 h-9 rounded-full bg-[#f2f3ff] items-center justify-center border border-[#dae2fd]"
+            >
+              <Icon name="arrow-back" size={20} color="#131b2e" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate('ShopHome')}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              className="flex-row items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#006948]/10 border border-[#006948]/20"
+            >
+              <Icon name="home" size={16} color="#006948" />
+              <Text className="text-xs font-bold text-[#006948]">Home</Text>
+            </TouchableOpacity>
+
+            <RSLogo size="md" />
+          </View>
+
+          <TouchableOpacity
             onPress={() => navigation.navigate('BulkPriceOptimizer')}
-            className="flex-row items-center gap-1 bg-[#006948]/10 px-2.5 py-1 rounded-full active:opacity-80"
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            className="flex-row items-center gap-1 bg-[#006948]/10 px-2.5 py-1.5 rounded-full border border-[#006948]/20"
           >
             <Icon name="calculate" size={16} color="#006948" />
-            <Text className="text-xs text-[#006948] font-bold">Bulk Calculator</Text>
-          </Pressable>
+            <Text className="text-xs text-[#006948] font-bold">Bulk Calc</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Search Input */}
-        <View className="flex-row items-center bg-[#f2f3ff] rounded-xl px-3 h-10">
+        <View className="flex-row items-center bg-[#f2f3ff] rounded-xl px-3 h-10 border border-[#dae2fd]">
           <Icon name="search" size={18} color="#006948" />
           <TextInput
             placeholder="Search RS Industries catalog..."
@@ -174,31 +193,35 @@ export default function CatalogScreen({ navigation, route }) {
             className="flex-1 h-full ml-2 text-xs text-[#131b2e]"
           />
           {search ? (
-            <Pressable onPress={() => setSearch('')}>
+            <TouchableOpacity
+              onPress={() => setSearch('')}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <Icon name="close" size={16} color="#6d7a72" />
-            </Pressable>
+            </TouchableOpacity>
           ) : null}
         </View>
       </View>
 
-      {/* Main Split Layout: Left Sidebar + Right Products Grid */}
+      {/* Main Split Layout: Left Category Sidebar + Right Product Grid */}
       <View className="flex-1 flex-row">
-        {/* Left Side Panel (Category List - Compact Blinkit style) */}
-        <View className="w-[78px] bg-[#f2f3ff] border-r border-[#dae2fd]">
+        {/* Left Side Panel (Category Filter List) */}
+        <View className="w-[88px] bg-[#f2f3ff] border-r border-[#dae2fd]">
           <ScrollView
-            ref={sidebarScrollRef}
+            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingVertical: 4 }}
+            contentContainerStyle={{ paddingVertical: 6 }}
           >
             {categoryList.map((cat) => {
-              const isSelected = selectedCategory === cat.id;
+              const isSelected = String(selectedCategory).trim().toLowerCase() === String(cat.id).trim().toLowerCase();
               return (
-                <Pressable
-                  key={cat.id}
+                <TouchableOpacity
+                  key={String(cat.id)}
                   onPress={() => handleSelectCategory(cat.id)}
-                  onLayout={(e) => {
-                    sidebarPositions.current[cat.id] = e.nativeEvent.layout.y;
-                  }}
+                  activeOpacity={0.7}
+                  delayPressIn={0}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                   className={`relative py-3 px-1 items-center justify-center border-b border-[#eaedff] ${
                     isSelected ? 'bg-white shadow-sm' : 'bg-transparent'
                   }`}
@@ -207,8 +230,8 @@ export default function CatalogScreen({ navigation, route }) {
                     <View className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#006948] rounded-r-md" />
                   )}
                   <View
-                    className={`w-9 h-9 rounded-xl items-center justify-center mb-1 overflow-hidden ${
-                      isSelected ? 'bg-[#006948]/10' : 'bg-white/70'
+                    className={`w-10 h-10 rounded-xl items-center justify-center mb-1 overflow-hidden ${
+                      isSelected ? 'bg-[#006948]/10 border border-[#006948]/30' : 'bg-white/80'
                     }`}
                   >
                     {cat.img || cat.image ? (
@@ -216,91 +239,84 @@ export default function CatalogScreen({ navigation, route }) {
                     ) : (
                       <Icon
                         name={cat.icon || 'cleaning-services'}
-                        size={18}
+                        size={20}
                         color={isSelected ? '#006948' : '#6d7a72'}
                       />
                     )}
                   </View>
                   <Text
                     numberOfLines={2}
-                    className={`text-[9px] text-center leading-tight ${
+                    className={`text-[9.5px] text-center leading-tight ${
                       isSelected ? 'text-[#006948] font-bold' : 'text-[#3d4a42] font-semibold'
                     }`}
                   >
                     {cat.title}
                   </Text>
-                </Pressable>
+                </TouchableOpacity>
               );
             })}
           </ScrollView>
         </View>
 
-        {/* Right Main Panel (Products Grid continuous scroll) */}
+        {/* Right Main Panel (Filtered Products Grid) */}
         <View className="flex-1 bg-[#faf8ff]">
           {loading ? (
-            <View className="flex-1 justify-center items-center">
-              <ActivityIndicator size="large" color="#006948" />
-              <Text className="text-xs text-[#3d4a42] mt-2 font-medium">Fetching catalog from Database...</Text>
-            </View>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ padding: 12, paddingBottom: 40 }}
+            >
+              <View className="flex-row flex-wrap justify-between gap-y-3">
+                <ProductCardSkeleton />
+                <ProductCardSkeleton />
+                <ProductCardSkeleton />
+                <ProductCardSkeleton />
+              </View>
+            </ScrollView>
           ) : (
             <ScrollView
-              ref={mainScrollRef}
-              onScroll={handleMainScroll}
-              scrollEventThrottle={16}
+              keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 60 }}
+              contentContainerStyle={{ padding: 12, paddingBottom: 40 }}
             >
-              {search ? (
-                // Search Mode View
-                <View className="p-3">
-                  <Text className="text-xs font-bold text-[#131b2e] mb-2">
-                    Search Results ({searchFilteredProducts.length})
+              {/* Active Category Title & Count Header */}
+              <View className="flex-row items-center justify-between mb-3 pb-2 border-b border-[#dae2fd]">
+                <View className="flex-1 pr-2">
+                  <Text className="text-xs font-black text-[#131b2e]" numberOfLines={1}>
+                    {search ? `Search Results ("${search}")` : (categoryList.find((c) => String(c.id).toLowerCase() === String(selectedCategory).toLowerCase())?.title || selectedCategory)}
                   </Text>
-                  <View className="flex-row flex-wrap justify-between gap-y-2.5">
-                    {searchFilteredProducts.map((item) => (
-                      <ProductCard key={item._id || item.id} item={item} navigation={navigation} addItem={addItem} />
-                    ))}
-                  </View>
+                  <Text className="text-[10px] text-[#6d7a72] font-semibold mt-0.5">
+                    {displayedProducts.length} {displayedProducts.length === 1 ? 'Product Available' : 'Products Available'}
+                  </Text>
+                </View>
+                {selectedCategory !== 'ALL' && !search && (
+                  <TouchableOpacity
+                    onPress={() => handleSelectCategory('ALL')}
+                    activeOpacity={0.7}
+                    className="px-2.5 py-1 bg-[#006948]/10 rounded-md border border-[#006948]/20"
+                  >
+                    <Text className="text-[10px] font-bold text-[#006948]">Show All</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Filtered Product Grid */}
+              {displayedProducts.length > 0 ? (
+                <View className="flex-row flex-wrap justify-between gap-y-3">
+                  {displayedProducts.map((item) => (
+                    <ProductCard key={item._id || item.id} item={item} navigation={navigation} addItem={addItem} />
+                  ))}
                 </View>
               ) : (
-                // Section-by-Section Continuous Scroll View (Blinkit style)
-                categoryList.map((cat) => {
-                  const catProducts = getCategoryProducts(cat);
-
-                  return (
-                    <View
-                      key={cat.id}
-                      onLayout={(e) => {
-                        sectionPositions.current[cat.id] = e.nativeEvent.layout.y;
-                      }}
-                      className="mb-5"
-                    >
-                      {/* Section Header */}
-                      <View className="sticky top-0 z-10 px-3 py-2 bg-white/95 border-b border-[#eaedff] flex-row items-center justify-between mb-2">
-                        <Text className="text-xs font-bold text-[#131b2e]">{cat.title}</Text>
-                        <Text className="text-[10px] text-[#6d7a72] font-medium">
-                          {catProducts.length} {catProducts.length === 1 ? 'Item' : 'Items'}
-                        </Text>
-                      </View>
-
-                      {/* Section Product Cards Grid or Empty Notice */}
-                      {catProducts.length > 0 ? (
-                        <View className="flex-row flex-wrap justify-between px-2 gap-y-2.5">
-                          {catProducts.map((item) => (
-                            <ProductCard key={item._id || item.id} item={item} navigation={navigation} addItem={addItem} />
-                          ))}
-                        </View>
-                      ) : (
-                        <View className="px-3 py-4 bg-white/50 rounded-xl mx-2 items-center justify-center border border-dashed border-[#bccac0]/40">
-                          <Icon name="inventory" size={20} color="#6d7a72" />
-                          <Text className="text-[11px] text-[#6d7a72] mt-1 font-medium">
-                            No items in {cat.title}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  );
-                })
+                <View className="py-12 bg-white/60 rounded-2xl items-center justify-center border border-dashed border-[#bccac0]/50 mt-4">
+                  <Icon name="inventory" size={32} color="#6d7a72" />
+                  <Text className="text-xs text-[#131b2e] font-bold mt-2">
+                    No products in this category
+                  </Text>
+                  <Text className="text-[10px] text-[#6d7a72] mt-0.5">
+                    Select another category from the left menu or tap 'Show All'.
+                  </Text>
+                </View>
               )}
             </ScrollView>
           )}
@@ -310,39 +326,46 @@ export default function CatalogScreen({ navigation, route }) {
   );
 }
 
-// Reusable Product Card Component
-function ProductCard({ item, navigation, addItem }) {
+// Reusable Touch-Responsive Product Card Component (Memoized)
+const ProductCard = React.memo(function ProductCard({ item, navigation, addItem }) {
   return (
     <View className="w-[48.5%] bg-white rounded-xl p-2.5 shadow-sm justify-between border border-[#eaedff]">
-      <Pressable onPress={() => navigation.navigate('ProductDetail', { product: item })}>
-        <View className="relative w-full h-24 rounded-lg bg-[#f2f3ff] justify-center items-center p-1.5 mb-1.5 overflow-hidden">
+      <TouchableOpacity
+        onPress={() => navigation.navigate('ProductDetail', { product: item })}
+        activeOpacity={0.7}
+        delayPressIn={0}
+      >
+        <View className="relative w-full h-24 rounded-lg bg-[#f2f3ff] justify-center items-center p-1.5 mb-1.5 overflow-hidden border border-[#eaedff]/60">
           <Image source={{ uri: item.image }} className="w-full h-full" resizeMode="contain" />
           {item.badge && (
-            <View className="absolute top-1 left-1 z-10 bg-[#85f8c4] px-1 py-0.5 rounded shadow-sm">
+            <View className="absolute top-1 left-1 z-10 bg-[#85f8c4] px-1.5 py-0.5 rounded shadow-sm">
               <Text className="text-[8px] text-[#002114] font-bold">{item.badge}</Text>
             </View>
           )}
         </View>
         <Text className="text-[11px] font-bold text-[#131b2e]" numberOfLines={1}>
-          {item.name}
+          {item.name || item.title}
         </Text>
         <Text className="text-[9px] text-[#3d4a42]" numberOfLines={1}>
           {item.subtitle || item.description}
         </Text>
-      </Pressable>
+      </TouchableOpacity>
 
       <View className="flex-row items-center justify-between mt-2 pt-1.5 border-t border-[#f2f3ff]">
         <View className="flex-row items-baseline gap-0.5">
           <Text className="text-xs font-extrabold text-[#131b2e]">₹{item.price}</Text>
           {item.mrp && <Text className="text-[8px] text-[#6d7a72] line-through">₹{item.mrp}</Text>}
         </View>
-        <Pressable
+        <TouchableOpacity
           onPress={() => addItem({ ...item, quantity: 1 })}
-          className="h-6 px-2 bg-[#006948] rounded-md justify-center items-center shadow-sm active:opacity-80"
+          activeOpacity={0.7}
+          delayPressIn={0}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          className="h-6 px-2.5 bg-[#006948] rounded-md justify-center items-center shadow-sm"
         >
           <Text className="text-[9px] text-white font-bold">ADD</Text>
-        </Pressable>
+        </TouchableOpacity>
       </View>
     </View>
   );
-}
+});

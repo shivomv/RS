@@ -6,10 +6,10 @@ export const useProductStore = create((set) => ({
   isLoading: false,
   error: null,
 
-  fetchProducts: async () => {
+  fetchProducts: async (category = '', search = '') => {
     set({ isLoading: true, error: null });
     try {
-      const data = await api.getProducts();
+      const data = await api.getProducts(category, search);
       set({ products: Array.isArray(data) ? data : [], isLoading: false });
     } catch (err) {
       set({ isLoading: false, error: err.message });

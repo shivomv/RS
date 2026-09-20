@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   Pressable,
   TextInput,
   Image,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -22,6 +23,21 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [activeTab, setActiveTab] = useState('packs'); // 'packs' or 'calc'
   const [customQty, setCustomQty] = useState('35');
   const [toastMessage, setToastMessage] = useState(null);
+
+  // Hardware Android Back Button Handler
+  useEffect(() => {
+    const onBackPress = () => {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+        return true;
+      }
+      navigation.navigate('ShopHome');
+      return true;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [navigation]);
 
   const sizes = [
     { size: '250ml', price: 55, label: 'Trial Bottle' },
@@ -108,7 +124,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         </View>
       </View>
 
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 110 }}>
+      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} className="flex-1" contentContainerStyle={{ paddingBottom: 110 }}>
         {/* Showcase Image & Trust Badges */}
         <View className="bg-[#f2f3ff] px-4 pt-4 pb-6 items-center">
           <View className="w-full flex-row items-center justify-between gap-2 mb-3">

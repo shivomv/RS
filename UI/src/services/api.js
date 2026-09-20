@@ -44,8 +44,12 @@ export const api = {
   // Products API
   getProducts: (category = '', search = '') => {
     const params = {};
-    if (category) params.category = category;
-    if (search) params.search = search;
+    if (category && category.trim().toUpperCase() !== 'ALL') {
+      params.category = category.trim();
+    }
+    if (search && search.trim()) {
+      params.search = search.trim();
+    }
     return apiClient.get('/products', { params });
   },
   createProduct: (productData) => apiClient.post('/products', productData),

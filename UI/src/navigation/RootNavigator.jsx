@@ -30,6 +30,7 @@ const Tab = createBottomTabNavigator();
 function BuyerTabs() {
   return (
     <Tab.Navigator
+      backBehavior="history"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: '#006948',
