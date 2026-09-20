@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { Platform } from 'react-native';
 import ENV from '../config/env';
 
 const API_BASE_URL = ENV?.API_BASE_URL;
