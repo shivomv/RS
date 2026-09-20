@@ -2,8 +2,7 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 import ENV from '../config/env';
 
-// Centralized Axios Instance pointing to Live API (https://rs-gamma-olive.vercel.app/api)
-const API_BASE_URL = ENV?.API_BASE_URL || (Platform.OS === 'android' ? 'http://10.0.2.2:5000/api' : 'http://localhost:5000/api');
+const API_BASE_URL = ENV?.API_BASE_URL;
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

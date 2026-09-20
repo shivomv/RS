@@ -17,7 +17,7 @@ const SupportTicket = require('./modules/ticket/ticket.model');
 const Banner = require('./modules/banner/banner.model');
 const Notification = require('./modules/notification/notification.model');
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/rs_industries';
+const MONGO_URI = process.env.MONGO_URI;
 
 async function runMasterSeed() {
   try {
