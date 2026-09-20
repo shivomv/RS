@@ -10,37 +10,58 @@ exports.getAllProducts = async (req, res) => {
     if (category && category.trim().toUpperCase() !== 'ALL') {
       const catInput = category.trim();
 
-      const catConditions = [
-        { slug: catInput.toLowerCase() },
-        { name: { $regex: new RegExp(`^${catInput.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i') } },
-      ];
-
-      if (mongoose.Types.ObjectId.isValid(catInput)) {
-        catConditions.push({ _id: catInput });
-      }
+      // Check if input is a MongoDB ObjectId
+      const isObjectId = mongoose.Types.ObjectId.isValid(catInput);
 
       let matchedCat = null;
+
+      // Build conditions to find category
+      const catConditions = [];
+      
+      // If it looks like an ObjectId, search by _id
+      if (isObjectId) {
+        catConditions.push({ _id: new mongoose.Types.ObjectId(catInput) });
+      }
+      
+      // Always search by slug and name
+      catConditions.push(
+        { slug: catInput.toLowerCase() },
+        { name: { $regex: new RegExp(`^${catInput.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}`, 'i') } }
+      );
+
+      // Try to find the category
       try {
         matchedCat = await Category.findOne({ $or: catConditions });
-      } catch (e) {}
+      } catch (e) {
+        console.warn('[Product Controller] Error finding category:', e.message);
+      }
 
+      // If category found, query products by categoryRef or categorySlug or category name/slug
       if (matchedCat) {
         const catNameEscaped = matchedCat.name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const catSlugEscaped = matchedCat.slug.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        
         query.$or = [
           { categoryRef: matchedCat._id },
           { categorySlug: matchedCat.slug },
           { category: matchedCat.slug },
           { category: matchedCat.name },
-          { category: { $regex: new RegExp(`^${catNameEscaped}$`, 'i') } },
-          { category: { $regex: new RegExp(`^${matchedCat.slug}$`, 'i') } },
+          { category: { $regex: new RegExp(`^${catNameEscaped}`, 'i') } },
+          { category: { $regex: new RegExp(`^${catSlugEscaped}`, 'i') } },
         ];
       } else {
+        // If category not found in DB, search products by the raw input (slug, name, or ID)
         const catEscaped = catInput.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
         query.$or = [
           { categorySlug: catInput.toLowerCase() },
           { category: catInput },
-          { category: { $regex: new RegExp(`^${catEscaped}$`, 'i') } },
+          { category: { $regex: new RegExp(`^${catEscaped}`, 'i') } },
         ];
+        
+        // If input looks like an ObjectId, also search by categoryRef
+        if (isObjectId) {
+          query.$or.push({ categoryRef: new mongoose.Types.ObjectId(catInput) });
+        }
       }
     }
 

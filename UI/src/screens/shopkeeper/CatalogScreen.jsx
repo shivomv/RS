@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
+  FlatList,
   BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,74 +15,78 @@ import { ProductCardSkeleton } from '../../components/Skeleton';
 import { useCartStore } from '../../store/cartStore';
 import { api } from '../../services/api';
 
-// Safe helper to extract category name/slug/id
-const getCategoryName = (c) => {
-  if (!c) return '';
-  if (typeof c === 'string') return c;
-  if (typeof c === 'object') return c.name || c.title || c.slug || c._id || '';
-  return String(c);
+// Helper to extract category label cleanly
+const getCatTitle = (cat) => {
+  if (!cat) return '';
+  if (typeof cat === 'string') return cat;
+  return cat.name || cat.title || cat.slug || '';
 };
 
 export default function CatalogScreen({ navigation, route }) {
   const { addItem } = useCartStore();
 
   const routeCat = route?.params?.categoryId;
-  const initialCategory = (routeCat && String(routeCat).trim().toUpperCase() !== 'ALL')
-    ? String(routeCat).trim()
-    : '';
+  const initialCategory = routeCat ? String(routeCat).trim() : 'ALL';
 
-  // 1. ALL useState hooks declared FIRST at top level (Strict React Rules of Hooks)
-  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
-  const [categories, setCategories] = useState([]);
-  const [products, setProducts] = useState([]);
+  // 1. useState Hooks
+  const [selectedCatId, setSelectedCatId] = useState(initialCategory);
+  const [rawCategories, setRawCategories] = useState([]);
+  const [rawProducts, setRawProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 2. ALL useMemo hooks declared NEXT
+  // 2. useMemo Hooks
   const categoryList = useMemo(() => {
-    if (!Array.isArray(categories) || categories.length === 0) {
-      return [];
+    const list = [
+      { id: 'ALL', title: 'All Products', icon: 'grid-view', slug: 'ALL' },
+    ];
+
+    if (Array.isArray(rawCategories)) {
+      rawCategories.forEach((cat, index) => {
+        const title = getCatTitle(cat);
+        const catId = cat.slug || cat._id || title || `cat-${index}`;
+        list.push({
+          id: catId,
+          title: title || 'Category',
+          icon: cat.icon || 'cleaning-services',
+          image: cat.image || cat.img || cat.iconUrl,
+          slug: cat.slug || title,
+        });
+      });
     }
-    return categories.map((c, idx) => {
-      const name = getCategoryName(c);
-      const catKey = c.slug || c._id || name;
-      return {
-        id: catKey,
-        title: name,
-        icon: c.icon || 'cleaning-services',
-        img: c.img || c.image || c.iconUrl,
-        slug: c.slug || `cat-${idx}`,
-      };
-    });
-  }, [categories]);
 
-  const activeCategoryTitle = useMemo(() => {
-    if (!selectedCategory) return 'Products';
-    const found = categoryList.find(
-      (c) => String(c.id).toLowerCase() === String(selectedCategory).toLowerCase()
-    );
-    return found?.title || selectedCategory;
-  }, [selectedCategory, categoryList]);
+    return list;
+  }, [rawCategories]);
 
-  // 3. ALL useCallback hooks declared NEXT
-  const handleSelectCategory = useCallback(
-    (catId) => {
-      if (catId && catId !== selectedCategory) {
-        setSelectedCategory(catId);
-      }
+  const activeCategoryObj = useMemo(() => {
+    return categoryList.find(
+      (c) => String(c.id).toLowerCase() === String(selectedCatId).toLowerCase()
+    ) || categoryList[0];
+  }, [categoryList, selectedCatId]);
+
+  // 3. useCallback Hooks
+  const handleCategoryPress = useCallback((catId) => {
+    console.log('🔥 Category clicked:', catId);
+    setSelectedCatId(catId);
+  }, []);
+
+  const handleProductPress = useCallback(
+    (product) => {
+      // Pro Tip: If 'product' is a massive object, consider passing only product.id 
+      // and fetching details on the next screen to prevent navigation serialization lag.
+      navigation.navigate('ProductDetail', { product });
     },
-    [selectedCategory]
+    [navigation]
   );
 
-  // 4. ALL useEffect hooks declared FINALLY
+  // 4. useEffect Hooks
   useEffect(() => {
-    if (routeCat && String(routeCat).trim().toUpperCase() !== 'ALL') {
-      const cleanCat = String(routeCat).trim();
-      setSelectedCategory(cleanCat);
+    if (routeCat) {
+      setSelectedCatId(String(routeCat).trim());
     }
   }, [routeCat]);
 
   useEffect(() => {
-    const onBackPress = () => {
+    const onBack = () => {
       if (navigation.canGoBack()) {
         navigation.goBack();
         return true;
@@ -90,61 +95,58 @@ export default function CatalogScreen({ navigation, route }) {
       return true;
     };
 
-    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-    return () => subscription.remove();
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
+    return () => sub.remove();
   }, [navigation]);
 
   useEffect(() => {
-    let isMounted = true;
+    let active = true;
+
     api.getCategories()
-      .then((catData) => {
-        if (isMounted && Array.isArray(catData) && catData.length > 0) {
-          setCategories(catData);
-          const firstKey = catData[0].slug || catData[0]._id || (typeof catData[0] === 'string' ? catData[0] : catData[0].name);
-          if (firstKey) {
-            setSelectedCategory((curr) => curr || firstKey);
-          }
+      .then((catRes) => {
+        if (active && Array.isArray(catRes)) {
+          setRawCategories(catRes);
         }
       })
       .catch((err) => {
-        console.warn('[CatalogScreen] Categories load notice:', err?.message);
+        console.warn('[CatalogScreen] Categories load error:', err?.message);
       });
 
     return () => {
-      isMounted = false;
+      active = false;
     };
   }, []);
 
   useEffect(() => {
-    if (!selectedCategory) return;
-    let isMounted = true;
+    let active = true;
     setLoading(true);
 
-    const targetCat = getCategoryName(selectedCategory).trim();
+    const queryCat = selectedCatId === 'ALL' ? '' : selectedCatId;
 
-    api.getProducts(targetCat)
-      .then((prodData) => {
-        if (isMounted) {
-          setProducts(Array.isArray(prodData) ? prodData : []);
+    api.getProducts(queryCat)
+      .then((prodRes) => {
+        if (active) {
+          setRawProducts(Array.isArray(prodRes) ? prodRes : []);
           setLoading(false);
+          console.log('✅ Products loaded:', prodRes?.length);
         }
       })
       .catch((err) => {
-        console.warn('[CatalogScreen] Products fetch notice:', err?.message);
-        if (isMounted) {
-          setProducts([]);
+        console.warn('[CatalogScreen] Products load error:', err?.message);
+        if (active) {
+          setRawProducts([]);
           setLoading(false);
         }
       });
 
     return () => {
-      isMounted = false;
+      active = false;
     };
-  }, [selectedCategory]);
+  }, [selectedCatId]);
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#faf8ff]">
-      {/* Top Header with Navigation & Logo */}
+      {/* Navigation Header */}
       <View className="bg-white border-b border-[#dae2fd] px-4 py-3 shadow-sm z-10">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-2">
@@ -157,7 +159,6 @@ export default function CatalogScreen({ navigation, route }) {
                 }
               }}
               activeOpacity={0.7}
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
               className="w-9 h-9 rounded-full bg-[#f2f3ff] items-center justify-center border border-[#dae2fd]"
             >
               <Icon name="arrow-back" size={20} color="#131b2e" />
@@ -166,7 +167,6 @@ export default function CatalogScreen({ navigation, route }) {
             <TouchableOpacity
               onPress={() => navigation.navigate('ShopHome')}
               activeOpacity={0.7}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               className="flex-row items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#006948]/10 border border-[#006948]/20"
             >
               <Icon name="home" size={16} color="#006948" />
@@ -178,25 +178,23 @@ export default function CatalogScreen({ navigation, route }) {
         </View>
       </View>
 
-      {/* Main Split Layout: Left Category Sidebar + Right Product Grid */}
+      {/* Main Split Body: Left Category Sidebar + Right Product Grid */}
       <View className="flex-1 flex-row">
-        {/* Left Side Panel (Category Filter List) */}
+        {/* Left Category Sidebar */}
         <View className="w-[88px] bg-[#f2f3ff] border-r border-[#dae2fd]">
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingVertical: 6 }}
-          >
+          <View className="flex-1" style={{ paddingVertical: 6 }}>
             {categoryList.map((cat) => {
               const isSelected =
-                String(selectedCategory).trim().toLowerCase() === String(cat.id).trim().toLowerCase();
+                String(cat.id).toLowerCase() === String(selectedCatId).toLowerCase();
+
               return (
                 <TouchableOpacity
                   key={String(cat.id)}
-                  onPress={() => handleSelectCategory(cat.id)}
+                  onPress={() => {
+                    console.log('DEBUG: TouchableOpacity pressed, catId:', cat.id);
+                    handleCategoryPress(cat.id);
+                  }}
                   activeOpacity={0.7}
-                  delayPressIn={0}
-                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                   className={`relative py-3 px-1 items-center justify-center border-b border-[#eaedff] ${
                     isSelected ? 'bg-white shadow-sm' : 'bg-transparent'
                   }`}
@@ -209,9 +207,9 @@ export default function CatalogScreen({ navigation, route }) {
                       isSelected ? 'bg-[#006948]/10 border border-[#006948]/30' : 'bg-white/80'
                     }`}
                   >
-                    {cat.img || cat.image ? (
+                    {cat.image ? (
                       <Image
-                        source={{ uri: cat.img || cat.image }}
+                        source={{ uri: cat.image }}
                         className="w-full h-full rounded-md"
                         resizeMode="contain"
                       />
@@ -234,75 +232,88 @@ export default function CatalogScreen({ navigation, route }) {
                 </TouchableOpacity>
               );
             })}
-          </ScrollView>
+          </View>
         </View>
 
-        {/* Right Main Panel (Pure Database-Driven Category Grid) */}
+        {/* Right Main Product Section */}
         <View className="flex-1 bg-[#faf8ff]">
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ padding: 12, paddingBottom: 40 }}
-          >
-            {/* Category Header */}
-            <View className="flex-row items-center justify-between mb-3 pb-2 border-b border-[#dae2fd]">
-              <View className="flex-1 pr-2">
-                <Text className="text-xs font-black text-[#131b2e]" numberOfLines={1}>
-                  {activeCategoryTitle}
-                </Text>
-                <Text className="text-[10px] text-[#6d7a72] font-semibold mt-0.5">
-                  {products.length} {products.length === 1 ? 'Product Available' : 'Products Available'}
-                </Text>
+          {loading ? (
+            // Keep ScrollView for Skeleton loading state to match original layout
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ padding: 12, paddingBottom: 40 }}
+            >
+              <View className="flex-row items-center justify-between mb-3 pb-2 border-b border-[#dae2fd]">
+                <View className="flex-1 pr-2">
+                  <View className="h-4 w-32 bg-[#eaedff] rounded mb-2" />
+                  <View className="h-3 w-24 bg-[#eaedff] rounded" />
+                </View>
               </View>
-            </View>
-
-            {/* Product Cards or Loading Skeleton */}
-            {loading ? (
               <View className="flex-row flex-wrap justify-between gap-y-3">
                 <ProductCardSkeleton />
                 <ProductCardSkeleton />
                 <ProductCardSkeleton />
                 <ProductCardSkeleton />
               </View>
-            ) : products.length > 0 ? (
-              <View className="flex-row flex-wrap justify-between gap-y-3">
-                {products.map((item, idx) => (
-                  <ProductCard
-                    key={item._id || item.id || `prod-${idx}`}
+            </ScrollView>
+          ) : (
+            // USE FLATLIST FOR ACTUAL DATA TO PREVENT JS THREAD FREEZE
+            <FlatList
+              data={rawProducts}
+              keyExtractor={(item, idx) => String(item._id || item.id || `prod-${idx}`)}
+              numColumns={2}
+              columnWrapperStyle={{ justifyContent: 'space-between', marginBottom: 12 }}
+              contentContainerStyle={{ padding: 12, paddingBottom: 40 }}
+              showsVerticalScrollIndicator={false}
+              ListHeaderComponent={
+                <View className="flex-row items-center justify-between mb-3 pb-2 border-b border-[#dae2fd]">
+                  <View className="flex-1 pr-2">
+                    <Text className="text-xs font-black text-[#131b2e]" numberOfLines={1}>
+                      {activeCategoryObj?.title || 'Catalog'}
+                    </Text>
+                    <Text className="text-[10px] text-[#6d7a72] font-semibold mt-0.5">
+                      {rawProducts.length} {rawProducts.length === 1 ? 'Product' : 'Products'} Available
+                    </Text>
+                  </View>
+                </View>
+              }
+              renderItem={({ item }) => (
+                <View className="w-[48.5%]">
+                  <ProductCardItem
                     item={item}
-                    navigation={navigation}
-                    addItem={addItem}
+                    onPress={handleProductPress}
+                    onAdd={addItem}
                   />
-                ))}
-              </View>
-            ) : (
-              <View className="py-12 bg-white/60 rounded-2xl items-center justify-center border border-dashed border-[#bccac0]/50 mt-4">
-                <Icon name="inventory" size={32} color="#6d7a72" />
-                <Text className="text-xs text-[#131b2e] font-bold mt-2">
-                  No products in this category
-                </Text>
-                <Text className="text-[10px] text-[#6d7a72] mt-0.5">
-                  Select another category from the left menu.
-                </Text>
-              </View>
-            )}
-          </ScrollView>
+                </View>
+              )}
+              ListEmptyComponent={
+                <View className="py-12 bg-white/60 rounded-2xl items-center justify-center border border-dashed border-[#bccac0]/50 mt-4">
+                  <Icon name="inventory" size={32} color="#6d7a72" />
+                  <Text className="text-xs text-[#131b2e] font-bold mt-2">
+                    No products found
+                  </Text>
+                  <Text className="text-[10px] text-[#6d7a72] mt-0.5">
+                    Select another category from the sidebar menu.
+                  </Text>
+                </View>
+              }
+            />
+          )}
         </View>
       </View>
     </SafeAreaView>
   );
 }
 
-// Reusable Touch-Responsive Product Card Component (Memoized)
-const ProductCard = React.memo(function ProductCard({ item, navigation, addItem }) {
+// Memoized Product Card Item (Already perfect, no changes needed)
+const ProductCardItem = React.memo(function ProductCardItem({ item, onPress, onAdd }) {
   const imageUri = item?.image || item?.imageUrl || item?.img;
 
   return (
-    <View className="w-[48.5%] bg-white rounded-xl p-2.5 shadow-sm justify-between border border-[#eaedff]">
+    <View className="w-full bg-white rounded-xl p-2.5 shadow-sm justify-between border border-[#eaedff]">
       <TouchableOpacity
-        onPress={() => navigation.navigate('ProductDetail', { product: item })}
+        onPress={() => onPress(item)}
         activeOpacity={0.7}
-        delayPressIn={0}
       >
         <View className="relative w-full h-24 rounded-lg bg-[#f2f3ff] justify-center items-center p-1.5 mb-1.5 overflow-hidden border border-[#eaedff]/60">
           {imageUri ? (
@@ -330,10 +341,8 @@ const ProductCard = React.memo(function ProductCard({ item, navigation, addItem 
           {item?.mrp && <Text className="text-[8px] text-[#6d7a72] line-through">₹{item.mrp}</Text>}
         </View>
         <TouchableOpacity
-          onPress={() => addItem({ ...item, quantity: 1 })}
+          onPress={() => onAdd({ ...item, quantity: 1 })}
           activeOpacity={0.7}
-          delayPressIn={0}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="h-6 px-2.5 bg-[#006948] rounded-md justify-center items-center shadow-sm"
         >
           <Text className="text-[9px] text-white font-bold">ADD</Text>

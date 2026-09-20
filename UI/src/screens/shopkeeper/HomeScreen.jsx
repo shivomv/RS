@@ -127,9 +127,9 @@ export default function ShopkeeperHomeScreen({ navigation }) {
               </TouchableOpacity>
             ) : (
               <View className="flex-row items-center gap-2">
-                <TouchableOpacity activeOpacity={0.7} className="w-8 h-8 rounded-full bg-[#f2f3ff] justify-center items-center">
+                {/* <TouchableOpacity activeOpacity={0.7} className="w-8 h-8 rounded-full bg-[#f2f3ff] justify-center items-center">
                   <Icon name="mic" size={18} color="#3d4a42" />
-                </TouchableOpacity>
+                </TouchableOpacity> */}
                 <TouchableOpacity activeOpacity={0.7} className="w-8 h-8 rounded-full bg-[#f2f3ff] justify-center items-center">
                   <Icon name="qr-code-scanner" size={18} color="#3d4a42" />
                 </TouchableOpacity>
@@ -139,7 +139,7 @@ export default function ShopkeeperHomeScreen({ navigation }) {
         </View>
 
         {/* Express Delivery Banner */}
-        <View className="px-4 pb-3">
+        {/* <View className="px-4 pb-3">
           <View className="bg-[#99efe5] rounded-xl px-4 py-2.5 flex-row items-center justify-between shadow-sm border border-[#006f67]/20">
             <View className="flex-row items-center gap-2">
               <Icon name="bolt" size={18} color="#006f67" />
@@ -152,7 +152,7 @@ export default function ShopkeeperHomeScreen({ navigation }) {
               <Text className="text-[11px] text-[#006f67] font-semibold">Bulk Dispatch 24h</Text>
             </View>
           </View>
-        </View>
+        </View> */}
 
         {/* Dynamic Shop by Category */}
         <View className="py-2">
