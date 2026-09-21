@@ -50,6 +50,13 @@ export const api = {
     }
     return apiClient.get('/products', { params });
   },
+  getProductsByCategory: (categoryId = '') => {
+    const cat = String(categoryId || '').trim();
+    if (!cat || cat.toUpperCase() === 'ALL') {
+      return apiClient.get('/products');
+    }
+    return apiClient.get('/products', { params: { category: cat } });
+  },
   createProduct: (productData) => apiClient.post('/products', productData),
   updateProduct: (id, productData) => apiClient.put(`/products/${id}`, productData),
   deleteProduct: (id) => apiClient.delete(`/products/${id}`),

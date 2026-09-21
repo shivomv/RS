@@ -16,6 +16,7 @@ import { ProductCardSkeleton, CategorySkeleton } from '../../components/Skeleton
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import { api } from '../../services/api';
+import { getDefaultProductPricing } from '../../utils/productHelper';
 
 export default function ShopkeeperHomeScreen({ navigation }) {
   const { items, addItem, removeItem, updateQuantity, totalAmount, itemCount } = useCartStore();
@@ -315,7 +316,11 @@ export default function ShopkeeperHomeScreen({ navigation }) {
                 {filteredProducts.map((product) => {
                   const pId = product._id || product.id;
                   const qty = getItemQuantity(pId);
-                  const selectedSz = selectedSizes[pId] || '500ml';
+                  const defaultInfo = getDefaultProductPricing(product);
+                  const displayPrice = defaultInfo.price || product.price || 0;
+                  const displayMrp = defaultInfo.mrp || product.mrp || 0;
+                  const variantSubtitle = defaultInfo.variantLabel || product.subtitle || product.category;
+                  const bundleTag = defaultInfo.bundleLabel;
 
                   return (
                     <View
@@ -330,7 +335,7 @@ export default function ShopkeeperHomeScreen({ navigation }) {
                         >
                           <View className="relative w-full h-28 rounded-xl bg-[#f2f3ff] justify-center items-center p-2 mb-2 overflow-hidden border border-[#eaedff]">
                             <Image
-                              source={{ uri: product.image }}
+                              source={{ uri: defaultInfo.image || product.image }}
                               className="w-full h-full"
                               resizeMode="contain"
                             />
@@ -339,41 +344,27 @@ export default function ShopkeeperHomeScreen({ navigation }) {
                                 <Text className="text-[9px] text-[#00201d] font-bold">{product.badge}</Text>
                               </View>
                             )}
+                            {bundleTag ? (
+                              <View className="absolute bottom-1.5 right-1.5 z-10 bg-[#006948] px-1.5 py-0.5 rounded shadow-sm">
+                                <Text className="text-[8px] text-white font-bold">{bundleTag}</Text>
+                              </View>
+                            ) : null}
                           </View>
                           <Text className="text-xs font-bold text-[#131b2e]" numberOfLines={1}>
                             {product.name}
                           </Text>
-                          <Text className="text-[10px] text-[#3d4a42]" numberOfLines={1}>
-                            {product.subtitle || product.category}
+                          <Text className="text-[10px] text-[#006948] font-semibold" numberOfLines={1}>
+                            {variantSubtitle}
                           </Text>
                         </TouchableOpacity>
-
-                        <View className="flex-row gap-1 py-1.5">
-                          {['500ml', '1L', '5L'].map((sz) => (
-                            <TouchableOpacity
-                              key={sz}
-                              activeOpacity={0.7}
-                              onPress={() => setSelectedSizes((prev) => ({ ...prev, [pId]: sz }))}
-                              className={`px-1.5 py-0.5 rounded ${
-                                selectedSz === sz ? 'bg-[#006948]' : 'bg-[#e2e7ff]'
-                              }`}
-                            >
-                              <Text
-                                className={`text-[9px] font-semibold ${
-                                  selectedSz === sz ? 'text-white' : 'text-[#3d4a42]'
-                                }`}
-                              >
-                                {sz}
-                              </Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
                       </View>
 
                       <View className="flex-row items-center justify-between mt-3 pt-2 border-t border-[#f2f3ff]">
                         <View className="flex-row items-baseline gap-1">
-                          <Text className="text-sm font-extrabold text-[#131b2e]">₹{product.price}</Text>
-                          {product.mrp && <Text className="text-[9px] text-[#6d7a72] line-through">₹{product.mrp}</Text>}
+                          <Text className="text-sm font-extrabold text-[#131b2e]">₹{displayPrice}</Text>
+                          {displayMrp > displayPrice && (
+                            <Text className="text-[9px] text-[#6d7a72] line-through">₹{displayMrp}</Text>
+                          )}
                         </View>
 
                         <TouchableOpacity

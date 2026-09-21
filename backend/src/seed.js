@@ -70,6 +70,30 @@ async function runMasterSeed() {
         stockQuantity: 250,
         packSizes: ['500ml', '1L', '5L'],
         tierRates: [{ minQty: 10, ratePerUnit: 85 }, { minQty: 50, ratePerUnit: 75 }],
+        variants: [
+          {
+            label: '10 wala MRP (100ml)',
+            isDefault: true,
+            basePrice: 10,
+            baseMrp: 10,
+            bundles: [
+              { bundleId: 'b1-1', label: 'Pack of 1', quantity: 1, price: 10, mrp: 10, isDefault: true },
+              { bundleId: 'b1-10', label: 'Pack of 10', quantity: 10, price: 95, mrp: 100, isDefault: false },
+              { bundleId: 'b1-100', label: 'Pack of 100', quantity: 100, price: 900, mrp: 1000, isDefault: false },
+            ],
+          },
+          {
+            label: '20 wala MRP (250ml)',
+            isDefault: false,
+            basePrice: 20,
+            baseMrp: 20,
+            bundles: [
+              { bundleId: 'b2-1', label: 'Pack of 1', quantity: 1, price: 20, mrp: 20, isDefault: true },
+              { bundleId: 'b2-10', label: 'Pack of 10', quantity: 10, price: 190, mrp: 200, isDefault: false },
+              { bundleId: 'b2-100', label: 'Pack of 100', quantity: 100, price: 1800, mrp: 2000, isDefault: false },
+            ],
+          },
+        ],
       },
       {
         name: 'Active Bleach 10X Cleaner',

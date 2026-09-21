@@ -71,32 +71,77 @@ exports.getAllProducts = async (req, res) => {
 
     const products = await Product.find(query).populate('categoryRef').sort({ createdAt: -1 });
 
-    const formattedProducts = (products || []).map((p) => {
+    const formattedProducts = [];
+
+    (products || []).forEach((p) => {
       const doc = p.toObject ? p.toObject() : p;
       const catObj = doc.categoryRef && typeof doc.categoryRef === 'object' ? doc.categoryRef : null;
       const categoryName = catObj?.name || doc.category || '';
       const categorySlug = catObj?.slug || doc.categorySlug || categoryName.toLowerCase().replace(/\s+/g, '-');
+      const variants = Array.isArray(doc.variants) ? doc.variants : [];
 
-      return {
-        _id: doc._id,
-        name: doc.name || '',
-        description: doc.description || '',
-        category: categoryName,
-        categorySlug: categorySlug,
-        categoryRef: catObj || doc.categoryRef || null,
-        price: doc.price || 0,
-        mrp: doc.mrp || doc.price || 0,
-        badge: doc.badge || 'Wholesale',
-        subtitle: doc.subtitle || '',
-        image: doc.image || '',
-        stockQuantity: typeof doc.stockQuantity === 'number' ? doc.stockQuantity : 100,
-        variants: Array.isArray(doc.variants) ? doc.variants : [],
-        packSizes: Array.isArray(doc.packSizes) ? doc.packSizes : [],
-        tierRates: Array.isArray(doc.tierRates) ? doc.tierRates : [],
-        isActive: doc.isActive !== false,
-        createdAt: doc.createdAt,
-        updatedAt: doc.updatedAt,
-      };
+      if (variants.length > 0) {
+        // Expand each variant into a standalone buyer-side product card
+        variants.forEach((v) => {
+          const bundles = Array.isArray(v.bundles) && v.bundles.length > 0 ? v.bundles : [
+            { bundleId: `b-${v._id || '1'}-1`, label: 'Pack of 1', quantity: 1, price: v.basePrice || doc.price || 0, mrp: v.baseMrp || doc.mrp || doc.price || 0, isDefault: true }
+          ];
+
+          const defaultBundle = bundles.find((b) => b.isDefault) || bundles[0];
+          const variantIdStr = String(v._id || v.sku || v.label).replace(/\s+/g, '-');
+          const buyerProductId = `${doc._id}_${variantIdStr}`;
+
+          formattedProducts.push({
+            _id: buyerProductId,
+            masterProductId: doc._id,
+            variantId: v._id || variantIdStr,
+            name: `${doc.name} (${v.label})`,
+            rawProductName: doc.name,
+            variantLabel: v.label,
+            description: doc.description || '',
+            category: categoryName,
+            categorySlug: categorySlug,
+            categoryRef: catObj || doc.categoryRef || null,
+            price: defaultBundle.price,
+            mrp: defaultBundle.mrp || defaultBundle.price,
+            badge: doc.badge || 'Wholesale',
+            subtitle: `${v.label} • ${defaultBundle.label}`,
+            image: defaultBundle.image || (v.variantImages && v.variantImages[0]) || doc.image || '',
+            stockQuantity: typeof v.stockQuantity === 'number' ? v.stockQuantity : doc.stockQuantity || 100,
+            bundles: bundles,
+            defaultBundle: defaultBundle,
+            isActive: doc.isActive !== false && v.isActive !== false,
+            createdAt: doc.createdAt,
+            updatedAt: doc.updatedAt,
+          });
+        });
+      } else {
+        // Fallback for single product with no variants
+        const defaultBundle = { bundleId: `b-${doc._id}-1`, label: 'Pack of 1', quantity: 1, price: doc.price || 0, mrp: doc.mrp || doc.price || 0, isDefault: true };
+        formattedProducts.push({
+          _id: String(doc._id),
+          masterProductId: doc._id,
+          variantId: 'default',
+          name: doc.name || '',
+          rawProductName: doc.name,
+          variantLabel: doc.subtitle || 'Standard',
+          description: doc.description || '',
+          category: categoryName,
+          categorySlug: categorySlug,
+          categoryRef: catObj || doc.categoryRef || null,
+          price: doc.price || 0,
+          mrp: doc.mrp || doc.price || 0,
+          badge: doc.badge || 'Wholesale',
+          subtitle: doc.subtitle || 'Standard',
+          image: doc.image || '',
+          stockQuantity: typeof doc.stockQuantity === 'number' ? doc.stockQuantity : 100,
+          bundles: [defaultBundle],
+          defaultBundle: defaultBundle,
+          isActive: doc.isActive !== false,
+          createdAt: doc.createdAt,
+          updatedAt: doc.updatedAt,
+        });
+      }
     });
 
     return res.json(formattedProducts);

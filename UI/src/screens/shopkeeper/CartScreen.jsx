@@ -160,16 +160,18 @@ export default function CartScreen({ navigation }) {
                     <View className="flex-1 justify-between">
                       <View className="flex-row justify-between items-start">
                         <View className="flex-1 pr-2">
-                          <Text className="text-xs font-bold text-[#131b2e]" numberOfLines={1}>
-                            {item.name}
+                          <Text className="text-xs font-bold text-[#131b2e]" numberOfLines={2}>
+                            {item.title || item.name}
                           </Text>
-                          <View className="flex-row items-center gap-1.5 mt-0.5">
-                            <View className="bg-[#006948]/10 px-1.5 py-0.2 rounded">
-                              <Text className="text-[9px] font-bold text-[#006948]">
-                                Variant: {item.size || 'Standard'}
-                              </Text>
+                          {item.bundleLabel ? (
+                            <View className="flex-row items-center gap-1.5 mt-1">
+                              <View className="bg-[#006948]/10 px-2 py-0.5 rounded border border-[#006948]/20">
+                                <Text className="text-[9.5px] font-bold text-[#006948]">
+                                  {item.bundleLabel}
+                                </Text>
+                              </View>
                             </View>
-                          </View>
+                          ) : null}
                         </View>
                         <TouchableOpacity
                           onPress={() => removeItem(itemKey)}

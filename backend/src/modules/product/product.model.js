@@ -11,6 +11,7 @@ const bundleSchema = new mongoose.Schema({
   mrp: { type: Number, required: true },
   stockQuantity: { type: Number, default: 50 },
   image: { type: String },
+  isDefault: { type: Boolean, default: false },
 });
 
 // 2. Pricing Tier Sub-Schema

@@ -7,16 +7,21 @@ export const useCartStore = create((set, get) => ({
 
   addItem: (product) =>
     set((state) => {
-      const pId = product._id || product.id;
-      const sizeTag = product.size || product.variant?.size || 'Standard';
-      const cartItemId = product.cartItemId || `${pId}-${sizeTag}`;
+      const pId = product._id || product.id || 'prod';
+      const bundle = product.selectedBundle || product.defaultBundle || product.bundle || {};
+      const bundleId = bundle.bundleId || bundle._id || bundle.label || 'pack-1';
+      const bundleLabel = bundle.label || product.size || 'Pack of 1';
+      const cartItemId = product.cartItemId || `${pId}_${bundleId}`;
+
+      const itemPrice = typeof bundle.price === 'number' ? bundle.price : (product.price || 0);
+      const itemMrp = typeof bundle.mrp === 'number' ? bundle.mrp : (product.mrp || itemPrice);
+      const addQty = product.quantity || 1;
 
       const existingIndex = state.items.findIndex(
-        (item) => (item.cartItemId || (item.size ? `${item._id || item.product?._id}-${item.size}` : (item._id || item.product?._id))) === cartItemId
+        (item) => item.cartItemId === cartItemId
       );
 
       let nextItems = [];
-      const addQty = product.quantity || 1;
 
       if (existingIndex > -1) {
         nextItems = state.items.map((item, idx) =>
@@ -26,11 +31,17 @@ export const useCartStore = create((set, get) => ({
         const itemObj = {
           _id: pId,
           cartItemId,
-          name: product.name || product.product?.name || 'Product',
-          price: product.price || product.product?.price || 99,
-          size: sizeTag,
+          bundleId,
+          productId: product.masterProductId || pId,
+          variantId: product.variantId || 'default',
+          name: product.name || 'Product',
+          variantLabel: product.variantLabel || '',
+          bundleLabel: bundleLabel,
+          title: `${product.name} (${bundleLabel})`,
+          price: itemPrice,
+          mrp: itemMrp,
           quantity: addQty,
-          image: product.image || product.img || product.product?.image,
+          image: bundle.image || product.image || product.img,
         };
         nextItems = [...state.items, itemObj];
       }
@@ -72,7 +83,18 @@ export const useCartStore = create((set, get) => ({
     if (guestItemsToSync && guestItemsToSync.length > 0 && shopkeeperId) {
       try {
         const payloadItems = guestItemsToSync.map((i) => ({
-          product: i.product?._id || i._id,
+          product: i.productId || i.product?._id || i._id,
+          productId: i.productId || i._id,
+          variantId: i.variantId || 'default',
+          bundleId: i.bundleId || 'pack-1',
+          cartItemId: i.cartItemId,
+          title: i.title || i.name,
+          name: i.name,
+          variantLabel: i.variantLabel,
+          bundleLabel: i.bundleLabel,
+          price: i.price,
+          mrp: i.mrp,
+          image: i.image,
           quantity: i.quantity || 1,
         }));
 
