@@ -70,7 +70,36 @@ exports.getAllProducts = async (req, res) => {
     }
 
     const products = await Product.find(query).populate('categoryRef').sort({ createdAt: -1 });
-    return res.json(products || []);
+
+    const formattedProducts = (products || []).map((p) => {
+      const doc = p.toObject ? p.toObject() : p;
+      const catObj = doc.categoryRef && typeof doc.categoryRef === 'object' ? doc.categoryRef : null;
+      const categoryName = catObj?.name || doc.category || '';
+      const categorySlug = catObj?.slug || doc.categorySlug || categoryName.toLowerCase().replace(/\s+/g, '-');
+
+      return {
+        _id: doc._id,
+        name: doc.name || '',
+        description: doc.description || '',
+        category: categoryName,
+        categorySlug: categorySlug,
+        categoryRef: catObj || doc.categoryRef || null,
+        price: doc.price || 0,
+        mrp: doc.mrp || doc.price || 0,
+        badge: doc.badge || 'Wholesale',
+        subtitle: doc.subtitle || '',
+        image: doc.image || '',
+        stockQuantity: typeof doc.stockQuantity === 'number' ? doc.stockQuantity : 100,
+        variants: Array.isArray(doc.variants) ? doc.variants : [],
+        packSizes: Array.isArray(doc.packSizes) ? doc.packSizes : [],
+        tierRates: Array.isArray(doc.tierRates) ? doc.tierRates : [],
+        isActive: doc.isActive !== false,
+        createdAt: doc.createdAt,
+        updatedAt: doc.updatedAt,
+      };
+    });
+
+    return res.json(formattedProducts);
   } catch (err) {
     console.error('[ProductController] DB product query error:', err.message);
     return res.status(500).json({ error: err.message || 'Failed to fetch products' });

@@ -10,6 +10,9 @@ const orderSchema = new mongoose.Schema({
   items: [{
     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
     productId: { type: String },
+    variantId: { type: String },
+    bundleId: { type: String },
+    cartItemId: { type: String },
     name: { type: String, required: true },
     subtitle: { type: String },
     size: { type: String },
