@@ -13,15 +13,19 @@ export default function CheckoutPaymentScreen({ navigation }) {
   const { session } = useAuthStore();
 
   const [selectedPayment, setSelectedPayment] = useState('upi');
-  const [selectedAddress] = useState('Indiranagar Facilities Ltd, Plot 42, 10th Main, Indiranagar, Bengaluru - 560038');
+  const [selectedAddress, setSelectedAddress] = useState(null);
 
   const subtotal = totalAmount();
-  const gstTax = Math.round(subtotal * 0.18);
-  const total = subtotal + gstTax;
+  const total = subtotal;
 
   const handleConfirmOrder = () => {
     if (items.length === 0) {
       Alert.alert('Empty Cart', 'Please add items to cart before proceeding to checkout.');
+      return;
+    }
+
+    if (!selectedAddress) {
+      Alert.alert('Address Required', 'Please select a delivery address to proceed with the order.');
       return;
     }
 
@@ -57,17 +61,16 @@ export default function CheckoutPaymentScreen({ navigation }) {
 
     const financialSnapshot = {
       subtotal,
-      gstAmount: gstTax,
+      gstAmount: 0,
       totalAmount: total,
     };
 
     const newOrder = Object.freeze({
       id: `RS-ORD-${Math.floor(1000 + Math.random() * 9000)}`,
       date: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
-      status: 'Dispatching',
+      status: 'dispatching',
       subtotal,
       total,
-      gst: gstTax,
       paymentMethod: selectedPayment === 'upi' ? 'UPI' : 'Net Banking / Cash',
       deliveryAddress: selectedAddress,
       deliveryAddressSnapshot: addressSnapshot,
@@ -213,10 +216,6 @@ export default function CheckoutPaymentScreen({ navigation }) {
             <View className="flex-row justify-between">
               <Text className="text-xs text-[#6d7a72]">Subtotal ({items.length} items)</Text>
               <Text className="text-xs font-semibold text-[#131b2e]">₹{subtotal}</Text>
-            </View>
-            <View className="flex-row justify-between">
-              <Text className="text-xs text-[#6d7a72]">GST (18%)</Text>
-              <Text className="text-xs font-semibold text-[#131b2e]">₹{gstTax}</Text>
             </View>
             <View className="flex-row justify-between">
               <Text className="text-xs text-[#6d7a72]">Express Delivery</Text>

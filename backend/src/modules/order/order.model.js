@@ -44,8 +44,8 @@ const orderSchema = new mongoose.Schema({
   // Immutable Financial Summary Snapshot
   financialSnapshot: {
     subtotal: { type: Number, required: true },
-    gstAmount: { type: Number, required: true },
-    gstPercentage: { type: Number, default: 18 },
+    gstAmount: { type: Number, default: 0 },
+    gstPercentage: { type: Number, default: 0 },
     deliveryFee: { type: Number, default: 0 },
     discountAmount: { type: Number, default: 0 },
     totalAmount: { type: Number, required: true },

@@ -124,6 +124,18 @@ export default function ProfileScreen({ navigation }) {
         <View className="px-4 py-2">
           <View className="bg-white rounded-2xl p-2 shadow-sm border border-[#eaedff]">
             <TouchableOpacity
+              onPress={() => navigation.navigate('AddressList')}
+              activeOpacity={0.7}
+              className="flex-row items-center justify-between p-3 border-b border-[#f2f3ff]"
+            >
+              <View className="flex-row items-center gap-3">
+                <Icon name="location-on" size={20} color="#006948" />
+                <Text className="text-xs font-bold text-[#131b2e]">Manage Delivery Address</Text>
+              </View>
+              <Icon name="chevron-right" size={20} color="#006948" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
               onPress={() => navigation.navigate('Support')}
               activeOpacity={0.7}
               className="flex-row items-center justify-between p-3"

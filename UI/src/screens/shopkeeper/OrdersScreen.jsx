@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ScrollView, BackHandler, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
@@ -30,6 +30,7 @@ export default function OrdersScreen({ navigation }) {
   const { session } = useAuthStore();
   const { orders, fetchOrders } = useOrderStore();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Hardware Android Back Button Handler
   useEffect(() => {
@@ -62,6 +63,17 @@ export default function OrdersScreen({ navigation }) {
 
     return () => { isMounted = false; };
   }, [session, fetchOrders]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await fetchOrders();
+    } catch (err) {
+      console.error('[Orders] Refresh error:', err.message);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // Render Guest View if User is Not Logged In
   if (!session) {
@@ -131,6 +143,14 @@ export default function OrdersScreen({ navigation }) {
           keyExtractor={(item, idx) => item._id || item.id || String(idx)}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={['#006948']}
+              tintColor="#006948"
+            />
+          }
           renderItem={({ item }) => {
             const rawId = item._id || item.id || 'RS-ORD';
             const orderNum = String(rawId).slice(-6);

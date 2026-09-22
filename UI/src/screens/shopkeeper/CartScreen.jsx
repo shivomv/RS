@@ -19,7 +19,7 @@ export default function CartScreen({ navigation }) {
   const cartStore = useCartStore();
   const { items, clearCart, removeItem, updateQuantity, totalAmount } = cartStore;
 
-  const [gstRequested, setGstRequested] = useState(true);
+
 
   // Load cart from backend on mount
   useEffect(() => {
@@ -47,7 +47,6 @@ export default function CartScreen({ navigation }) {
   }, [navigation]);
 
   const subtotal = totalAmount();
-  const gstAmount = gstRequested ? Math.round(subtotal * 0.18) : 0;
   const grandTotal = subtotal;
 
   const handleCheckout = () => {
@@ -246,32 +245,6 @@ export default function CartScreen({ navigation }) {
           </View>
         </View>
 
-        {/* GST Invoice Option */}
-        {items.length > 0 && (
-          <View className="px-4 pt-3">
-            <View className="bg-white rounded-2xl p-4 shadow-sm border border-[#eaedff] flex-row items-center justify-between">
-              <View className="flex-row items-center gap-3 flex-1 pr-2">
-                <View className="w-10 h-10 rounded-full bg-[#99efe5]/40 justify-center items-center">
-                  <Icon name="receipt" size={20} color="#006f67" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-xs font-bold text-[#131b2e]">GST Invoice Claim (18% Input Tax)</Text>
-                  <Text className="text-[10px] text-[#3d4a42]">Registered GST Tax Invoice Provided</Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                onPress={() => setGstRequested(!gstRequested)}
-                activeOpacity={0.7}
-                className={`w-6 h-6 rounded-md items-center justify-center border ${
-                  gstRequested ? 'bg-[#006948] border-[#006948]' : 'bg-white border-[#bccac0]'
-                }`}
-              >
-                {gstRequested && <Icon name="check" size={16} color="#ffffff" />}
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
         {/* Payment Summary */}
         {items.length > 0 && (
           <View className="px-4 pt-3">
@@ -285,13 +258,6 @@ export default function CartScreen({ navigation }) {
                   <Text className="text-xs text-[#3d4a42]">Subtotal</Text>
                   <Text className="text-xs text-[#131b2e] font-bold">₹{subtotal.toLocaleString('en-IN')}</Text>
                 </View>
-
-                {gstRequested && (
-                  <View className="flex-row justify-between">
-                    <Text className="text-xs text-[#3d4a42]">Estimated GST (18% Input Credit)</Text>
-                    <Text className="text-xs text-[#006948] font-bold">₹{gstAmount.toLocaleString('en-IN')}</Text>
-                  </View>
-                )}
 
                 <View className="flex-row justify-between">
                   <Text className="text-xs text-[#3d4a42]">Delivery & Handling</Text>

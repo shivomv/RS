@@ -78,6 +78,8 @@ export const useCartStore = create((set, get) => ({
           }));
           
           await api.syncCart(session.user._id, payloadItems);
+          // Reload cart from backend to ensure sync
+          await get().loadCart(session.user._id);
         } catch (err) {
           console.error('[Cart] Sync error:', err.message);
         }
@@ -112,6 +114,8 @@ export const useCartStore = create((set, get) => ({
           }));
           
           await api.syncCart(session.user._id, payloadItems);
+          // Reload cart from backend to ensure sync
+          await get().loadCart(session.user._id);
         } catch (err) {
           console.error('[Cart] Sync error:', err.message);
         }
@@ -150,6 +154,8 @@ export const useCartStore = create((set, get) => ({
           }));
           
           await api.syncCart(session.user._id, payloadItems);
+          // Reload cart from backend to ensure sync
+          await get().loadCart(session.user._id);
         } catch (err) {
           console.error('[Cart] Sync error:', err.message);
         }
