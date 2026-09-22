@@ -6,23 +6,48 @@ import {
   FlatList,
   Image,
   BackHandler,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { api } from '../../services/api';
 import { useCartStore } from '../../store/cartStore';
+import { useAuthStore } from '../../store/authStore';
 import { CategoryItemSkeleton, ProductCardSkeleton } from '../../components/Skeleton';
 import { getDefaultProductPricing } from '../../utils/productHelper';
 
 export default function CatalogScreen({ navigation, route }) {
   const initialCategory = route?.params?.categoryId;
   const { addItem, updateQuantity, items } = useCartStore();
+  const { session } = useAuthStore();
 
   const [categories, setCategories] = useState([]);
   const [selectedCat, setSelectedCat] = useState(null);
   const [products, setProducts] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      // Reload categories
+      const catRes = await api.getCategories();
+      const catList = Array.isArray(catRes) ? catRes : [];
+      setCategories(catList);
+
+      // Reload products for current category
+      if (selectedCat) {
+        const catId = selectedCat._id || selectedCat.slug || selectedCat.name;
+        const prodRes = await api.getProductsByCategory(catId);
+        setProducts(Array.isArray(prodRes) ? prodRes : []);
+      }
+    } catch (err) {
+      console.error('[Catalog] Refresh error:', err.message);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [selectedCat]);
 
   // Hardware Back Press
   useEffect(() => {
@@ -318,21 +343,19 @@ export default function CatalogScreen({ navigation, route }) {
                         isSelected ? 'bg-[#006948]/15 border border-[#006948]/30' : 'bg-[#f3f5f4] border border-[#e2e7e3]/60'
                       }`}
                     >
-                      {isSelected ? (
-                        item.image || item.img ? (
-                          <Image
-                            source={{ uri: item.image || item.img }}
-                            className="w-full h-full"
-                            resizeMode="contain"
-                          />
-                        ) : (
-                          <Icon
-                            name={item.icon || 'cleaning-services'}
-                            size={22}
-                            color="#006948"
-                          />
-                        )
-                      ) : null}
+                      {item.image || item.img ? (
+                        <Image
+                          source={{ uri: item.image || item.img }}
+                          className="w-full h-full"
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <Icon
+                          name={item.icon || 'cleaning-services'}
+                          size={22}
+                          color={isSelected ? '#006948' : '#3d4a42'}
+                        />
+                      )}
                     </View>
 
                     <Text
@@ -381,6 +404,14 @@ export default function CatalogScreen({ navigation, route }) {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 40 }}
               columnWrapperStyle={{ justifyContent: 'space-between' }}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                  tintColor="#006948"
+                  colors={['#006948']}
+                />
+              }
               ListEmptyComponent={
                 <View className="items-center justify-center py-16 px-4 bg-[#f8fafc] rounded-2xl border border-dashed border-[#bccac0] mt-3">
                   <Icon name="inventory-2" size={36} color="#9aa59f" />

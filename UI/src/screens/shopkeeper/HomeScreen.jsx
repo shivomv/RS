@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TextInput,
   Image,
   StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -25,18 +26,33 @@ export default function ShopkeeperHomeScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = useCallback(async () => {
+    try {
+      const [prodRes, catRes] = await Promise.all([
+        api.getProducts().catch(() => []),
+        api.getCategories().catch(() => []),
+      ]);
+      setDbProducts(Array.isArray(prodRes) ? prodRes : []);
+      setCategories(Array.isArray(catRes) ? catRes : []);
+    } catch (err) {
+      console.error('[Home] Load error:', err.message);
+    }
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, [loadData]);
 
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
 
-    Promise.all([
-      api.getProducts().catch(() => []),
-      api.getCategories().catch(() => []),
-    ]).then(([prodRes, catRes]) => {
+    loadData().then(() => {
       if (isMounted) {
-        setDbProducts(Array.isArray(prodRes) ? prodRes : []);
-        setCategories(Array.isArray(catRes) ? catRes : []);
         setLoading(false);
       }
     });
@@ -44,7 +60,7 @@ export default function ShopkeeperHomeScreen({ navigation }) {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [loadData]);
 
   const getItemQuantity = (productId) => {
     const match = items.find((i) => (i.product?._id || i._id) === productId);
@@ -109,6 +125,14 @@ export default function ShopkeeperHomeScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 110 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#006948"
+            colors={['#006948']}
+          />
+        }
       >
         {/* Search Bar */}
         <View className="px-4 pt-3 pb-2">

@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
+import { useAuthStore } from './authStore';
 
 export const useCartStore = create((set, get) => ({
   items: [],
-  localGuestItems: [], // Preserves local cart products when user is not logged in
 
   addItem: (product) =>
-    set((state) => {
+    set(async (state) => {
       const pId = product._id || product.id || 'prod';
       const bundle = product.selectedBundle || product.defaultBundle || product.bundle || {};
       const bundleId = bundle.bundleId || bundle._id || bundle.label || 'pack-1';
@@ -46,22 +46,70 @@ export const useCartStore = create((set, get) => ({
         nextItems = [...state.items, itemObj];
       }
 
-      return {
-        items: nextItems,
-        localGuestItems: nextItems,
-      };
+      // Sync to database if user is logged in
+      const { session } = useAuthStore.getState();
+      if (session?.user?._id) {
+        try {
+          const payloadItems = nextItems.map((i) => ({
+            productId: i.productId || i._id,
+            variantId: i.variantId || 'default',
+            bundleId: i.bundleId || 'pack-1',
+            cartItemId: i.cartItemId,
+            title: i.title || i.name,
+            name: i.name,
+            variantLabel: i.variantLabel,
+            bundleLabel: i.bundleLabel,
+            price: i.price,
+            mrp: i.mrp,
+            image: i.image,
+            quantity: i.quantity || 1,
+          }));
+          
+          await api.syncCart(session.user._id, payloadItems);
+        } catch (err) {
+          console.error('[Cart] Sync error:', err.message);
+        }
+      }
+
+      return { items: nextItems };
     }),
 
   removeItem: (cartItemId) =>
-    set((state) => {
+    set(async (state) => {
       const nextItems = state.items.filter(
         (item) => (item.cartItemId || item._id) !== cartItemId
       );
-      return { items: nextItems, localGuestItems: nextItems };
+
+      // Sync to database if user is logged in
+      const { session } = useAuthStore.getState();
+      if (session?.user?._id) {
+        try {
+          const payloadItems = nextItems.map((i) => ({
+            productId: i.productId || i._id,
+            variantId: i.variantId || 'default',
+            bundleId: i.bundleId || 'pack-1',
+            cartItemId: i.cartItemId,
+            title: i.title || i.name,
+            name: i.name,
+            variantLabel: i.variantLabel,
+            bundleLabel: i.bundleLabel,
+            price: i.price,
+            mrp: i.mrp,
+            image: i.image,
+            quantity: i.quantity || 1,
+          }));
+          
+          await api.syncCart(session.user._id, payloadItems);
+        } catch (err) {
+          console.error('[Cart] Sync error:', err.message);
+        }
+      }
+
+      return { items: nextItems };
     }),
 
   updateQuantity: (cartItemId, quantity) =>
-    set((state) => {
+    set(async (state) => {
       const nextItems = state.items
         .map((item) =>
           (item.cartItemId || item._id) === cartItemId
@@ -70,45 +118,35 @@ export const useCartStore = create((set, get) => ({
         )
         .filter((item) => item.quantity > 0);
 
-      return { items: nextItems, localGuestItems: nextItems };
+      // Sync to database if user is logged in
+      const { session } = useAuthStore.getState();
+      if (session?.user?._id) {
+        try {
+          const payloadItems = nextItems.map((i) => ({
+            productId: i.productId || i._id,
+            variantId: i.variantId || 'default',
+            bundleId: i.bundleId || 'pack-1',
+            cartItemId: i.cartItemId,
+            title: i.title || i.name,
+            name: i.name,
+            variantLabel: i.variantLabel,
+            bundleLabel: i.bundleLabel,
+            price: i.price,
+            mrp: i.mrp,
+            image: i.image,
+            quantity: i.quantity || 1,
+          }));
+          
+          await api.syncCart(session.user._id, payloadItems);
+        } catch (err) {
+          console.error('[Cart] Sync error:', err.message);
+        }
+      }
+
+      return { items: nextItems };
     }),
 
-  clearCart: () => set({ items: [], localGuestItems: [] }),
-
-  // Instant Sync & Remove from Local Storage after User Login
-  syncGuestCartOnLogin: async (shopkeeperId) => {
-    const { localGuestItems, items } = get();
-    const guestItemsToSync = localGuestItems.length > 0 ? localGuestItems : items;
-
-    if (guestItemsToSync && guestItemsToSync.length > 0 && shopkeeperId) {
-      try {
-        const payloadItems = guestItemsToSync.map((i) => ({
-          product: i.productId || i.product?._id || i._id,
-          productId: i.productId || i._id,
-          variantId: i.variantId || 'default',
-          bundleId: i.bundleId || 'pack-1',
-          cartItemId: i.cartItemId,
-          title: i.title || i.name,
-          name: i.name,
-          variantLabel: i.variantLabel,
-          bundleLabel: i.bundleLabel,
-          price: i.price,
-          mrp: i.mrp,
-          image: i.image,
-          quantity: i.quantity || 1,
-        }));
-
-        const res = await api.syncCart(shopkeeperId, payloadItems);
-        if (res?.success) {
-          // Instant sync completed - clear & remove from local guest storage
-          set({ localGuestItems: [] });
-        }
-      } catch (err) {
-        // Fallback: Clear local guest storage after merging into active session
-        set({ localGuestItems: [] });
-      }
-    }
-  },
+  clearCart: () => set({ items: [] }),
 
   itemCount: () => get().items.length,
 

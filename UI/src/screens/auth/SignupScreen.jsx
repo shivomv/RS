@@ -15,8 +15,9 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
 import { useAuthStore } from '../../store/authStore';
 
-export default function LoginScreen({ navigation }) {
+export default function SignupScreen({ navigation }) {
   const { verifyOtpBackend, requestOtpBackend, isLoading } = useAuthStore();
+  const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState('12345');
   const [showOtpInput, setShowOtpInput] = useState(false);
@@ -33,6 +34,10 @@ export default function LoginScreen({ navigation }) {
   };
 
   const handleSendOtp = async () => {
+    if (!name.trim()) {
+      setErrorMsg('Please enter your name');
+      return;
+    }
     if (mobile.length !== 10) {
       setErrorMsg('Please enter a valid 10-digit mobile number');
       return;
@@ -42,7 +47,7 @@ export default function LoginScreen({ navigation }) {
     try {
       setErrorMsg('');
       setLocalLoading(true);
-      await requestOtpBackend(mobile, `User ${mobile.slice(-4)}`);
+      await requestOtpBackend(mobile, name);
       setShowOtpInput(true);
     } catch (err) {
       setErrorMsg(err.message || 'Failed to send OTP');
@@ -57,7 +62,7 @@ export default function LoginScreen({ navigation }) {
       setErrorMsg('');
       setLocalLoading(true);
       const res = await verifyOtpBackend(mobile, otp);
-      console.log('[Login] OTP Verified, navigating...');
+      console.log('[Signup] OTP Verified, navigating...');
       
       setLocalLoading(false);
       setTimeout(() => {
@@ -68,7 +73,7 @@ export default function LoginScreen({ navigation }) {
       }, 500);
     } catch (err) {
       setLocalLoading(false);
-      console.error('[Login] Verify error:', err.message);
+      console.error('[Signup] Verify error:', err.message);
       setErrorMsg(err.message || 'Invalid OTP. Please enter 12345');
     }
   };
@@ -86,11 +91,11 @@ export default function LoginScreen({ navigation }) {
             <Icon name="arrow-back" size={20} color="#131b2e" />
           </Pressable>
           <RSLogo size="sm" showText={false} />
-          <Text className="text-base font-bold text-[#131b2e] ml-1">Sign In</Text>
+          <Text className="text-base font-bold text-[#131b2e] ml-1">Create Account</Text>
         </View>
 
         <View className="w-8 h-8 rounded-full bg-[#006948] justify-center items-center">
-          <Icon name="login" size={18} color="#ffffff" />
+          <Icon name="person-add" size={18} color="#ffffff" />
         </View>
       </View>
 
@@ -112,16 +117,29 @@ export default function LoginScreen({ navigation }) {
             </View>
 
             <Text className="text-xl font-extrabold text-[#131b2e] tracking-tight text-center">
-              Welcome Back
+              Sign Up Now
             </Text>
 
             <Text className="text-xs text-[#3d4a42] text-center mt-1 px-4 leading-relaxed">
-              Sign in to continue shopping
+              Create your account to unlock tier pricing and express delivery
             </Text>
           </View>
 
           {/* Main Card */}
           <View className="bg-white rounded-2xl p-4 shadow-sm mb-4 border border-[#eaedff]">
+            {/* NAME INPUT */}
+            <View className="mb-3">
+              <Text className="text-xs font-bold text-[#131b2e] mb-1">Your Name</Text>
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                placeholder="Enter your full name"
+                placeholderTextColor="#6d7a72"
+                editable={!showOtpInput}
+                className="bg-[#f2f3ff] rounded-xl px-3 h-11 text-base font-bold text-[#131b2e]"
+              />
+            </View>
+
             {/* MOBILE INPUT */}
             <View className="mb-3">
               <Text className="text-xs font-bold text-[#131b2e] mb-1">Mobile Number</Text>
@@ -181,11 +199,11 @@ export default function LoginScreen({ navigation }) {
               activeOpacity={0.9}
               disabled={
                 localLoading || isLoading || 
-                (showOtpInput ? otp.length !== 5 : mobile.length !== 10)
+                (showOtpInput ? otp.length !== 5 : !name.trim() || mobile.length !== 10)
               }
               onPress={showOtpInput ? handleVerifyOtp : handleSendOtp}
               className={`w-full h-12 rounded-xl flex-row items-center justify-center gap-2 shadow-md ${
-                (localLoading || isLoading || (showOtpInput ? otp.length !== 5 : mobile.length !== 10)) ? 'bg-[#00855d]/40' : 'bg-[#006948]'
+                (localLoading || isLoading || (showOtpInput ? otp.length !== 5 : !name.trim() || mobile.length !== 10)) ? 'bg-[#00855d]/40' : 'bg-[#006948]'
               }`}
             >
               {localLoading || isLoading ? (
@@ -198,7 +216,7 @@ export default function LoginScreen({ navigation }) {
               ) : (
                 <>
                   <Text className="text-sm font-bold text-white">
-                    {showOtpInput ? 'Verify & Login' : 'Send OTP'}
+                    {showOtpInput ? 'Verify & Create Account' : 'Send OTP'}
                   </Text>
                   <Icon name="arrow-forward" size={18} color="#ffffff" />
                 </>
@@ -206,15 +224,15 @@ export default function LoginScreen({ navigation }) {
             </Pressable>
           </View>
 
-          {/* New user link */}
+          {/* Already have account */}
           <View className="items-center pt-2">
             <Text className="text-xs text-[#6d7a72]">
-              New user?{' '}
+              Already have an account?{' '}
               <Text 
-                onPress={() => navigation.goBack()}
+                onPress={() => navigation.navigate('Login')}
                 className="font-bold text-[#006948]"
               >
-                Create Account
+                Log In
               </Text>
             </Text>
           </View>
