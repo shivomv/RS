@@ -33,7 +33,7 @@ apiClient.interceptors.response.use(
 // Clean API Endpoint Methods using single Axios instance
 export const api = {
   // Auth APIs (Universal OTP 12345 verified by backend)
-  requestOtp: (mobile) => apiClient.post('/auth/request-otp', { mobile }),
+  requestOtp: (mobile, name) => apiClient.post('/auth/request-otp', { mobile, name }),
   verifyOtp: (mobile, otp) => apiClient.post('/auth/verify-otp', { mobile, otp }),
 
   // Categories API

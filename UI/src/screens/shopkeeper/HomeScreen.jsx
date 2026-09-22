@@ -25,7 +25,6 @@ export default function ShopkeeperHomeScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedSizes, setSelectedSizes] = useState({});
 
   useEffect(() => {
     let isMounted = true;

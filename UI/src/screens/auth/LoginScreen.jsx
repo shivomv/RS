@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -15,13 +16,13 @@ import RSLogo from '../../components/RSLogo';
 import { useAuthStore } from '../../store/authStore';
 
 export default function LoginScreen({ route, navigation }) {
-  const { verifyOtpBackend, requestOtpBackend, login } = useAuthStore();
+  const { verifyOtpBackend, requestOtpBackend, login, isLoading } = useAuthStore();
+  const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState('12345');
   const [showOtpInput, setShowOtpInput] = useState(false);
-  const [persona, setPersona] = useState('personal'); // 'personal' or 'b2b'
-  const [otpMethod, setOtpMethod] = useState('whatsapp'); // 'whatsapp' or 'sms'
   const [errorMsg, setErrorMsg] = useState('');
+  const [localLoading, setLocalLoading] = useState(false);
 
   const returnScreen = route?.params?.returnScreen;
   const returnParams = route?.params?.returnParams;
@@ -33,6 +34,26 @@ export default function LoginScreen({ route, navigation }) {
 
   const handleClear = () => {
     setMobile('');
+  };
+
+
+
+  const handleMobileNext = async () => {
+    if (mobile.length !== 10) {
+      setErrorMsg('Please enter a valid 10-digit mobile number');
+      return;
+    }
+    try {
+      setErrorMsg('');
+      setLocalLoading(true);
+      await requestOtpBackend(mobile, name);
+      setShowOtpInput(true);
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to send OTP');
+      setShowOtpInput(true);
+    } finally {
+      setLocalLoading(false);
+    }
   };
 
   const handleLoginSuccess = () => {
@@ -87,25 +108,15 @@ export default function LoginScreen({ route, navigation }) {
     handleLoginSuccess();
   };
 
-  const handleRequestOtp = async () => {
-    const targetMobile = mobile || '9876543210';
-    try {
-      setErrorMsg('');
-      await requestOtpBackend(targetMobile);
-      setShowOtpInput(true);
-    } catch (err) {
-      setShowOtpInput(true);
-    }
-  };
-
   const handleVerifyOtp = async () => {
-    const targetMobile = mobile || '9876543210';
-    const targetOtp = otp || '12345';
     try {
       setErrorMsg('');
-      await verifyOtpBackend(targetMobile, targetOtp);
+      setLocalLoading(true);
+      await verifyOtpBackend(mobile, otp);
+      setLocalLoading(false);
       handleLoginSuccess();
     } catch (err) {
+      setLocalLoading(false);
       setErrorMsg(err.message || 'Invalid OTP. Please enter 12345');
     }
   };
@@ -143,60 +154,7 @@ export default function LoginScreen({ route, navigation }) {
           contentContainerStyle={{ paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Persona Switcher & Fast Skip */}
-          <View className="flex-row items-center justify-between pt-4 mb-4">
-            <View className="flex-row p-1 bg-[#eaedff] rounded-full shadow-sm">
-              <Pressable
-                onPress={() => setPersona('personal')}
-                className={`px-3 py-1.5 rounded-full flex-row items-center gap-1 ${
-                  persona === 'personal' ? 'bg-white shadow-sm' : ''
-                }`}
-              >
-                <Icon
-                  name="person"
-                  size={14}
-                  color={persona === 'personal' ? '#006948' : '#3d4a42'}
-                />
-                <Text
-                  className={`text-xs font-bold ${
-                    persona === 'personal' ? 'text-[#006948]' : 'text-[#3d4a42]'
-                  }`}
-                >
-                  Personal
-                </Text>
-              </Pressable>
 
-              <Pressable
-                onPress={() => setPersona('b2b')}
-                className={`px-3 py-1.5 rounded-full flex-row items-center gap-1 ${
-                  persona === 'b2b' ? 'bg-white shadow-sm' : ''
-                }`}
-              >
-                <Icon
-                  name="domain"
-                  size={14}
-                  color={persona === 'b2b' ? '#006948' : '#3d4a42'}
-                />
-                <Text
-                  className={`text-xs font-bold ${
-                    persona === 'b2b' ? 'text-[#006948]' : 'text-[#3d4a42]'
-                  }`}
-                >
-                  Business
-                </Text>
-                <View className="bg-[#85f8c4] px-1 py-0.2 rounded-full">
-                  <Text className="text-[8px] font-bold text-[#002114]">18% GST</Text>
-                </View>
-              </Pressable>
-            </View>
-
-            <Pressable
-              onPress={handleLogin}
-              className="px-2.5 py-1 rounded-lg bg-[#eaedff]"
-            >
-              <Text className="text-xs text-[#006948] font-bold">Skip for now</Text>
-            </Pressable>
-          </View>
 
           {/* Hero Value Showcase */}
           <View className="items-center text-center mb-6">
@@ -215,9 +173,7 @@ export default function LoginScreen({ route, navigation }) {
             </Text>
 
             <Text className="text-xs text-[#3d4a42] text-center mt-1 px-4 leading-relaxed">
-              {persona === 'b2b'
-                ? 'Unlock registered corporate accounts, bulk 50L drums & 18% GST tax invoices.'
-                : 'Log in or sign up to unlock tier pricing and hyper-local 25-minute dispatch.'}
+              Log in or sign up to unlock tier pricing and hyper-local 25-minute dispatch.
             </Text>
 
             {/* Live Dispatch Pill */}
@@ -231,53 +187,65 @@ export default function LoginScreen({ route, navigation }) {
 
           {/* Main Login Card */}
           <View className="bg-white rounded-2xl p-4 shadow-sm mb-4 border border-[#eaedff]">
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-xs font-bold text-[#131b2e]">Mobile Number</Text>
-              <View className="bg-[#85f8c4]/40 px-2 py-0.5 rounded-full flex-row items-center gap-1">
-                <Icon name="bolt" size={12} color="#006948" />
-                <Text className="text-[10px] text-[#006948] font-bold">Instant OTP</Text>
-              </View>
-            </View>
-
-            {/* Phone Input Field */}
-            <View className="flex-row items-center bg-[#f2f3ff] rounded-xl px-3 py-1 mb-3">
-              <View className="flex-row items-center gap-1 pr-2 border-r border-[#bccac0]/50">
-                <Text className="text-sm">🇮🇳</Text>
-                <Text className="text-xs font-bold text-[#131b2e]">+91</Text>
-                <Icon name="keyboard-arrow-down" size={16} color="#3d4a42" />
-              </View>
-
+            {/* NAME INPUT */}
+            <View className="mb-3">
+              <Text className="text-xs font-bold text-[#131b2e] mb-1">Your Name</Text>
               <TextInput
-                value={mobile}
-                onChangeText={handleMobileChange}
-                keyboardType="numeric"
-                maxLength={10}
-                placeholder="98450 12345"
+                value={name}
+                onChangeText={setName}
+                placeholder="Enter your full name"
                 placeholderTextColor="#6d7a72"
-                className="flex-1 h-11 pl-2 text-base font-bold text-[#131b2e]"
+                editable={!showOtpInput}
+                className="bg-[#f2f3ff] rounded-xl px-3 h-11 text-base font-bold text-[#131b2e]"
               />
-
-              {mobile.length > 0 && (
-                <Pressable onPress={handleClear} className="px-1">
-                  <Icon name="cancel" size={18} color="#6d7a72" />
-                </Pressable>
-              )}
             </View>
 
-            {/* OTP Input Field */}
+            {/* MOBILE INPUT */}
+            <View className="mb-3">
+              <Text className="text-xs font-bold text-[#131b2e] mb-1">Mobile Number</Text>
+              <View className="flex-row items-center bg-[#f2f3ff] rounded-xl px-3 py-1">
+                <View className="flex-row items-center gap-1 pr-2 border-r border-[#bccac0]/50">
+                  <Text className="text-sm">🇮🇳</Text>
+                  <Text className="text-xs font-bold text-[#131b2e]">+91</Text>
+                </View>
+
+                <TextInput
+                  value={mobile}
+                  onChangeText={handleMobileChange}
+                  keyboardType="numeric"
+                  maxLength={10}
+                  placeholder="98450 12345"
+                  placeholderTextColor="#6d7a72"
+                  editable={!showOtpInput}
+                  className="flex-1 h-11 pl-2 text-base font-bold text-[#131b2e]"
+                />
+
+                {mobile.length > 0 && !showOtpInput && (
+                  <Pressable onPress={handleClear} className="px-1">
+                    <Icon name="cancel" size={18} color="#6d7a72" />
+                  </Pressable>
+                )}
+              </View>
+            </View>
+
+            {/* OTP INPUT - Shows after Send OTP clicked */}
             {showOtpInput && (
               <View className="mb-3">
-                <Text className="text-xs font-bold text-[#131b2e] mb-1">Enter OTP (Test default: 12345)</Text>
+                <Text className="text-xs font-bold text-[#131b2e] mb-1">Enter OTP</Text>
+                <Text className="text-[10px] text-[#3d4a42] mb-2">
+                  Code sent to +91 {mobile.slice(-4)}
+                </Text>
                 <TextInput
                   value={otp}
                   onChangeText={setOtp}
                   keyboardType="numeric"
                   maxLength={6}
-                  placeholder="12345"
-                  className="bg-[#f2f3ff] rounded-xl px-3 h-11 text-base font-bold text-[#006948] tracking-widest"
+                  placeholder="123456"
+                  placeholderTextColor="#6d7a72"
+                  className="bg-[#f2f3ff] rounded-xl px-3 h-11 text-base font-bold text-[#006948] tracking-widest text-center"
                 />
-                <Text className="text-[10px] text-[#006948] mt-1 font-semibold">
-                  Default test OTP prefilled (12345)
+                <Text className="text-[9px] text-[#6d7a72] mt-1 text-center">
+                  Test OTP: 12345
                 </Text>
               </View>
             )}
@@ -286,76 +254,105 @@ export default function LoginScreen({ route, navigation }) {
               <Text className="text-xs text-[#ba1a1a] mb-2 font-bold">{errorMsg}</Text>
             ) : null}
 
-            {/* OTP Method Selector */}
-            {!showOtpInput && (
-              <View className="flex-row items-center justify-between px-1 mb-4">
-                <Text className="text-[10px] text-[#3d4a42]">Send verification via:</Text>
-                <View className="flex-row items-center gap-2">
-                  <Pressable
-                    onPress={() => setOtpMethod('whatsapp')}
-                    className={`px-2.5 py-1 rounded-lg flex-row items-center gap-1 ${
-                      otpMethod === 'whatsapp' ? 'bg-[#9cf2e8]/40' : 'bg-[#eaedff]'
-                    }`}
-                  >
-                    <Icon name="chat" size={14} color="#006a63" />
-                    <Text className="text-[10px] font-bold text-[#00504a]">WhatsApp</Text>
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => setOtpMethod('sms')}
-                    className={`px-2.5 py-1 rounded-lg flex-row items-center gap-1 ${
-                      otpMethod === 'sms' ? 'bg-[#9cf2e8]/40' : 'bg-[#eaedff]'
-                    }`}
-                  >
-                    <Icon name="sms" size={14} color="#3d4a42" />
-                    <Text className="text-[10px] font-bold text-[#3d4a42]">SMS</Text>
-                  </Pressable>
-                </View>
-              </View>
-            )}
-
-            {/* Primary Action Button */}
+            {/* BUTTON - Send OTP or Verify */}
             <Pressable
               activeOpacity={0.9}
-              onPress={showOtpInput ? handleVerifyOtp : handleRequestOtp}
+              disabled={
+                localLoading || isLoading || 
+                (!showOtpInput && (name.length === 0 || mobile.length !== 10)) ||
+                (showOtpInput && otp.length !== 6)
+              }
+              onPress={showOtpInput ? handleVerifyOtp : handleMobileNext}
               className={`w-full h-12 rounded-xl flex-row items-center justify-center gap-2 shadow-md ${
-                isComplete ? 'bg-[#00855d]' : 'bg-[#006948]'
+                localLoading || isLoading ? 'bg-[#00855d]/40' : 'bg-[#006948]'
               }`}
             >
-              <Text className="text-sm font-bold text-white">
-                {showOtpInput ? 'Verify OTP (12345)' : 'Continue with OTP'}
-              </Text>
-              <Icon name="arrow-forward" size={18} color="#ffffff" />
+              {localLoading || isLoading ? (
+                <>
+                  <ActivityIndicator color="#ffffff" size="small" />
+                  <Text className="text-sm font-bold text-white">
+                    {showOtpInput ? 'Verifying...' : 'Sending OTP...'}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Text className="text-sm font-bold text-white">
+                    {showOtpInput ? 'Verify & Login' : 'Send OTP'}
+                  </Text>
+                  <Icon name="arrow-forward" size={18} color="#ffffff" />
+                </>
+              )}
             </Pressable>
+
+            {/* Back button when OTP is showing */}
+            {showOtpInput && (
+              <Pressable
+                activeOpacity={0.9}
+                onPress={() => {
+                  setShowOtpInput(false);
+                  setOtp('12345');
+                  setErrorMsg('');
+                }}
+                className="mt-2 h-10 rounded-xl border-2 border-[#006948] flex-row items-center justify-center"
+              >
+                <Icon name="arrow-back" size={18} color="#006948" />
+                <Text className="text-sm font-bold text-[#006948] ml-1">Back</Text>
+              </Pressable>
+            )}
           </View>
+
+          {/* Skip for now - alternative action */}
+          {!showOtpInput && (
+            <>
+              <View className="flex-row items-center py-2 mb-4">
+                <View className="flex-1 h-px bg-[#e2e7ff]" />
+                <Text className="mx-3 text-[10px] text-[#3d4a42] font-semibold">
+                  or continue as guest
+                </Text>
+                <View className="flex-1 h-px bg-[#e2e7ff]" />
+              </View>
+
+              <Pressable
+                onPress={handleLogin}
+                className="w-full h-12 rounded-xl bg-white shadow-sm flex-row items-center justify-center gap-2 border border-[#eaedff] mb-4"
+              >
+                <Icon name="person-outline" size={18} color="#006948" />
+                <Text className="text-xs font-bold text-[#131b2e]">Continue as Guest</Text>
+              </Pressable>
+            </>
+          )}
 
           {/* Divider */}
-          <View className="flex-row items-center py-2 mb-4">
-            <View className="flex-1 h-px bg-[#e2e7ff]" />
-            <Text className="mx-3 text-[10px] text-[#3d4a42] font-semibold">
-              or quick sign-in
-            </Text>
-            <View className="flex-1 h-px bg-[#e2e7ff]" />
-          </View>
+          {step === 'name' && (
+            <View className="flex-row items-center py-2 mb-4">
+              <View className="flex-1 h-px bg-[#e2e7ff]" />
+              <Text className="mx-3 text-[10px] text-[#3d4a42] font-semibold">
+                quick sign-in options
+              </Text>
+              <View className="flex-1 h-px bg-[#e2e7ff]" />
+            </View>
+          )}
 
           {/* Social Buttons */}
-          <View className="flex-row gap-3 mb-4">
-            <Pressable
-              onPress={handleLogin}
-              className="flex-1 h-12 rounded-xl bg-white shadow-sm flex-row items-center justify-center gap-2 border border-[#eaedff]"
-            >
-              <Icon name="g-translate" size={20} color="#ea4335" />
-              <Text className="text-xs font-bold text-[#131b2e]">Google</Text>
-            </Pressable>
+          {step === 'name' && (
+            <View className="flex-row gap-3 mb-4">
+              <Pressable
+                onPress={handleLogin}
+                className="flex-1 h-12 rounded-xl bg-white shadow-sm flex-row items-center justify-center gap-2 border border-[#eaedff]"
+              >
+                <Icon name="g-translate" size={20} color="#ea4335" />
+                <Text className="text-xs font-bold text-[#131b2e]">Google</Text>
+              </Pressable>
 
-            <Pressable
-              onPress={handleLogin}
-              className="flex-1 h-12 rounded-xl bg-white shadow-sm flex-row items-center justify-center gap-2 border border-[#eaedff]"
-            >
-              <Icon name="chat-bubble" size={18} color="#006948" />
-              <Text className="text-xs font-bold text-[#131b2e]">WhatsApp 1-Tap</Text>
-            </Pressable>
-          </View>
+              <Pressable
+                onPress={handleLogin}
+                className="flex-1 h-12 rounded-xl bg-white shadow-sm flex-row items-center justify-center gap-2 border border-[#eaedff]"
+              >
+                <Icon name="chat-bubble" size={18} color="#006948" />
+                <Text className="text-xs font-bold text-[#131b2e]">WhatsApp</Text>
+              </Pressable>
+            </View>
+          )}
 
           {/* B2B Procurement Card */}
           <View className="bg-[#f2f3ff] rounded-2xl p-4 shadow-sm mb-6 border border-[#e2e7ff]">

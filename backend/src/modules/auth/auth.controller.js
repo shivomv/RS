@@ -3,21 +3,27 @@ const Shopkeeper = require('../shopkeeper/shopkeeper.model');
 const pendingTokens = new Map();
 
 exports.requestToken = async (req, res) => {
-  const { mobile } = req.body;
+  const { mobile, name } = req.body;
 
   if (!mobile || mobile.length < 10) {
     return res.status(400).json({ error: 'Valid 10-digit mobile number required' });
   }
 
-  const otp = '12345';
-  pendingTokens.set(mobile, { otp, createdAt: Date.now() });
+  if (!name || name.trim().length === 0) {
+    return res.status(400).json({ error: 'Name is required' });
+  }
 
-  console.log(`[AUTH] OTP requested for ${mobile}. Default test OTP is: 12345`);
+  const otp = '12345';
+  pendingTokens.set(mobile, { otp, name: name.trim(), createdAt: Date.now() });
+
+  console.log(`[AUTH] OTP requested for ${name} (${mobile}). Default test OTP is: 12345`);
 
   res.json({
+    success: true,
     message: 'OTP sent successfully (Use 12345 for verification)',
     otp: '12345',
     mobile,
+    name,
   });
 };
 
@@ -35,14 +41,22 @@ exports.verifyToken = async (req, res) => {
 
   if (isDefaultOtp || isValidStored) {
     try {
+      const nameFromRequest = storedData?.name || `Customer ${mobile.slice(-4)}`;
+      
       let user = await Shopkeeper.findOne({ mobile });
       if (!user) {
         user = await Shopkeeper.create({
-          name: `Customer ${mobile.slice(-4)}`,
+          name: nameFromRequest,
           mobile,
           shopName: `Store ${mobile.slice(-4)}`,
-          role: mobile === '9999999999' ? 'admin' : 'buyer',
+          role: 'buyer',
         });
+      } else {
+        // Update name if provided
+        if (nameFromRequest && nameFromRequest !== `Customer ${mobile.slice(-4)}`) {
+          user.name = nameFromRequest;
+          await user.save();
+        }
       }
 
       pendingTokens.delete(mobile);

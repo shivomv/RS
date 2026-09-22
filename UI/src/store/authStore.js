@@ -7,10 +7,10 @@ export const useAuthStore = create((set) => ({
   isLoading: false,
   error: null,
 
-  requestOtpBackend: async (mobile) => {
+  requestOtpBackend: async (mobile, name) => {
     set({ isLoading: true, error: null });
     try {
-      const res = await api.requestOtp(mobile);
+      const res = await api.requestOtp(mobile, name);
       set({ isLoading: false });
       return res;
     } catch (err) {
