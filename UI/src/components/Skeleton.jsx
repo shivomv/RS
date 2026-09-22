@@ -50,6 +50,16 @@ export function CategorySkeleton() {
   );
 }
 
+// Vertical Sidenav Category Item Skeleton
+export function CategoryItemSkeleton() {
+  return (
+    <View className="py-4 px-2 items-center">
+      <Skeleton width={44} height={44} borderRadius={12} className="mb-2" />
+      <Skeleton width={50} height={10} borderRadius={4} />
+    </View>
+  );
+}
+
 // Product Grid Card Skeleton (Matching RS 2-column layout)
 export function ProductCardSkeleton() {
   return (

@@ -1,42 +1,55 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   FlatList,
-  ActivityIndicator,
   Image,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { api } from '../../services/api';
+import { useCartStore } from '../../store/cartStore';
+import { CategoryItemSkeleton, ProductCardSkeleton } from '../../components/Skeleton';
+import { getDefaultProductPricing } from '../../utils/productHelper';
 
 export default function CatalogScreen({ navigation, route }) {
   const initialCategory = route?.params?.categoryId;
+  const { addItem, updateQuantity, items } = useCartStore();
 
   const [categories, setCategories] = useState([]);
   const [selectedCat, setSelectedCat] = useState(null);
-
   const [products, setProducts] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(false);
 
-  // ==========================================
-  // LOAD CATEGORIES
-  // ==========================================
+  // Hardware Back Press
+  useEffect(() => {
+    const onBackPress = () => {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+        return true;
+      }
+      navigation.navigate('ShopHome');
+      return true;
+    };
 
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [navigation]);
+
+  // Load Categories
   useEffect(() => {
     let mounted = true;
 
     const loadCategories = async () => {
       try {
         setLoadingCategories(true);
-
         const res = await api.getCategories();
         const list = Array.isArray(res) ? res : [];
 
         if (!mounted) return;
-
         setCategories(list);
 
         if (list.length > 0) {
@@ -44,20 +57,16 @@ export default function CatalogScreen({ navigation, route }) {
             const found = list.find(
               (cat) =>
                 String(cat._id) === String(initialCategory) ||
-                String(cat.slug).toLowerCase() ===
-                  String(initialCategory).toLowerCase()
+                String(cat.slug).toLowerCase() === String(initialCategory).toLowerCase() ||
+                String(cat.name).toLowerCase() === String(initialCategory).toLowerCase()
             );
-
             setSelectedCat(found || list[0]);
           } else {
             setSelectedCat(list[0]);
           }
         }
       } catch (error) {
-        console.warn(
-          '[Catalog] Category error:',
-          error?.message
-        );
+        console.warn('[Catalog] Category error:', error?.message);
       } finally {
         if (mounted) {
           setLoadingCategories(false);
@@ -72,12 +81,9 @@ export default function CatalogScreen({ navigation, route }) {
     };
   }, [initialCategory]);
 
-  // ==========================================
-  // LOAD PRODUCTS
-  // ==========================================
-
+  // Load Products for selected category
   useEffect(() => {
-    if (!selectedCat?._id) {
+    if (!selectedCat) {
       setProducts([]);
       return;
     }
@@ -87,23 +93,14 @@ export default function CatalogScreen({ navigation, route }) {
     const loadProducts = async () => {
       try {
         setLoadingProducts(true);
-
-        const res = await api.getProductsByCategory(
-          selectedCat._id
-        );
+        const catId = selectedCat._id || selectedCat.slug || selectedCat.name;
+        const res = await api.getProductsByCategory(catId);
 
         if (!mounted) return;
-
         setProducts(Array.isArray(res) ? res : []);
       } catch (error) {
-        console.warn(
-          '[Catalog] Product error:',
-          error?.message
-        );
-
-        if (mounted) {
-          setProducts([]);
-        }
+        console.warn('[Catalog] Product error:', error?.message);
+        if (mounted) setProducts([]);
       } finally {
         if (mounted) {
           setLoadingProducts(false);
@@ -118,392 +115,285 @@ export default function CatalogScreen({ navigation, route }) {
     };
   }, [selectedCat]);
 
-  // ==========================================
-  // CATEGORY CLICK
-  // ==========================================
-
-  const handleCategoryPress = (category) => {
+  const handleCategoryPress = useCallback((category) => {
     setSelectedCat(category);
-  };
+  }, []);
 
-  // ==========================================
-  // PRODUCT CLICK
-  // ==========================================
+  const handleProductPress = useCallback((product) => {
+    navigation.navigate('ProductDetail', { product });
+  }, [navigation]);
 
-  const handleProductPress = (product) => {
-    navigation.navigate('ProductView', {
-      productId: product._id,
-      product,
-    });
-  };
+  // Ensure grid of 2 even when odd number of products (e.g. 1 product)
+  const gridProductsData = useMemo(() => {
+    if (!Array.isArray(products) || products.length === 0) return [];
+    if (products.length % 2 !== 0) {
+      return [...products, { _id: '__spacer__', isSpacer: true }];
+    }
+    return products;
+  }, [products]);
 
-  // ==========================================
-  // PRODUCT CARD
-  // ==========================================
+  // Helper to check quantity in cart
+  const getItemQuantityInCart = useCallback(
+    (product) => {
+      const defaultInfo = getDefaultProductPricing(product);
+      const defaultBundle = defaultInfo.bundle || product.defaultBundle || {};
+      const bundleId = defaultBundle.bundleId || 'pack-1';
+      const cartItemId = `${product._id}_${bundleId}`;
 
-  const renderProduct = ({ item }) => {
-    const image =
-      item.baseImages?.[0] ||
-      item.images?.[0] ||
-      item.image ||
-      item.img;
+      const existing = items.find((i) => i.cartItemId === cartItemId || i._id === product._id);
+      return existing ? existing.quantity : 0;
+    },
+    [items]
+  );
+
+  const renderProductCard = ({ item }) => {
+    // If spacer item for odd row alignment, render invisible 50% width box
+    if (item.isSpacer) {
+      return <View className="flex-1 mx-1 mb-2.5" />;
+    }
+
+    const defaultInfo = getDefaultProductPricing(item);
+    const displayPrice = defaultInfo.price || item.price || 0;
+    const displayMrp = defaultInfo.mrp || item.mrp || 0;
+    const variantSubtitle = defaultInfo.variantLabel || item.subtitle || item.category;
+    const bundleTag = defaultInfo.bundleLabel;
+    const imageUri = defaultInfo.image || item.image || item.img;
+    const inCartQty = getItemQuantityInCart(item);
 
     return (
-      <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={() => handleProductPress(item)}
-        className="flex-1 bg-white rounded-2xl border border-[#e2e7e3] overflow-hidden"
-        style={{
-          marginHorizontal: 4,
-          marginBottom: 10,
-        }}
+      <View
+        className="flex-1 bg-white rounded-2xl border border-[#e2e7e3] overflow-hidden justify-between mx-1 mb-2.5 shadow-sm"
       >
-        {/* Product Image */}
-        <View className="h-28 bg-[#f5f7f6] items-center justify-center">
-
-          {image ? (
-            <Image
-              source={{ uri: image }}
-              className="w-full h-full"
-              resizeMode="contain"
-            />
-          ) : (
-            <Icon
-              name="inventory-2"
-              size={38}
-              color="#9aa59f"
-            />
-          )}
-
-          {/* Featured */}
-          {item.isFeatured && (
-            <View className="absolute top-2 left-2 bg-[#006948] px-1.5 py-1 rounded-full">
-              <Text className="text-[7px] font-bold text-white">
-                FEATURED
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Details */}
-        <View className="p-2.5">
-
-          {/* Brand */}
-          {item.brand && (
-            <Text
-              className="text-[8px] font-bold text-[#006948] uppercase"
-              numberOfLines={1}
-            >
-              {item.brand}
-            </Text>
-          )}
-
-          {/* Product Name */}
-          <Text
-            className="text-[11px] font-black text-[#131b2e] mt-1 leading-tight"
-            numberOfLines={2}
-          >
-            {item.name || item.title || 'Product'}
-          </Text>
-
-          {/* Subtitle */}
-          {item.subtitle && (
-            <Text
-              className="text-[8px] text-[#6d7a72] mt-1"
-              numberOfLines={2}
-            >
-              {item.subtitle}
-            </Text>
-          )}
-
-          {/* Price */}
-          <View className="flex-row items-center justify-between mt-2.5">
-
-            <View>
-              <Text className="text-[7px] text-[#7a857f]">
-                Starting
-              </Text>
-
-              <Text className="text-xs font-black text-[#131b2e]">
-                ₹{item.basePrice ?? item.price ?? 0}
-              </Text>
-            </View>
-
-            {/* Arrow */}
-            <View className="w-7 h-7 rounded-lg bg-[#006948] items-center justify-center">
-              <Icon
-                name="arrow-forward"
-                size={15}
-                color="#ffffff"
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => handleProductPress(item)}
+          className="flex-1"
+        >
+          {/* Product Image Box */}
+          <View className="relative h-28 bg-[#f5f7f6] items-center justify-center p-1.5">
+            {imageUri ? (
+              <Image
+                source={{ uri: imageUri }}
+                className="w-full h-full"
+                resizeMode="contain"
               />
+            ) : (
+              <Icon name="inventory-2" size={36} color="#9aa59f" />
+            )}
+
+            {item.badge && (
+              <View className="absolute top-1.5 left-1.5 z-10 bg-[#006948] px-1.5 py-0.5 rounded shadow-sm">
+                <Text className="text-[8px] font-bold text-white uppercase">{item.badge}</Text>
+              </View>
+            )}
+
+            {bundleTag ? (
+              <View className="absolute bottom-1.5 right-1.5 z-10 bg-[#006948]/10 px-1.5 py-0.5 rounded border border-[#006948]/30">
+                <Text className="text-[8px] font-bold text-[#006948]">{bundleTag}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          {/* Product Details */}
+          <View className="p-2.5 flex-1 justify-between">
+            <View>
+              <Text className="text-[11px] font-black text-[#131b2e] leading-snug" numberOfLines={2}>
+                {item.name || item.title || 'Product'}
+              </Text>
+              <Text className="text-[9px] font-semibold text-[#006948] mt-0.5" numberOfLines={1}>
+                {variantSubtitle}
+              </Text>
             </View>
 
+            {/* Price & Add to Cart */}
+            <View className="flex-row items-center justify-between mt-2 pt-2 border-t border-[#f2f3ff]">
+              <View>
+                <Text className="text-xs font-black text-[#131b2e]">₹{displayPrice}</Text>
+                {displayMrp > displayPrice && (
+                  <Text className="text-[8px] text-[#6d7a72] line-through">₹{displayMrp}</Text>
+                )}
+              </View>
+
+              {inCartQty > 0 ? (
+                <View className="h-7 bg-[#006948] rounded-lg flex-row items-center px-1">
+                  <TouchableOpacity
+                    onPress={() => updateQuantity(item._id, inCartQty - 1)}
+                    activeOpacity={0.7}
+                    className="w-5 h-full justify-center items-center"
+                  >
+                    <Icon name="remove" size={12} color="#ffffff" />
+                  </TouchableOpacity>
+                  <Text className="px-1 text-[10px] font-bold text-white">{inCartQty}</Text>
+                  <TouchableOpacity
+                    onPress={() => addItem(item)}
+                    activeOpacity={0.7}
+                    className="w-5 h-full justify-center items-center"
+                  >
+                    <Icon name="add" size={12} color="#ffffff" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => addItem(item)}
+                  activeOpacity={0.7}
+                  className="h-7 px-2.5 bg-[#006948] rounded-lg justify-center items-center shadow-sm"
+                >
+                  <Text className="text-[9.5px] text-white font-bold">ADD</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </View>
     );
   };
-
-  // ==========================================
-  // LOADING
-  // ==========================================
-
-  if (loadingCategories) {
-    return (
-      <SafeAreaView className="flex-1 bg-[#faf8ff] items-center justify-center">
-        <ActivityIndicator
-          size="large"
-          color="#006948"
-        />
-
-        <Text className="mt-3 text-sm text-[#6d7a72]">
-          Loading categories...
-        </Text>
-      </SafeAreaView>
-    );
-  }
-
-  // ==========================================
-  // SCREEN
-  // ==========================================
 
   return (
-    <SafeAreaView
-      edges={['top', 'left', 'right']}
-      className="flex-1 bg-[#faf8ff]"
-    >
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#faf8ff]">
+      {/* Header */}
+      <View className="bg-white px-4 py-3 border-b border-[#e2e7e3] shadow-sm z-10">
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center gap-2">
+            <TouchableOpacity
+              onPress={() => {
+                if (navigation.canGoBack()) {
+                  navigation.goBack();
+                } else {
+                  navigation.navigate('ShopHome');
+                }
+              }}
+              className="w-9 h-9 rounded-full bg-[#f3f5f4] items-center justify-center border border-[#e2e7e3]"
+            >
+              <Icon name="arrow-back" size={20} color="#131b2e" />
+            </TouchableOpacity>
 
-      {/* ======================================
-          HEADER
-      ====================================== */}
-
-      <View className="bg-white px-4 py-3 border-b border-[#e2e7e3]">
-
-        <View className="flex-row items-center">
-
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            className="w-9 h-9 rounded-full bg-[#f3f5f4] items-center justify-center"
-          >
-            <Icon
-              name="arrow-back"
-              size={20}
-              color="#131b2e"
-            />
-          </TouchableOpacity>
-
-          <View className="ml-3">
-            <Text className="text-lg font-black text-[#131b2e]">
-              Shop
-            </Text>
-
-            <Text className="text-[9px] text-[#6d7a72]">
-              Browse products
-            </Text>
+            <View className="ml-1">
+              <Text className="text-base font-black text-[#131b2e]">Product Catalog</Text>
+              <Text className="text-[9.5px] text-[#6d7a72] font-semibold">
+                Shop by category & variants
+              </Text>
+            </View>
           </View>
-
         </View>
       </View>
 
-      {/* ======================================
-          MAIN CONTENT
-      ====================================== */}
-
+      {/* Main Body */}
       <View className="flex-1 flex-row">
+        {/* Left Category Sidebar (Sidenav) */}
+        <View className="w-[28%] bg-white border-r border-[#e2e7e3]">
+          {loadingCategories ? (
+            <View className="py-2">
+              <CategoryItemSkeleton />
+              <CategoryItemSkeleton />
+              <CategoryItemSkeleton />
+              <CategoryItemSkeleton />
+              <CategoryItemSkeleton />
+            </View>
+          ) : (
+            <FlatList
+              data={categories}
+              keyExtractor={(item, index) => String(item._id || item.slug || `category-${index}`)}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingVertical: 6 }}
+              renderItem={({ item }) => {
+                const isSelected =
+                  selectedCat &&
+                  (String(selectedCat._id) === String(item._id) ||
+                    String(selectedCat.slug) === String(item.slug));
 
-        {/* ====================================
-            LEFT CATEGORY SIDEBAR
-        ==================================== */}
-
-        <View className="w-[27%] bg-white border-r border-[#e2e7e3]">
-
-          <FlatList
-            data={categories}
-            keyExtractor={(item, index) =>
-              String(
-                item._id ||
-                  item.slug ||
-                  `category-${index}`
-              )
-            }
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingVertical: 8,
-            }}
-            renderItem={({ item }) => {
-
-              const isSelected =
-                selectedCat &&
-                String(selectedCat._id) ===
-                  String(item._id);
-
-              return (
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() =>
-                    handleCategoryPress(item)
-                  }
-                  className={`py-4 px-2 items-center ${
-                    isSelected
-                      ? 'bg-[#006948]/10'
-                      : 'bg-white'
-                  }`}
-                >
-
-                  {/* Active indicator */}
-                  {isSelected && (
-                    <View className="absolute left-0 top-0 bottom-0 w-1 bg-[#006948]" />
-                  )}
-
-                  {/* Category image/icon */}
-                  <View
-                    className={`w-11 h-11 rounded-xl items-center justify-center overflow-hidden ${
-                      isSelected
-                        ? 'bg-[#006948]/15'
-                        : 'bg-[#f3f5f4]'
+                return (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => handleCategoryPress(item)}
+                    className={`relative py-3.5 px-2 items-center border-b border-[#f0f3f1] ${
+                      isSelected ? 'bg-[#006948]/10' : 'bg-white'
                     }`}
                   >
-                    {item.image || item.img ? (
-                      <Image
-                        source={{
-                          uri:
-                            item.image ||
-                            item.img,
-                        }}
-                        className="w-full h-full"
-                        resizeMode="contain"
-                      />
-                    ) : (
-                      <Icon
-                        name={
-                          item.icon ||
-                          'cleaning-services'
-                        }
-                        size={23}
-                        color={
-                          isSelected
-                            ? '#006948'
-                            : '#7a857f'
-                        }
-                      />
+                    {isSelected && (
+                      <View className="absolute left-0 top-0 bottom-0 w-1 bg-[#006948] rounded-r" />
                     )}
-                  </View>
 
-                  {/* Category name */}
-                  <Text
-                    className={`text-[9px] text-center mt-2 font-semibold ${
-                      isSelected
-                        ? 'text-[#006948]'
-                        : 'text-[#4f5b55]'
-                    }`}
-                    numberOfLines={2}
-                  >
-                    {item.name ||
-                      item.title ||
-                      'Category'}
-                  </Text>
+                    <View
+                      className={`w-11 h-11 rounded-xl items-center justify-center overflow-hidden ${
+                        isSelected ? 'bg-[#006948]/15 border border-[#006948]/30' : 'bg-[#f3f5f4] border border-[#e2e7e3]/60'
+                      }`}
+                    >
+                      {isSelected ? (
+                        item.image || item.img ? (
+                          <Image
+                            source={{ uri: item.image || item.img }}
+                            className="w-full h-full"
+                            resizeMode="contain"
+                          />
+                        ) : (
+                          <Icon
+                            name={item.icon || 'cleaning-services'}
+                            size={22}
+                            color="#006948"
+                          />
+                        )
+                      ) : null}
+                    </View>
 
-                </TouchableOpacity>
-              );
-            }}
-          />
-
+                    <Text
+                      className={`text-[9.5px] text-center mt-1.5 font-bold ${
+                        isSelected ? 'text-[#006948]' : 'text-[#4f5b55]'
+                      }`}
+                      numberOfLines={2}
+                    >
+                      {item.name || item.title || 'Category'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          )}
         </View>
 
-        {/* ====================================
-            RIGHT PRODUCT AREA
-        ==================================== */}
-
-        <View className="flex-1">
-
-          {/* Category title */}
-          <View className="px-3 pt-3 pb-2">
-
-            <Text
-              className="text-base font-black text-[#131b2e]"
-              numberOfLines={1}
-            >
-              {selectedCat?.name ||
-                selectedCat?.title ||
-                'Products'}
-            </Text>
-
-            <Text className="text-[9px] text-[#6d7a72] mt-0.5">
-              {products.length} products
-            </Text>
-
+        {/* Right Product Grid Area */}
+        <View className="flex-1 p-2">
+          {/* Active Category Header */}
+          <View className="px-2 pt-1 pb-2 flex-row items-center justify-between">
+            <View>
+              <Text className="text-sm font-black text-[#131b2e]" numberOfLines={1}>
+                {selectedCat?.name || selectedCat?.title || 'Products'}
+              </Text>
+              <Text className="text-[9.5px] text-[#6d7a72] font-semibold mt-0.5">
+                {products.length} {products.length === 1 ? 'Item' : 'Items'} Available
+              </Text>
+            </View>
           </View>
 
-          {/* Products loading */}
+          {/* Product Cards Loading (Skeletons instead of Spinners) */}
           {loadingProducts ? (
-
-            <View className="flex-1 items-center justify-center">
-
-              <ActivityIndicator
-                size="small"
-                color="#006948"
-              />
-
-              <Text className="text-[10px] text-[#6d7a72] mt-2">
-                Loading products...
-              </Text>
-
+            <View className="flex-row flex-wrap justify-between p-1">
+              <ProductCardSkeleton />
+              <ProductCardSkeleton />
+              <ProductCardSkeleton />
+              <ProductCardSkeleton />
             </View>
-
           ) : (
-
-            /* ==================================
-               2 COLUMN PRODUCT GRID
-            ================================== */
-
             <FlatList
-              data={products}
+              data={gridProductsData}
               numColumns={2}
-              keyExtractor={(item, index) =>
-                String(
-                  item._id ||
-                    item.slug ||
-                    `product-${index}`
-                )
-              }
-              renderItem={renderProduct}
+              keyExtractor={(item, index) => String(item._id || item.slug || `product-${index}`)}
+              renderItem={renderProductCard}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{
-                paddingHorizontal: 6,
-                paddingBottom: 30,
-              }}
-              columnWrapperStyle={{
-                marginBottom: 0,
-              }}
-
+              contentContainerStyle={{ paddingBottom: 40 }}
+              columnWrapperStyle={{ justifyContent: 'space-between' }}
               ListEmptyComponent={
-                <View className="items-center justify-center py-20 px-4">
-
-                  <Icon
-                    name="inventory-2"
-                    size={40}
-                    color="#9aa59f"
-                  />
-
-                  <Text className="text-sm font-bold text-[#131b2e] mt-3">
-                    No products found
+                <View className="items-center justify-center py-16 px-4 bg-[#f8fafc] rounded-2xl border border-dashed border-[#bccac0] mt-3">
+                  <Icon name="inventory-2" size={36} color="#9aa59f" />
+                  <Text className="text-xs font-bold text-[#131b2e] mt-2">No products found</Text>
+                  <Text className="text-[10px] text-[#6d7a72] text-center mt-0.5">
+                    There are no products available in this category.
                   </Text>
-
-                  <Text className="text-[9px] text-[#6d7a72] text-center mt-1">
-                    There are no products available
-                    in this category.
-                  </Text>
-
                 </View>
               }
             />
-
           )}
-
         </View>
-
       </View>
-
     </SafeAreaView>
   );
 }
