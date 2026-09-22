@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { View, Text } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 
 // Auth Screens
@@ -24,8 +25,44 @@ import AddressListScreen from '../screens/shopkeeper/AddressListScreen';
 import AddAddressScreen from '../screens/shopkeeper/AddAddressScreen';
 import SupportScreen from '../screens/shopkeeper/SupportScreen';
 
+// Store
+import { useCartStore } from '../store/cartStore';
+
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+
+// Cart Tab Icon with Badge
+function CartTabIcon({ color, size }) {
+  const items = useCartStore((state) => state.items);
+  const cartCount = items.length;
+
+  return (
+    <View style={{ position: 'relative' }}>
+      <Icon name="shopping-cart" size={size} color={color} />
+      {cartCount > 0 && (
+        <View
+          style={{
+            position: 'absolute',
+            top: -8,
+            right: -8,
+            backgroundColor: '#ba1a1a',
+            borderRadius: 10,
+            width: 20,
+            height: 20,
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderWidth: 2,
+            borderColor: 'white',
+          }}
+        >
+          <Text style={{ color: 'white', fontSize: 11, fontWeight: 'bold' }}>
+            {cartCount > 99 ? '99+' : cartCount}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
 
 function BuyerTabs() {
   return (
@@ -68,7 +105,7 @@ function BuyerTabs() {
         options={{
           tabBarLabel: 'Cart',
           // eslint-disable-next-line react/no-unstable-nested-components
-          tabBarIcon: ({ color, size }) => <Icon name="shopping-cart" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <CartTabIcon color={color} size={size} />,
         }}
       />
       <Tab.Screen

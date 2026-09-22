@@ -11,7 +11,7 @@ exports.getCart = async (req, res, next) => {
       });
     }
 
-    let cart = await Cart.findOne({ shopkeeper: shopkeeperId }).populate('items.product');
+    let cart = await Cart.findOne({ shopkeeper: shopkeeperId });
     if (!cart) {
       cart = { items: [], couponCode: 'RSBULK100', gstRequested: true };
     }

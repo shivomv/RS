@@ -16,9 +16,20 @@ import { useAuthStore } from '../../store/authStore';
 
 export default function CartScreen({ navigation }) {
   const { session } = useAuthStore();
-  const { items, clearCart, removeItem, updateQuantity, totalAmount } = useCartStore();
+  const cartStore = useCartStore();
+  const { items, clearCart, removeItem, updateQuantity, totalAmount } = cartStore;
 
   const [gstRequested, setGstRequested] = useState(true);
+
+  // Load cart from backend on mount
+  useEffect(() => {
+    const loadCartData = async () => {
+      if (session?.user?._id) {
+        await cartStore.loadCart(session.user._id);
+      }
+    };
+    loadCartData();
+  }, []);
 
   // Hardware Android Back Button Handler
   useEffect(() => {

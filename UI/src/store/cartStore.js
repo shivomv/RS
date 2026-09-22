@@ -5,6 +5,18 @@ import { useAuthStore } from './authStore';
 export const useCartStore = create((set, get) => ({
   items: [],
 
+  // Load cart from backend
+  loadCart: async (shopkeeperId) => {
+    try {
+      const res = await api.getCart(shopkeeperId);
+      if (res.success && res.data?.items) {
+        set({ items: res.data.items });
+      }
+    } catch (err) {
+      console.error('[Cart] Load error:', err.message);
+    }
+  },
+
   addItem: (product) =>
     set(async (state) => {
       const pId = product._id || product.id || 'prod';
