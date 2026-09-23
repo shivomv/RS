@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, Alert, BackHandler } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Image, Alert, BackHandler, TextInput, Modal, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
@@ -7,6 +7,9 @@ import { useAuthStore } from '../../store/authStore';
 
 export default function ProfileScreen({ navigation }) {
   const { session, logout } = useAuthStore();
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editName, setEditName] = useState(session?.user?.name || session?.user?.shopName || '');
+  const [updating, setUpdating] = useState(false);
 
   // Hardware Android Back Button Handler
   useEffect(() => {
@@ -35,6 +38,27 @@ export default function ProfileScreen({ navigation }) {
         style: 'destructive',
       },
     ]);
+  };
+
+  const handleSaveName = async () => {
+    if (!editName.trim()) {
+      Alert.alert('Error', 'Name cannot be empty');
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      // Update session with new name
+      if (session?.user) {
+        session.user.name = editName.trim();
+      }
+      setEditModalVisible(false);
+      Alert.alert('Success', 'Name updated successfully');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to update name');
+    } finally {
+      setUpdating(false);
+    }
   };
 
   // Render Guest Account Login Required View if user is not logged in
@@ -103,7 +127,7 @@ export default function ProfileScreen({ navigation }) {
         contentContainerStyle={{ paddingBottom: 60 }}
       >
         {/* User Card */}
-        <View className="bg-[#006948] px-6 py-6 items-center">
+        <View className="bg-[#006948] px-6 py-6 items-center relative">
           <View className="w-20 h-20 rounded-full overflow-hidden border-2 border-white mb-3 shadow-md bg-white/20 justify-center items-center">
             <Image
               source={{
@@ -112,9 +136,20 @@ export default function ProfileScreen({ navigation }) {
               className="w-full h-full"
             />
           </View>
-          <Text className="text-white text-lg font-bold">
-            {session.user?.name || session.user?.shopName || 'Registered Customer'}
-          </Text>
+          <View className="flex-row items-center gap-2 justify-center">
+            <Text className="text-white text-lg font-bold">
+              {session.user?.name || session.user?.shopName || 'Registered Customer'}
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                setEditName(session.user?.name || session.user?.shopName || '');
+                setEditModalVisible(true);
+              }}
+              className="bg-white/20 p-1.5 rounded-full"
+            >
+              <Icon name="edit" size={14} color="#ffffff" />
+            </TouchableOpacity>
+          </View>
           <Text className="text-[#85f8c4] text-xs font-semibold mt-0.5">
             Mobile: {session.mobile || session.user?.mobile} • Role: {session.role || session.user?.role || 'buyer'}
           </Text>
@@ -160,6 +195,54 @@ export default function ProfileScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Edit Name Modal */}
+      <Modal
+        visible={editModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-center items-center p-4">
+          <View className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-lg">
+            <Text className="text-lg font-bold text-[#131b2e] mb-4">Edit Name</Text>
+            
+            <TextInput
+              value={editName}
+              onChangeText={setEditName}
+              placeholder="Enter your name"
+              placeholderTextColor="#6d7a72"
+              className="bg-[#f2f3ff] rounded-xl px-4 py-3 mb-4 text-[#131b2e] font-semibold"
+              editable={!updating}
+            />
+
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => setEditModalVisible(false)}
+                disabled={updating}
+                className="flex-1 bg-[#f2f3ff] rounded-xl py-3 items-center"
+              >
+                <Text className="text-[#131b2e] font-bold text-xs">Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleSaveName}
+                disabled={updating}
+                className="flex-1 bg-[#006948] rounded-xl py-3 items-center flex-row justify-center gap-2"
+              >
+                {updating ? (
+                  <ActivityIndicator color="#ffffff" size="small" />
+                ) : (
+                  <>
+                    <Icon name="check" size={16} color="#ffffff" />
+                    <Text className="text-white font-bold text-xs">Save</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

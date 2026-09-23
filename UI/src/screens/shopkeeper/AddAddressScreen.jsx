@@ -1,26 +1,53 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
+import { api } from '../../services/api';
+import { alertService } from '../../services/alertService';
+import { useAuthStore } from '../../store/authStore';
 
 export default function AddAddressScreen({ navigation }) {
+  const { session } = useAuthStore();
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [landmark, setLandmark] = useState('');
   const [pincode, setPincode] = useState('');
   const [city, setCity] = useState('Bengaluru');
   const [phone, setPhone] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name || !address || !pincode) {
-      Alert.alert('Missing Fields', 'Please enter Facility Name, Street Address, and Pincode.');
+      alertService.warning('Missing Fields', 'Please enter Facility Name, Street Address, and Pincode.');
       return;
     }
 
-    Alert.alert('Facility Saved', `New delivery facility "${name}" added successfully.`, [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
+    if (!session?.user?._id) {
+      alertService.error('Error', 'Please log in to save an address.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const addressData = {
+        shopkeeper: session.user._id,
+        streetAddress: address,
+        facilityName: name,
+        city,
+        pincode,
+        landmark,
+        contactPhone: phone,
+      };
+      await api.addAddress(addressData);
+      alertService.success('Success', `Delivery facility "${name}" saved successfully.`, () => {
+        navigation.goBack();
+      });
+    } catch (err) {
+      alertService.error('Error', err.message || 'Failed to save address');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -109,9 +136,19 @@ export default function AddAddressScreen({ navigation }) {
 
           <Pressable
             onPress={handleSave}
-            className="bg-[#006948] rounded-xl py-3.5 mt-2 items-center shadow-sm active:opacity-90"
+            disabled={loading}
+            className={`rounded-xl py-3.5 mt-2 items-center shadow-sm active:opacity-90 flex-row justify-center gap-2 ${
+              loading ? 'bg-[#006948]/40' : 'bg-[#006948]'
+            }`}
           >
-            <Text className="text-white font-bold text-xs uppercase tracking-wider">Save Delivery Facility</Text>
+            {loading ? (
+              <>
+                <ActivityIndicator color="#ffffff" size="small" />
+                <Text className="text-white font-bold text-xs uppercase tracking-wider">Saving...</Text>
+              </>
+            ) : (
+              <Text className="text-white font-bold text-xs uppercase tracking-wider">Save Delivery Facility</Text>
+            )}
           </Pressable>
         </View>
       </ScrollView>

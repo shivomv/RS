@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
 import { useCartStore } from '../../store/cartStore';
 import { useOrderStore } from '../../store/orderStore';
 import { useAuthStore } from '../../store/authStore';
+import { api } from '../../services/api';
+import { alertService } from '../../services/alertService';
 
 export default function CheckoutPaymentScreen({ navigation }) {
   const { items, totalAmount, clearCart } = useCartStore();
@@ -13,19 +15,74 @@ export default function CheckoutPaymentScreen({ navigation }) {
   const { session } = useAuthStore();
 
   const [selectedPayment, setSelectedPayment] = useState('upi');
-  const [selectedAddress, setSelectedAddress] = useState(null);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [addresses, setAddresses] = useState([]);
+  const [loadingAddresses, setLoadingAddresses] = useState(true);
+
+  // Load addresses on mount
+  useEffect(() => {
+    const loadAddresses = async () => {
+      try {
+        setLoadingAddresses(true);
+        
+        if (!session?.user?._id) {
+          console.warn('[Checkout] No user session, skipping address load');
+          setLoadingAddresses(false);
+          return;
+        }
+
+        const res = await api.getAddresses(session.user._id);
+        const addressList = res || [];
+        
+        // Transform API response to match expected format
+        const formattedAddresses = addressList.map((addr) => ({
+          _id: addr._id,
+          streetAddress: addr.streetAddress,
+          facilityName: addr.facilityName,
+          city: addr.city,
+          pincode: addr.pincode,
+          landmark: addr.landmark,
+          contactPhone: addr.contactPhone,
+        }));
+
+        setAddresses(formattedAddresses);
+        
+        // Auto-select first address if available
+        if (formattedAddresses.length > 0) {
+          setSelectedAddressId(formattedAddresses[0]._id);
+        } else {
+          setSelectedAddressId(null);
+        }
+      } catch (err) {
+        console.error('[Checkout] Load addresses error:', err.message);
+        setAddresses([]);
+        setSelectedAddressId(null);
+      } finally {
+        setLoadingAddresses(false);
+      }
+    };
+    
+    loadAddresses();
+  }, [session]);
 
   const subtotal = totalAmount();
   const total = subtotal;
 
-  const handleConfirmOrder = () => {
+  const handleConfirmOrder = async () => {
     if (items.length === 0) {
-      Alert.alert('Empty Cart', 'Please add items to cart before proceeding to checkout.');
+      alertService.warning('Empty Cart', 'Please add items to cart before proceeding to checkout.');
       return;
     }
 
-    if (!selectedAddress) {
-      Alert.alert('Address Required', 'Please select a delivery address to proceed with the order.');
+    if (!selectedAddressId || addresses.length === 0) {
+      alertService.error('Address Required', 'Please select a delivery address to proceed with the order.');
+      return;
+    }
+
+    // Find selected address object
+    const selectedAddr = addresses.find(addr => addr._id === selectedAddressId);
+    if (!selectedAddr) {
+      alertService.error('Error', 'Selected address not found.');
       return;
     }
 
@@ -50,7 +107,12 @@ export default function CheckoutPaymentScreen({ navigation }) {
 
     // Freeze Immutable Address & Buyer Snapshot
     const addressSnapshot = {
-      fullAddress: selectedAddress,
+      fullAddress: selectedAddr.streetAddress,
+      facilityName: selectedAddr.facilityName,
+      city: selectedAddr.city,
+      pincode: selectedAddr.pincode,
+      landmark: selectedAddr.landmark,
+      contactPhone: selectedAddr.contactPhone,
       capturedAt: new Date().toISOString(),
     };
 
@@ -72,17 +134,20 @@ export default function CheckoutPaymentScreen({ navigation }) {
       subtotal,
       total,
       paymentMethod: selectedPayment === 'upi' ? 'UPI' : 'Net Banking / Cash',
-      deliveryAddress: selectedAddress,
+      deliveryAddress: selectedAddr.streetAddress,
       deliveryAddressSnapshot: addressSnapshot,
       buyerSnapshot: buyerSnapshot,
       financialSnapshot: financialSnapshot,
       items: itemSnapshots,
     });
 
-    addOrder(newOrder);
-    clearCart();
-
-    navigation.replace('OrderSuccess', { order: newOrder });
+    try {
+      await addOrder(newOrder);
+      clearCart();
+      navigation.replace('OrderSuccess', { order: newOrder });
+    } catch (err) {
+      alertService.error('Order Failed', err.message || 'Failed to create order. Please try again.');
+    }
   };
 
   // Render Guest Account Login Required View if user is not logged in
@@ -152,14 +217,38 @@ export default function CheckoutPaymentScreen({ navigation }) {
               <Icon name="location-on" size={18} color="#006948" />
               <Text className="text-xs font-bold text-[#131b2e]">Delivery Destination</Text>
             </View>
-            <Pressable
-              onPress={() => navigation.navigate('AddressList')}
-              className="bg-[#006948]/10 px-2.5 py-1 rounded-full active:opacity-80"
-            >
-              <Text className="text-[10px] text-[#006948] font-bold">Change Facility</Text>
-            </Pressable>
+            {addresses.length > 0 && (
+              <Pressable
+                onPress={() => navigation.navigate('AddressList')}
+                className="bg-[#006948]/10 px-2.5 py-1 rounded-full active:opacity-80"
+              >
+                <Text className="text-[10px] text-[#006948] font-bold">Change</Text>
+              </Pressable>
+            )}
           </View>
-          <Text className="text-xs text-[#3d4a42] leading-relaxed">{selectedAddress}</Text>
+
+          {loadingAddresses ? (
+            <Text className="text-xs text-[#6d7a72]">Loading addresses...</Text>
+          ) : selectedAddressId && addresses.length > 0 ? (
+            <>
+              <Text className="text-xs text-[#3d4a42] leading-relaxed mb-2">
+                {addresses.find(addr => addr._id === selectedAddressId)?.streetAddress}
+              </Text>
+              <Text className="text-[10px] text-[#6d7a72]">
+                {addresses.find(addr => addr._id === selectedAddressId)?.facilityName} • {addresses.find(addr => addr._id === selectedAddressId)?.city}
+              </Text>
+            </>
+          ) : (
+            <Pressable
+              onPress={() => navigation.navigate('AddAddress')}
+              className="bg-[#006948]/10 rounded-xl py-3 px-4 items-center border border-[#006948]/20"
+            >
+              <View className="flex-row items-center gap-2">
+                <Icon name="add-location" size={18} color="#006948" />
+                <Text className="text-xs font-bold text-[#006948]">Add Delivery Address</Text>
+              </View>
+            </Pressable>
+          )}
         </View>
 
         {/* Payment Methods Section */}
@@ -237,10 +326,17 @@ export default function CheckoutPaymentScreen({ navigation }) {
         </View>
         <Pressable
           onPress={handleConfirmOrder}
-          className="bg-[#006948] px-6 py-3.5 rounded-xl flex-row items-center gap-2 shadow-md active:opacity-90"
+          disabled={!selectedAddressId || loadingAddresses}
+          className={`px-6 py-3.5 rounded-xl flex-row items-center gap-2 shadow-md active:opacity-90 ${
+            (!selectedAddressId || loadingAddresses) ? 'bg-[#006948]/40' : 'bg-[#006948]'
+          }`}
         >
-          <Text className="text-white font-bold text-xs uppercase tracking-wider">Confirm Order</Text>
-          <Icon name="arrow-forward" size={16} color="#ffffff" />
+          <Text className={`font-bold text-xs uppercase tracking-wider ${
+            (!selectedAddressId || loadingAddresses) ? 'text-white/60' : 'text-white'
+          }`}>
+            Confirm Order
+          </Text>
+          <Icon name="arrow-forward" size={16} color={(!selectedAddressId || loadingAddresses) ? '#ffffff80' : '#ffffff'} />
         </Pressable>
       </View>
     </SafeAreaView>

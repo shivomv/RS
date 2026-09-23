@@ -105,7 +105,7 @@ export default function CartScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: items.length > 0 ? 200 : 100 }}
       >
         {/* Fast Delivery & Dispatch Notice Bar */}
         <View className="px-4 pt-4">

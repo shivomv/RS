@@ -29,11 +29,8 @@ export const useOrderStore = create((set) => ({
       }));
       return created;
     } catch (err) {
-      set((state) => ({
-        orders: [order, ...state.orders],
-        isLoading: false,
-      }));
-      return order;
+      set({ isLoading: false, error: err.message });
+      throw err;
     }
   },
 

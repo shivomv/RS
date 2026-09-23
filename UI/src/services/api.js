@@ -72,9 +72,11 @@ export const api = {
   // B2B Net 30 Credit Ledger Invoices API
   getLedgers: () => apiClient.get('/ledgers'),
 
-  // Support Tickets API
-  getTickets: () => apiClient.get('/tickets'),
-  createTicket: (ticketData) => apiClient.post('/tickets', ticketData),
+  // Address APIs
+  getAddresses: (shopkeeperId) => apiClient.get('/addresses', { params: { shopkeeperId } }).then(res => res.data || res),
+  addAddress: (addressData) => apiClient.post('/addresses', addressData),
+  updateAddress: (id, addressData) => apiClient.put(`/addresses/${id}`, addressData),
+  deleteAddress: (id) => apiClient.delete(`/addresses/${id}`),
 
   // Shopkeeper Buyer Profile API
   getShopkeepers: () => apiClient.get('/shopkeepers'),

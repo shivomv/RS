@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, BackHandler } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
 import { AddressSkeleton } from '../../components/Skeleton';
 import { useAuthStore } from '../../store/authStore';
+import { api } from '../../services/api';
+import { alertService, useAlertStore } from '../../services/alertService';
 
 export default function AddressListScreen({ navigation }) {
   const { session } = useAuthStore();
@@ -33,34 +35,91 @@ export default function AddressListScreen({ navigation }) {
     }
 
     let isMounted = true;
-    setLoading(true);
-    const timer = setTimeout(() => {
-      if (isMounted) setLoading(false);
-    }, 400);
+    const loadAddresses = async () => {
+      try {
+        setLoading(true);
+        const res = await api.getAddresses(session.user._id);
+        const addressList = res || [];
+        
+        // Transform API response to match UI format
+        const formattedAddresses = addressList.map((addr) => ({
+          id: addr._id,
+          title: addr.facilityName || 'Facility',
+          address: addr.streetAddress,
+          contact: addr.contactPhone || 'N/A',
+          isDefault: addr.isDefault || false,
+        }));
+        
+        if (isMounted) {
+          setAddresses(formattedAddresses);
+        }
+      } catch (err) {
+        console.error('[AddressList] Load error:', err.message);
+        if (isMounted) {
+          setAddresses([]);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+    
+    loadAddresses();
+    
     return () => {
       isMounted = false;
-      clearTimeout(timer);
     };
   }, [session]);
 
   const handleSetDefault = (id) => {
-    setAddresses((prev) =>
-      prev.map((item) => ({
-        ...item,
-        isDefault: item.id === id,
-      }))
-    );
+    const updatedAddresses = addresses.map((item) => ({
+      ...item,
+      isDefault: item.id === id,
+    }));
+    setAddresses(updatedAddresses);
+    
+    // Update on backend
+    const selectedAddr = addresses.find(a => a.id === id);
+    if (selectedAddr) {
+      api.updateAddress(id, { isDefault: true }).catch(err => {
+        console.error('[AddressList] Update default error:', err.message);
+        // Revert on error
+        setAddresses(addresses);
+      });
+    }
   };
 
   const handleDelete = (id) => {
-    Alert.alert('Delete Address', 'Are you sure you want to remove this delivery facility?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        onPress: () => setAddresses((prev) => prev.filter((item) => item.id !== id)),
-        style: 'destructive',
-      },
-    ]);
+    // Show custom confirmation dialog
+    const handleConfirmDelete = async () => {
+      try {
+        await api.deleteAddress(id);
+        setAddresses((prev) => prev.filter((item) => item.id !== id));
+        alertService.success('Success', 'Address deleted successfully.');
+      } catch (err) {
+        alertService.error('Error', err.message || 'Failed to delete address');
+      }
+    };
+
+    // Create a simple confirmation using alert service
+    useAlertStore.getState().showAlert({
+      title: 'Delete Address',
+      message: 'Are you sure you want to remove this delivery facility?',
+      type: 'warning',
+      duration: 5000,
+      buttons: [
+        {
+          text: 'Cancel',
+          onPress: () => useAlertStore.getState().dismissAlert(),
+        },
+        {
+          text: 'Delete',
+          onPress: handleConfirmDelete,
+          style: 'destructive',
+        },
+      ],
+    });
   };
 
   if (!session) {

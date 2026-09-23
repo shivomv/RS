@@ -145,7 +145,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 160 }}
       >
         {/* Product Image Showcase */}
         <View className="bg-[#f2f3ff] px-4 pt-4 pb-6 items-center">
@@ -305,7 +305,7 @@ export default function ProductDetailScreen({ route, navigation }) {
       </ScrollView>
 
       {/* Bottom Sticky Action Bar */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-[#dae2fd] p-4 shadow-lg flex-row items-center justify-between">
+      <View className="absolute left-0 right-0 bg-white border-t border-[#dae2fd] p-4 shadow-lg flex-row items-center justify-between" style={{ bottom: 0, margin: 0, padding: 16 }}>
         <View>
           <Text className="text-[10px] uppercase font-bold text-[#6d7a72]">
             Total ({packQuantity} {packQuantity === 1 ? 'Pack' : 'Packs'})
