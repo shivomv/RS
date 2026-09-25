@@ -69,6 +69,9 @@ exports.createOrder = async (req, res) => {
     orderData.subtotal = sub;
     orderData.gstAmount = gst;
     orderData.totalAmount = tot;
+    orderData.transactionId = orderData.transactionId || orderData.txnId || null;
+    orderData.paymentStatus = orderData.paymentStatus || (orderData.transactionId ? 'paid' : 'pending');
+    orderData.paymentMethod = orderData.paymentMethod || 'Google Pay (Tez UPI)';
 
     const newOrder = await Order.create(orderData);
     res.status(201).json(newOrder);
