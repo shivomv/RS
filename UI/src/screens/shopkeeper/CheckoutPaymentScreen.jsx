@@ -8,6 +8,7 @@ import { useOrderStore } from '../../store/orderStore';
 import { useAuthStore } from '../../store/authStore';
 import { api } from '../../services/api';
 import { alertService } from '../../services/alertService';
+import { triggerGooglePayTezPayment } from '../../services/googlePayTezService';
 
 export default function CheckoutPaymentScreen({ navigation }) {
   const { items, totalAmount, clearCart } = useCartStore();
@@ -127,13 +128,33 @@ export default function CheckoutPaymentScreen({ navigation }) {
       totalAmount: total,
     };
 
+    // Handle Google Pay (Tez) UPI Payment Flow
+    let paymentTxnId = null;
+    if (selectedPayment === 'upi') {
+      const generatedOrderId = `RS-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+      const paymentRes = await triggerGooglePayTezPayment({
+        amount: total,
+        orderId: generatedOrderId,
+        note: `RS Order ${generatedOrderId}`,
+      });
+
+      if (!paymentRes.success) {
+        alertService.error('Payment Cancelled', paymentRes.error || 'Google Pay transaction was not completed.');
+        return;
+      }
+      paymentTxnId = paymentRes.txnId;
+    }
+
+    const orderIdToUse = paymentTxnId ? `RS-ORD-${paymentTxnId}` : `RS-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+
     const newOrder = Object.freeze({
-      id: `RS-ORD-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: orderIdToUse,
       date: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
       status: 'dispatching',
       subtotal,
       total,
-      paymentMethod: selectedPayment === 'upi' ? 'UPI' : 'Net Banking / Cash',
+      paymentMethod: selectedPayment === 'upi' ? 'Google Pay (Tez UPI)' : 'Net Banking / Cash',
+      transactionId: paymentTxnId,
       deliveryAddress: selectedAddr.streetAddress,
       deliveryAddressSnapshot: addressSnapshot,
       buyerSnapshot: buyerSnapshot,
