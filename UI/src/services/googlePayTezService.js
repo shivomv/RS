@@ -22,7 +22,7 @@ export async function executeDirectUpiPaymentFlow({ orderPayload, onVerifyingSta
 
     // Step 3 & 4: Launch Direct Google Pay App
     let paymentResult = { status: 'UNKNOWN' };
-    const targetPayeeName = payeeName || 'Shivom';
+    const targetPayeeName = payeeName || 'RS Industries';
     const formattedAmount = String(Math.round(Number(amount || 0)));
     const txnNote = ''; // Omit commercial order note to bypass NPCI P2P merchant block
 

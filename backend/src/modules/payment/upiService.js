@@ -1,5 +1,5 @@
-const LOCKED_PAYEE_VPA = process.env.UPI_PAYEE_VPA || 'shivom3268@naviaxis';
-const LOCKED_PAYEE_NAME = process.env.UPI_PAYEE_NAME || 'Shivom';
+const LOCKED_PAYEE_VPA = '9026773268-1@okbizaxis';
+const LOCKED_PAYEE_NAME = 'RS Industries';
 
 /**
  * Generates a unique, trackable payment reference (e.g., RS2026000125)
