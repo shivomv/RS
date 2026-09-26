@@ -56,13 +56,17 @@ const orderSchema = new mongoose.Schema({
   totalAmount: { type: Number, required: true },
   paymentMethod: { type: String, default: 'Google Pay (Tez UPI)' },
   transactionId: { type: String },
-  paymentStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'paid' },
+  paymentStatus: { 
+    type: String, 
+    enum: ['pending', 'paid', 'failed', 'PENDING', 'PAID', 'FAILED'], 
+    default: 'pending' 
+  },
   deliveryAddress: { type: String, default: 'Indiranagar, Bengaluru - 560038' },
   driverName: { type: String, default: 'Ramesh Kumar (RS Dispatch)' },
   driverPhone: { type: String, default: '+919876512345' },
   status: { 
     type: String, 
-    enum: ['pending', 'confirmed', 'dispatching', 'delivered', 'cancelled'], 
+    enum: ['pending', 'confirmed', 'dispatching', 'delivered', 'cancelled', 'PENDING', 'CONFIRMED', 'DISPATCHING', 'DELIVERED', 'CANCELLED'], 
     default: 'pending' 
   },
 }, { timestamps: true });

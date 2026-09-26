@@ -10,8 +10,8 @@ const paymentSchema = new mongoose.Schema({
   paymentMethod: { type: String, default: 'Google Pay (Tez UPI)' },
   upiUrl: { type: String },
   transactionId: { type: String, sparse: true },
-  upiStatus: { type: String, enum: ['PENDING', 'SUCCESS', 'FAILED', 'CANCELLED'], default: 'PENDING' },
-  status: { type: String, enum: ['success', 'pending', 'failed'], default: 'pending' },
+  upiStatus: { type: String, enum: ['PENDING', 'SUCCESS', 'FAILED', 'CANCELLED', 'pending', 'success', 'failed', 'cancelled'], default: 'PENDING' },
+  status: { type: String, enum: ['success', 'pending', 'failed', 'SUCCESS', 'PENDING', 'FAILED', 'CANCELLED'], default: 'pending' },
   rawVerification: { type: Object },
   verifiedAt: { type: Date },
 }, { timestamps: true });

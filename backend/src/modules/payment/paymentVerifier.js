@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Payment = require('./payment.model');
 const Order = require('../order/order.model');
 
@@ -11,7 +12,8 @@ async function verifyTransaction({ reference, transactionId, upiStatus, paidAmou
     throw new Error(`Invalid Payment Reference: ${reference} not found in database.`);
   }
 
-  const order = await Order.findOne({ $or: [{ _id: payment.order }, { orderId: payment.orderId }] });
+  const isObjectId = mongoose.Types.ObjectId.isValid(payment.order);
+  const order = await Order.findOne(isObjectId ? { $or: [{ _id: payment.order }, { orderId: payment.orderId }] } : { orderId: payment.orderId });
   if (!order) {
     throw new Error(`Associated Order #${payment.orderId} not found.`);
   }

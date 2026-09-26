@@ -382,6 +382,21 @@ export default function CheckoutPaymentScreen({ navigation }) {
           <Icon name="arrow-forward" size={16} color={(!selectedAddressId || loadingAddresses) ? '#ffffff80' : '#ffffff'} />
         </Pressable>
       </View>
+
+      {/* Verifying Payment Overlay Modal */}
+      <Modal visible={isVerifying} transparent={true} animationType="fade">
+        <View className="flex-1 bg-black/60 justify-center items-center p-6">
+          <View className="bg-white rounded-3xl p-6 items-center w-full max-w-sm shadow-xl">
+            <ActivityIndicator size="large" color="#006948" className="mb-4" />
+            <Text className="text-base font-extrabold text-[#131b2e] text-center">
+              Verifying Payment...
+            </Text>
+            <Text className="text-xs text-[#6d7a72] text-center mt-2 leading-relaxed">
+              Validating transaction details with Node.js server... Please wait.
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

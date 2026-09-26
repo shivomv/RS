@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Payment = require('./payment.model');
 const Order = require('../order/order.model');
 const { generatePaymentReference, generateUpiUrl } = require('./upiService');
@@ -18,10 +19,20 @@ exports.createIntent = async (req, res, next) => {
     const orderId = orderData.orderId || orderData.id || `RS-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
     const reference = generatePaymentReference(orderId);
 
-    // Build Financial Snapshot
-    const sub = orderData.subtotal || orderData.items?.reduce((s, i) => s + ((i.unitPrice || i.price || 99) * (i.quantity || 1)), 0) || 0;
-    const gst = orderData.gstAmount || Math.round(sub * 0.18);
-    const tot = Math.round(orderData.totalAmount || orderData.total || (sub + gst));
+    // Build Financial & Address Snapshots
+    const sub = orderData.subtotal || orderData.financialSnapshot?.subtotal || orderData.items?.reduce((s, i) => s + ((i.unitPrice || i.price || 99) * (i.quantity || 1)), 0) || 0;
+    const gst = orderData.gstAmount || orderData.financialSnapshot?.gstAmount || Math.round(sub * 0.18);
+    const tot = Math.round(orderData.totalAmount || orderData.total || orderData.financialSnapshot?.totalAmount || (sub + gst));
+
+    const financialSnapshot = orderData.financialSnapshot || {
+      subtotal: sub,
+      gstAmount: gst,
+      totalAmount: tot,
+    };
+
+    const deliveryAddressSnapshot = orderData.deliveryAddressSnapshot || {
+      fullAddress: typeof orderData.deliveryAddress === 'string' ? orderData.deliveryAddress : 'Indiranagar, Bengaluru - 560038',
+    };
 
     // Create Order Record in PENDING state
     const order = await Order.create({
@@ -30,6 +41,8 @@ exports.createIntent = async (req, res, next) => {
       subtotal: sub,
       gstAmount: gst,
       totalAmount: tot,
+      financialSnapshot,
+      deliveryAddressSnapshot,
       paymentMethod: 'Google Pay (Tez UPI)',
       paymentStatus: 'PENDING',
       status: 'pending',
@@ -121,7 +134,8 @@ exports.verifyPayment = async (req, res, next) => {
 exports.getPaymentStatus = async (req, res, next) => {
   try {
     const { orderId } = req.params;
-    const order = await Order.findOne({ $or: [{ _id: orderId }, { orderId }] });
+    const isObjectId = mongoose.Types.ObjectId.isValid(orderId);
+    const order = await Order.findOne(isObjectId ? { $or: [{ _id: orderId }, { orderId }] } : { orderId });
     if (!order) {
       return res.status(404).json({ success: false, error: 'Order not found' });
     }
