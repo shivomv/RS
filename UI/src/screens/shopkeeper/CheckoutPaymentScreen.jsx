@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Modal, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
@@ -8,7 +8,7 @@ import { useOrderStore } from '../../store/orderStore';
 import { useAuthStore } from '../../store/authStore';
 import { api } from '../../services/api';
 import { alertService } from '../../services/alertService';
-import { triggerGooglePayTezPayment } from '../../services/googlePayTezService';
+import { executeDirectUpiPaymentFlow } from '../../services/googlePayTezService';
 
 export default function CheckoutPaymentScreen({ navigation }) {
   const { items, totalAmount, clearCart } = useCartStore();
@@ -19,6 +19,7 @@ export default function CheckoutPaymentScreen({ navigation }) {
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [addresses, setAddresses] = useState([]);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   // Load addresses on mount
   useEffect(() => {
@@ -128,44 +129,65 @@ export default function CheckoutPaymentScreen({ navigation }) {
       totalAmount: total,
     };
 
-    // Handle Google Pay (Tez) UPI Payment Flow
-    let paymentTxnId = null;
-    if (selectedPayment === 'upi') {
-      const generatedOrderId = `RS-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
-      const paymentRes = await triggerGooglePayTezPayment({
-        amount: total,
-        orderId: generatedOrderId,
-        note: `RS Order ${generatedOrderId}`,
-      });
+    const orderIdToUse = `RS-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
 
-      if (!paymentRes.success) {
-        alertService.error('Payment Cancelled', paymentRes.error || 'Google Pay transaction was not completed.');
-        return;
-      }
-      paymentTxnId = paymentRes.txnId;
-    }
-
-    const orderIdToUse = paymentTxnId ? `RS-ORD-${paymentTxnId}` : `RS-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
-
-    const newOrder = Object.freeze({
-      id: orderIdToUse,
+    const orderPayload = {
+      orderId: orderIdToUse,
       date: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
-      status: 'dispatching',
+      status: 'pending',
       subtotal,
       total,
+      totalAmount: total,
       paymentMethod: selectedPayment === 'upi' ? 'Google Pay (Tez UPI)' : 'Net Banking / Cash',
-      transactionId: paymentTxnId,
       deliveryAddress: selectedAddr.streetAddress,
       deliveryAddressSnapshot: addressSnapshot,
       buyerSnapshot: buyerSnapshot,
       financialSnapshot: financialSnapshot,
       items: itemSnapshots,
-    });
+      shopkeeper: session?.user?._id,
+    };
 
+    // 1. Google Pay Direct Intent + Server Verification Flow
+    if (selectedPayment === 'upi') {
+      try {
+        const result = await executeDirectUpiPaymentFlow({
+          orderPayload,
+          onVerifyingState: (verifying) => setIsVerifying(verifying),
+        });
+
+        setIsVerifying(false);
+
+        if (result.success) {
+          const finalOrder = {
+            ...orderPayload,
+            id: result.orderId || orderIdToUse,
+            paymentStatus: 'PAID',
+            status: 'confirmed',
+            transactionId: result.transactionId,
+          };
+          clearCart();
+          navigation.replace('OrderSuccess', { order: finalOrder });
+        } else {
+          alertService.error('Payment Error', result.error || 'Payment could not be verified by server.');
+        }
+      } catch (err) {
+        setIsVerifying(false);
+        alertService.error('Payment Error', err.message || 'Payment processing failed.');
+      }
+      return;
+    }
+
+    // 2. Offline / NEFT / Cash Flow
     try {
-      await addOrder(newOrder);
+      const offlineOrder = {
+        ...orderPayload,
+        id: orderIdToUse,
+        status: 'dispatching',
+        paymentStatus: 'PENDING',
+      };
+      await addOrder(offlineOrder);
       clearCart();
-      navigation.replace('OrderSuccess', { order: newOrder });
+      navigation.replace('OrderSuccess', { order: offlineOrder });
     } catch (err) {
       alertService.error('Order Failed', err.message || 'Failed to create order. Please try again.');
     }

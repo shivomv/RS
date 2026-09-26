@@ -3,11 +3,17 @@ const mongoose = require('mongoose');
 const paymentSchema = new mongoose.Schema({
   order: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
   orderId: { type: String, required: true },
+  reference: { type: String, required: true, unique: true },
   shopkeeper: { type: mongoose.Schema.Types.ObjectId, ref: 'Shopkeeper' },
   amount: { type: Number, required: true },
-  paymentMethod: { type: String, enum: ['UPI', 'NET_BANKING', 'CREDIT_LEDGER', 'NEFT_RTGS'], default: 'UPI' },
-  transactionId: { type: String, default: 'TXN-99882234' },
-  status: { type: String, enum: ['success', 'pending', 'failed'], default: 'success' },
+  payeeVpa: { type: String, default: 'shivom3268@naviaxis' },
+  paymentMethod: { type: String, default: 'Google Pay (Tez UPI)' },
+  upiUrl: { type: String },
+  transactionId: { type: String, sparse: true },
+  upiStatus: { type: String, enum: ['PENDING', 'SUCCESS', 'FAILED', 'CANCELLED'], default: 'PENDING' },
+  status: { type: String, enum: ['success', 'pending', 'failed'], default: 'pending' },
+  rawVerification: { type: Object },
+  verifiedAt: { type: Date },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Payment', paymentSchema);
