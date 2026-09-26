@@ -24,16 +24,16 @@ export async function executeDirectUpiPaymentFlow({ orderPayload, onVerifyingSta
     let paymentResult = { status: 'UNKNOWN' };
     const targetPayeeName = payeeName || 'RS Industries';
     const formattedAmount = String(Math.round(Number(amount || 0)));
-    const txnNote = ''; // Omit commercial order note to bypass NPCI P2P merchant block
+    const txnNote = reference || `RS${Date.now()}`;
 
     if (Platform.OS === 'android' && GooglePayTezNative) {
       console.log('[UPI Architecture] Step 3: Launching Google Pay natively via GooglePayModule...');
       paymentResult = await GooglePayTezNative.payWithGooglePay(payeeVpa, targetPayeeName, formattedAmount, txnNote);
     } else {
-      // Fallback intent launching
+      const merchantCode = 'BCR2DN6T36M4XDLR';
       const gpayUrl = `gpay://upi/pay?pa=${encodeURIComponent(payeeVpa)}&pn=${encodeURIComponent(
         targetPayeeName
-      )}&am=${encodeURIComponent(formattedAmount)}&cu=INR`;
+      )}&mc=${merchantCode}&orgid=${merchantCode}&tr=${encodeURIComponent(txnNote)}&am=${encodeURIComponent(formattedAmount)}&cu=INR&tn=${encodeURIComponent('RS Order')}`;
 
       await Linking.openURL(gpayUrl);
       paymentResult = { status: 'SUCCESS' };

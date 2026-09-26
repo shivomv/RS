@@ -29,12 +29,18 @@ class GooglePayModule(private val reactContext: ReactApplicationContext) : React
         pendingPromise = promise
 
         try {
-            val payeeName = if (name.isBlank()) "Shivom" else name
+            val payeeName = if (name.isBlank()) "RS Industries" else name
+            val txnRef = if (!note.isNullOrBlank()) note.replace(" ", "") else "RS${System.currentTimeMillis()}"
+            val merchantCode = "BCR2DN6T36M4XDLR"
+            
             val uriBuilder = Uri.Builder()
                 .scheme("upi")
                 .authority("pay")
                 .appendQueryParameter("pa", vpa)
                 .appendQueryParameter("pn", payeeName)
+                .appendQueryParameter("mc", merchantCode)
+                .appendQueryParameter("orgid", merchantCode)
+                .appendQueryParameter("tr", txnRef)
                 .appendQueryParameter("am", amount)
                 .appendQueryParameter("cu", "INR")
 
