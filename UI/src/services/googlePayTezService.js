@@ -1,19 +1,13 @@
-import { Platform, Linking } from 'react-native';
+import { Platform, Linking, NativeModules } from 'react-native';
+
+const { GooglePayTezNative } = NativeModules;
 
 // Merchant Payment Configuration
-const DEFAULT_MERCHANT_VPA = 'oms43711@okicici';
+const DEFAULT_MERCHANT_VPA = 'shivom3268@naviaxis';
 const DEFAULT_MERCHANT_NAME = 'RS Industries';
-const DEFAULT_MERCHANT_CODE = '5411';
 
 /**
- * Trigger UPI Payment via react-native-google-pay-tez
- * @param {Object} params
- * @param {number|string} params.amount - Total order amount
- * @param {string} params.orderId - Unique order reference ID
- * @param {string} [params.merchantVpa] - Payee UPI VPA
- * @param {string} [params.merchantName] - Payee Business Name
- * @param {string} [params.note] - Transaction Note
- * @returns {Promise<{success: boolean, txnId?: string, raw?: any, error?: string}>}
+ * Directly opens Google Pay App for UPI Payment to shivom3268@naviaxis
  */
 export async function triggerGooglePayTezPayment({
   amount,
@@ -22,92 +16,50 @@ export async function triggerGooglePayTezPayment({
   merchantName = DEFAULT_MERCHANT_NAME,
   note = '',
 }) {
-  const formattedAmount = Number(amount || 0).toFixed(2);
+  const formattedAmount = String(Math.round(Number(amount || 0)));
   const txnNote = note || `Order Payment #${orderId}`;
 
-  // 1. Attempt using react-native-google-pay-tez module
-  try {
-    let GooglePayTez;
+  // 1. Direct Native Android Module targeting Google Pay app specifically
+  if (Platform.OS === 'android' && GooglePayTezNative) {
     try {
-      GooglePayTez = require('react-native-google-pay-tez').default || require('react-native-google-pay-tez');
-    } catch (e) {
-      GooglePayTez = null;
-    }
+      console.log('[GooglePayNative] Launching Google Pay directly...');
+      const res = await GooglePayTezNative.payWithGooglePay(merchantVpa, merchantName, formattedAmount, txnNote);
+      console.log('[GooglePayNative] Result:', res);
 
-    if (GooglePayTez && typeof GooglePayTez.pay === 'function') {
-      const paymentOptions = {
-        pa: merchantVpa,
-        pn: merchantName,
-        tr: orderId,
-        tid: orderId,
-        mc: DEFAULT_MERCHANT_CODE,
-        am: formattedAmount,
-        cu: 'INR',
-        tn: txnNote,
-      };
-
-      console.log('[GooglePayTez] Initiating payment with options:', paymentOptions);
-      const res = await GooglePayTez.pay(paymentOptions);
-
-      // Handle standard UPI Tez response
-      if (res && (res.status === 'SUCCESS' || res.responseCode === '00' || res.status === 'success')) {
+      if (res && res.status === 'SUCCESS') {
         return {
           success: true,
-          txnId: res.txnId || res.ApprovalRefNo || res.txnRef || orderId,
+          txnId: res.txnId || orderId,
           raw: res,
         };
-      } else if (res && (res.status === 'FAILURE' || res.status === 'CANCELLED')) {
+      } else {
         return {
           success: false,
-          error: res.message || 'Payment cancelled by user',
+          error: 'Payment was cancelled or not completed in Google Pay.',
           raw: res,
         };
       }
-
-      // If res is available with valid structure
-      return {
-        success: true,
-        txnId: res?.txnId || orderId,
-        raw: res,
-      };
+    } catch (nativeErr) {
+      console.warn('[GooglePayNative] Native module error:', nativeErr.message);
     }
-  } catch (nativeErr) {
-    console.warn('[GooglePayTez] Native module error, trying UPI Intent fallback:', nativeErr.message);
   }
 
-  // 2. Direct UPI Intent fallback for Android devices
+  // 2. Direct Fallback: Launch Google Pay via GPay Intent (no app chooser)
   try {
-    const upiUrl = `upi://pay?pa=${encodeURIComponent(merchantVpa)}&pn=${encodeURIComponent(
-      merchantName
-    )}&tr=${encodeURIComponent(orderId)}&am=${encodeURIComponent(formattedAmount)}&cu=INR&tn=${encodeURIComponent(
-      txnNote
-    )}`;
-
     const gpayUrl = `gpay://upi/pay?pa=${encodeURIComponent(merchantVpa)}&pn=${encodeURIComponent(
       merchantName
-    )}&tr=${encodeURIComponent(orderId)}&am=${encodeURIComponent(formattedAmount)}&cu=INR&tn=${encodeURIComponent(
-      txnNote
-    )}`;
+    )}&am=${encodeURIComponent(formattedAmount)}&cu=INR&tn=${encodeURIComponent(txnNote)}`;
 
-    const canOpenGPay = await Linking.canOpenURL(gpayUrl).catch(() => false);
-    const targetUrl = canOpenGPay ? gpayUrl : upiUrl;
-
-    const supported = await Linking.canOpenURL(targetUrl).catch(() => false);
-    if (supported || canOpenGPay) {
-      await Linking.openURL(targetUrl);
-      return {
-        success: true,
-        txnId: orderId,
-        fallbackIntent: true,
-      };
-    } else {
-      throw new Error('Google Pay / UPI app is not installed on this device.');
-    }
+    await Linking.openURL(gpayUrl);
+    return {
+      success: true,
+      txnId: orderId,
+    };
   } catch (intentErr) {
-    console.error('[GooglePayTez] Fallback Intent error:', intentErr.message);
+    console.error('[GooglePay] Intent error:', intentErr.message);
     return {
       success: false,
-      error: intentErr.message || 'Failed to launch Google Pay app.',
+      error: 'Google Pay app is not installed on this device.',
     };
   }
 }
