@@ -29,15 +29,20 @@ class GooglePayModule(private val reactContext: ReactApplicationContext) : React
         pendingPromise = promise
 
         try {
-            val uri = Uri.Builder()
+            val payeeName = if (name.isBlank()) "Shivom" else name
+            val uriBuilder = Uri.Builder()
                 .scheme("upi")
                 .authority("pay")
                 .appendQueryParameter("pa", vpa)
-                .appendQueryParameter("pn", name)
+                .appendQueryParameter("pn", payeeName)
                 .appendQueryParameter("am", amount)
                 .appendQueryParameter("cu", "INR")
-                .appendQueryParameter("tn", note)
-                .build()
+
+            if (!note.isNullOrBlank()) {
+                uriBuilder.appendQueryParameter("tn", note)
+            }
+
+            val uri = uriBuilder.build()
 
             val intent = Intent(Intent.ACTION_VIEW, uri)
             intent.setPackage("com.google.android.apps.nbu.paisa.user")
