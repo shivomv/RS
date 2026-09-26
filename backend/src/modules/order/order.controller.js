@@ -83,10 +83,18 @@ exports.createOrder = async (req, res) => {
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, paymentStatus, driverName, driverPhone } = req.body;
+    
+    const updateFields = {};
+    if (status) updateFields.status = status;
+    if (paymentStatus) updateFields.paymentStatus = paymentStatus;
+    if (driverName !== undefined) updateFields.driverName = driverName;
+    if (driverPhone !== undefined) updateFields.driverPhone = driverPhone;
+
+    const isObjectId = mongoose.Types.ObjectId.isValid(id);
     const order = await Order.findOneAndUpdate(
-      { $or: [{ _id: id }, { orderId: id }] },
-      { status },
+      isObjectId ? { $or: [{ _id: id }, { orderId: id }] } : { orderId: id },
+      updateFields,
       { new: true }
     );
     if (!order) {
