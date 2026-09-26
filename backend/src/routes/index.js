@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-// Import All 15 Domain Module Routes
+// Import All 14 Domain Module Routes
 const authRoutes = require('../modules/auth/auth.routes');
 const shopkeeperRoutes = require('../modules/shopkeeper/shopkeeper.routes');
 const productRoutes = require('../modules/product/product.routes');
@@ -13,7 +13,6 @@ const ledgerRoutes = require('../modules/ledger/ledger.routes');
 const ticketRoutes = require('../modules/ticket/ticket.routes');
 const addressRoutes = require('../modules/address/address.routes');
 const inventoryRoutes = require('../modules/inventory/inventory.routes');
-const paymentRoutes = require('../modules/payment/payment.routes');
 const reviewRoutes = require('../modules/review/review.routes');
 const notificationRoutes = require('../modules/notification/notification.routes');
 const auditRoutes = require('../modules/audit/audit.routes');
@@ -30,7 +29,6 @@ router.use('/ledgers', ledgerRoutes);
 router.use('/tickets', ticketRoutes);
 router.use('/addresses', addressRoutes);
 router.use('/inventory', inventoryRoutes);
-router.use('/payments', paymentRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/audits', auditRoutes);

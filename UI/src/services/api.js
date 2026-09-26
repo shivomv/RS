@@ -86,9 +86,4 @@ export const api = {
   getCart: (shopkeeperId) => apiClient.get('/cart', { params: { shopkeeperId } }),
   syncCart: (shopkeeperId, items) => apiClient.post('/cart/sync', { shopkeeperId, items }),
   clearCartBackend: (shopkeeperId) => apiClient.post('/cart/clear', { shopkeeperId }),
-
-  // Payment Verification Architecture APIs
-  createPaymentIntent: (orderData) => apiClient.post('/payments/create-intent', { orderData }),
-  verifyPayment: (verificationPayload) => apiClient.post('/payments/verify', verificationPayload),
-  getPaymentStatus: (orderId) => apiClient.get(`/payments/status/${orderId}`),
 };
