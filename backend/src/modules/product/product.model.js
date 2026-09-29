@@ -64,6 +64,7 @@ const productSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true },
   isFeatured: { type: Boolean, default: false },
   displayOrder: { type: Number, default: 1 },
+  bundles: [bundleSchema],
   variants: [variantSchema],
 }, { timestamps: true });
 

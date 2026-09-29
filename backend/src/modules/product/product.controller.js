@@ -116,8 +116,20 @@ exports.getAllProducts = async (req, res) => {
           });
         });
       } else {
-        // Fallback for single product with no variants
-        const defaultBundle = { bundleId: `b-${doc._id}-1`, label: 'Pack of 1', quantity: 1, price: doc.price || 0, mrp: doc.mrp || doc.price || 0, isDefault: true };
+        // Fallback for single product with top-level bundles
+        const defaultBundle = {
+          bundleId: `b-${doc._id}-1`,
+          label: 'Pack of 1',
+          quantity: 1,
+          price: doc.price || 0,
+          mrp: doc.mrp || doc.price || 0,
+          isDefault: true,
+        };
+        const productBundles = (Array.isArray(doc.bundles) && doc.bundles.length > 0)
+          ? doc.bundles
+          : [defaultBundle];
+        const activeDefaultBundle = productBundles.find(b => b.isDefault) || productBundles[0] || defaultBundle;
+
         formattedProducts.push({
           _id: String(doc._id),
           masterProductId: doc._id,
@@ -129,14 +141,15 @@ exports.getAllProducts = async (req, res) => {
           category: categoryName,
           categorySlug: categorySlug,
           categoryRef: catObj || doc.categoryRef || null,
-          price: doc.price || 0,
-          mrp: doc.mrp || doc.price || 0,
+          price: activeDefaultBundle.price || doc.price || 0,
+          mrp: activeDefaultBundle.mrp || doc.mrp || doc.price || 0,
           badge: doc.badge || 'Wholesale',
           subtitle: doc.subtitle || 'Standard',
           image: doc.image || '',
+          baseImages: doc.baseImages || [],
           stockQuantity: typeof doc.stockQuantity === 'number' ? doc.stockQuantity : 100,
-          bundles: [defaultBundle],
-          defaultBundle: defaultBundle,
+          bundles: productBundles,
+          defaultBundle: activeDefaultBundle,
           isActive: doc.isActive !== false,
           createdAt: doc.createdAt,
           updatedAt: doc.updatedAt,
