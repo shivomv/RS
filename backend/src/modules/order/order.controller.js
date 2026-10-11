@@ -20,12 +20,19 @@ exports.createOrder = async (req, res) => {
       orderData.items = orderData.items.map((i) => {
         const uPrice = i.unitPrice || i.price || i.product?.price || 99;
         const qty = i.quantity || i.qty || 1;
+        const bundleLabel = i.bundleName || i.bundleLabel || i.bundle?.label || i.variantLabel || '';
+        const bundleQty = i.bundleQuantity || i.bundle?.quantity || null;
         return {
           product: i.product?._id || i.product || i._id,
           productId: String(i.productId || i.product?._id || i._id || ''),
+          variantId: String(i.variantId || ''),
+          bundleId: String(i.bundleId || i.bundle?.bundleId || ''),
+          bundleName: bundleLabel,
+          bundleLabel: bundleLabel,
+          bundleQuantity: bundleQty,
           name: i.name || i.product?.name || 'Product',
-          subtitle: i.subtitle || i.size || i.product?.size || '',
-          size: i.size || i.product?.size || '500ml',
+          subtitle: i.subtitle || bundleLabel || i.size || i.product?.size || '',
+          size: i.size || i.product?.size || '',
           image: i.image || i.product?.image || '',
           categoryName: i.categoryName || i.product?.category || '',
           unitPrice: uPrice,
