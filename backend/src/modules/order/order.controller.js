@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Order = require('./order.model');
 
 exports.getAllOrders = async (req, res) => {
