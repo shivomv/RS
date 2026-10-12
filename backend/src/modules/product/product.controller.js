@@ -164,9 +164,54 @@ exports.getAllProducts = async (req, res) => {
   }
 };
 
+async function formatProductPayload(data) {
+  const payload = { ...data };
+  if (payload.category) {
+    if (typeof payload.category === 'string') {
+      const catName = payload.category.trim();
+      const catSlug = catName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      try {
+        const catDoc = await Category.findOne({
+          $or: [
+            { name: new RegExp(`^${catName}$`, 'i') },
+            { slug: catSlug }
+          ]
+        });
+        if (catDoc) {
+          payload.categoryRef = catDoc._id;
+          payload.categorySlug = catDoc.slug;
+          payload.category = {
+            _id: catDoc._id,
+            name: catDoc.name,
+            slug: catDoc.slug,
+          };
+        } else {
+          payload.categorySlug = catSlug;
+          payload.category = {
+            name: catName,
+            slug: catSlug,
+          };
+        }
+      } catch (_) {
+        payload.categorySlug = catSlug;
+        payload.category = { name: catName, slug: catSlug };
+      }
+    } else if (typeof payload.category === 'object') {
+      if (payload.category._id) {
+        payload.categoryRef = payload.category._id;
+      }
+      if (payload.category.slug) {
+        payload.categorySlug = payload.category.slug;
+      }
+    }
+  }
+  return payload;
+}
+
 exports.createProduct = async (req, res) => {
   try {
-    const product = await Product.create(req.body);
+    const payload = await formatProductPayload(req.body);
+    const product = await Product.create(payload);
     res.status(201).json(product);
   } catch (err) {
     res.status(400).json({ error: err.message || 'Failed to create product' });
@@ -176,7 +221,8 @@ exports.createProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const updated = await Product.findByIdAndUpdate(id, req.body, { new: true });
+    const payload = await formatProductPayload(req.body);
+    const updated = await Product.findByIdAndUpdate(id, payload, { new: true });
     if (!updated) {
       return res.status(404).json({ error: 'Product not found' });
     }

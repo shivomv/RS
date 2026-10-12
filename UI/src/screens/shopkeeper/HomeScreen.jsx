@@ -283,8 +283,9 @@ export default function ShopkeeperHomeScreen({ navigation }) {
 
                       <View className="flex-row items-center justify-between mt-3 pt-2 border-t border-[#f2f3ff]">
                         <View className="flex-row items-baseline gap-1">
-                          <Text className="text-base font-extrabold text-[#131b2e]">₹{product.price}</Text>
-                          {product.mrp && <Text className="text-[10px] text-[#6d7a72] line-through">₹{product.mrp}</Text>}
+                          {product.mrp && Number(product.mrp) > Number(product.price) ? (
+                            <Text className="text-[10px] text-[#6d7a72] line-through">₹{product.mrp}</Text>
+                          ) : null}
                         </View>
 
                         {qty === 0 ? (
