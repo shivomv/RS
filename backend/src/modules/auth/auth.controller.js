@@ -63,7 +63,7 @@ exports.verifyToken = async (req, res) => {
       return res.json({
         success: true,
         message: 'Authentication successful',
-        token: `JWT-SESSION-${Date.now()}`,
+        token: user._id.toString(),
         user,
       });
     } catch (err) {

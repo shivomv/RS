@@ -2,7 +2,16 @@ const Cart = require('./cart.model');
 
 exports.getCart = async (req, res, next) => {
   try {
-    const shopkeeperId = req.query.shopkeeperId || req.user?.id;
+    let shopkeeperId = req.query.shopkeeperId;
+    
+    // Try to extract from Authorization header if not in query
+    if (!shopkeeperId && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        shopkeeperId = authHeader.substring(7);
+      }
+    }
+    
     if (!shopkeeperId) {
       return res.json({
         success: true,
@@ -28,7 +37,16 @@ exports.getCart = async (req, res, next) => {
 
 exports.syncCart = async (req, res, next) => {
   try {
-    const { shopkeeperId, items, couponCode, gstRequested } = req.body;
+    let { shopkeeperId, items, couponCode, gstRequested } = req.body;
+    
+    // Try to extract from Authorization header if not in body
+    if (!shopkeeperId && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        shopkeeperId = authHeader.substring(7);
+      }
+    }
+    
     if (!shopkeeperId) {
       return res.status(400).json({
         success: false,
@@ -57,7 +75,16 @@ exports.syncCart = async (req, res, next) => {
 
 exports.clearCart = async (req, res, next) => {
   try {
-    const { shopkeeperId } = req.body;
+    let { shopkeeperId } = req.body;
+    
+    // Try to extract from Authorization header if not in body
+    if (!shopkeeperId && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        shopkeeperId = authHeader.substring(7);
+      }
+    }
+    
     if (shopkeeperId) {
       await Cart.deleteOne({ shopkeeper: shopkeeperId });
     }

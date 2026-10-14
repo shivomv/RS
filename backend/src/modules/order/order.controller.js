@@ -3,7 +3,33 @@ const Order = require('./order.model');
 
 exports.getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 });
+    // Get shopkeeper ID from Authorization header, query param, or body
+    let shopkeeperId = null;
+    
+    // Try to extract from Authorization header (format: "Bearer <shopkeeperId>")
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      shopkeeperId = authHeader.substring(7);
+    }
+    
+    // Override with query parameter if provided
+    if (req.query.shopkeeperId) {
+      shopkeeperId = req.query.shopkeeperId;
+    }
+    
+    // Build filter
+    const filter = {};
+    if (shopkeeperId) {
+      // Try to use it as ObjectId if it's a valid MongoDB ID
+      if (shopkeeperId.match(/^[0-9a-fA-F]{24}$/)) {
+        filter.shopkeeper = shopkeeperId;
+      } else {
+        // Otherwise just match as string
+        filter.shopkeeper = shopkeeperId;
+      }
+    }
+
+    const orders = await Order.find(filter).sort({ createdAt: -1 });
     return res.json(orders || []);
   } catch (err) {
     console.warn('[OrderController] DB error:', err.message);
@@ -13,7 +39,26 @@ exports.getAllOrders = async (req, res) => {
 
 exports.createOrder = async (req, res) => {
   try {
+    const Shopkeeper = require('../shopkeeper/shopkeeper.model');
     const orderData = req.body;
+    
+    // Extract shopkeeper ID from Authorization header if available
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const shopkeeperId = authHeader.substring(7);
+      orderData.shopkeeper = shopkeeperId;
+    } else if (!orderData.shopkeeper && orderData.buyerSnapshot?.mobile) {
+      // Look up shopkeeper by mobile number from buyerSnapshot
+      try {
+        const shopkeeper = await Shopkeeper.findOne({ mobile: orderData.buyerSnapshot.mobile });
+        if (shopkeeper) {
+          orderData.shopkeeper = shopkeeper._id;
+        }
+      } catch (err) {
+        console.warn('[Order] Could not lookup shopkeeper by mobile:', err.message);
+      }
+    }
+    
     orderData.orderId = orderData.orderId || orderData.id || `RS-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
 
     // Build Itemized Product Snapshot

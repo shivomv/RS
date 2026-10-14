@@ -1,5 +1,6 @@
 import axios from 'axios';
 import ENV from '../config/env';
+import { useAuthStore } from '../store/authStore';
 
 const API_BASE_URL = ENV?.API_BASE_URL;
 
@@ -15,7 +16,14 @@ export const apiClient = axios.create({
 // Request Interceptor: Automatically inject Auth token if available
 apiClient.interceptors.request.use(
   (config) => {
-    // If token exists in memory/store, attach Authorization header automatically
+    try {
+      const session = useAuthStore.getState().session;
+      if (session?.token) {
+        config.headers.Authorization = `Bearer ${session.token}`;
+      }
+    } catch (err) {
+      console.warn('[API] Could not attach auth token:', err.message);
+    }
     return config;
   },
   (error) => Promise.reject(error)

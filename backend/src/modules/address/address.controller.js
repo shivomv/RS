@@ -2,7 +2,16 @@ const Address = require('./address.model');
 
 exports.getAddresses = async (req, res, next) => {
   try {
-    const shopkeeperId = req.query.shopkeeperId;
+    let shopkeeperId = req.query.shopkeeperId;
+    
+    // Try to extract from Authorization header if not in query
+    if (!shopkeeperId && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        shopkeeperId = authHeader.substring(7);
+      }
+    }
+    
     const filter = shopkeeperId ? { shopkeeper: shopkeeperId } : {};
     const addresses = await Address.find(filter).sort({ isDefault: -1, createdAt: -1 });
 
@@ -18,7 +27,17 @@ exports.getAddresses = async (req, res, next) => {
 
 exports.addAddress = async (req, res, next) => {
   try {
-    const newAddress = await Address.create(req.body);
+    const addressData = { ...req.body };
+    
+    // Extract shopkeeper ID from Authorization header if not in body
+    if (!addressData.shopkeeper && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        addressData.shopkeeper = authHeader.substring(7);
+      }
+    }
+    
+    const newAddress = await Address.create(addressData);
     res.status(201).json({
       success: true,
       message: 'Address added successfully',
