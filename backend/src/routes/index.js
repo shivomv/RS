@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-// Import All 14 Domain Module Routes
+// Import All 15 Domain Module Routes
 const authRoutes = require('../modules/auth/auth.routes');
 const shopkeeperRoutes = require('../modules/shopkeeper/shopkeeper.routes');
 const productRoutes = require('../modules/product/product.routes');
@@ -16,6 +16,7 @@ const inventoryRoutes = require('../modules/inventory/inventory.routes');
 const reviewRoutes = require('../modules/review/review.routes');
 const notificationRoutes = require('../modules/notification/notification.routes');
 const auditRoutes = require('../modules/audit/audit.routes');
+const companyRoutes = require('../modules/company/company.routes');
 
 // Mount Domain Routes under Master API Router
 router.use('/auth', authRoutes);
@@ -32,6 +33,7 @@ router.use('/inventory', inventoryRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/audits', auditRoutes);
+router.use('/company', companyRoutes);
 
 // API Information & Route Registry Index
 router.get('/', (req, res) => {
@@ -39,7 +41,7 @@ router.get('/', (req, res) => {
     success: true,
     message: 'RS Industries Master API Router v2.0.0 Active',
     correlationId: req.correlationId,
-    modulesCount: 15,
+    modulesCount: 16,
     availableRoutes: [
       '/api/auth',
       '/api/shopkeepers',
@@ -52,10 +54,10 @@ router.get('/', (req, res) => {
       '/api/tickets',
       '/api/addresses',
       '/api/inventory',
-      '/api/payments',
       '/api/reviews',
       '/api/notifications',
-      '/api/audits'
+      '/api/audits',
+      '/api/company'
     ]
   });
 });

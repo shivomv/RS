@@ -94,4 +94,7 @@ export const api = {
   getCart: (shopkeeperId) => apiClient.get('/cart', { params: { shopkeeperId } }),
   syncCart: (shopkeeperId, items) => apiClient.post('/cart/sync', { shopkeeperId, items }),
   clearCartBackend: (shopkeeperId) => apiClient.post('/cart/clear', { shopkeeperId }),
+
+  // Company API
+  getCompanyDetails: () => apiClient.get('/company'),
 };

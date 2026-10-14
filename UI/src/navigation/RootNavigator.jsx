@@ -24,6 +24,7 @@ import OrderSuccessScreen from '../screens/shopkeeper/OrderSuccessScreen';
 import AddressListScreen from '../screens/shopkeeper/AddressListScreen';
 import AddAddressScreen from '../screens/shopkeeper/AddAddressScreen';
 import SupportScreen from '../screens/shopkeeper/SupportScreen';
+import AboutUsScreen from '../screens/shopkeeper/AboutUsScreen';
 
 // Store
 import { useCartStore } from '../store/cartStore';
@@ -146,6 +147,7 @@ export const RootNavigator = () => {
       <Stack.Screen name="AddressList" component={AddressListScreen} />
       <Stack.Screen name="AddAddress" component={AddAddressScreen} />
       <Stack.Screen name="Support" component={SupportScreen} />
+      <Stack.Screen name="AboutUs" component={AboutUsScreen} />
     </Stack.Navigator>
   );
 };

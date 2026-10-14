@@ -171,6 +171,18 @@ export default function ProfileScreen({ navigation }) {
             </TouchableOpacity>
 
             <TouchableOpacity
+              onPress={() => navigation.navigate('AboutUs')}
+              activeOpacity={0.7}
+              className="flex-row items-center justify-between p-3 border-b border-[#f2f3ff]"
+            >
+              <View className="flex-row items-center gap-3">
+                <Icon name="info" size={20} color="#006948" />
+                <Text className="text-xs font-bold text-[#131b2e]">About RS Industries</Text>
+              </View>
+              <Icon name="chevron-right" size={20} color="#006948" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
               onPress={() => navigation.navigate('Support')}
               activeOpacity={0.7}
               className="flex-row items-center justify-between p-3"
