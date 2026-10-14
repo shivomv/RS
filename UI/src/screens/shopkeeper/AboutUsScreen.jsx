@@ -3,12 +3,11 @@ import { View, Text, ScrollView, Pressable, Linking, ActivityIndicator, RefreshC
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
-import { api } from '../../services/api';
+import { useCompanyStore } from '../../store/companyStore';
 
 export default function AboutUsScreen({ navigation }) {
-  const [company, setCompany] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { company, loading, fetchCompanyDetails } = useCompanyStore();
 
   useEffect(() => {
     loadCompanyDetails();
@@ -16,19 +15,15 @@ export default function AboutUsScreen({ navigation }) {
 
   const loadCompanyDetails = async () => {
     try {
-      setLoading(true);
-      const data = await api.getCompanyDetails();
-      setCompany(data?.data || data);
+      await fetchCompanyDetails();
     } catch (err) {
       console.error('[About] Error:', err.message);
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadCompanyDetails();
+    await fetchCompanyDetails();
     setRefreshing(false);
   };
 

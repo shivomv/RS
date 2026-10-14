@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Linking, BackHandler } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Linking, BackHandler, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
 import { api } from '../../services/api';
+import { useCompanyStore } from '../../store/companyStore';
 
 export default function SupportScreen({ navigation }) {
   const [expandedFaq, setExpandedFaq] = useState(null);
   const [message, setMessage] = useState('');
+  const [initializing, setInitializing] = useState(true);
+  
+  const { company, getContactPhone, getWhatsAppNumber, ensureLoaded } = useCompanyStore();
 
   // Hardware Android Back Button Handler
   useEffect(() => {
@@ -23,6 +27,14 @@ export default function SupportScreen({ navigation }) {
     const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => subscription.remove();
   }, [navigation]);
+
+  // Load company details on mount
+  useEffect(() => {
+    (async () => {
+      await ensureLoaded();
+      setInitializing(false);
+    })();
+  }, [ensureLoaded]);
 
   const faqs = [
     {
@@ -55,11 +67,19 @@ export default function SupportScreen({ navigation }) {
   };
 
   const handleCall = () => {
-    Linking.openURL('tel:+919876543210');
+    const phoneNumber = getContactPhone();
+    const cleanNumber = phoneNumber.replace(/\D/g, '');
+    Linking.openURL(`tel:+${cleanNumber}`).catch(() => {
+      Alert.alert('Error', 'Could not open phone dialer');
+    });
   };
 
   const handleWhatsApp = () => {
-    Linking.openURL('https://wa.me/919876543210?text=Hello%20RS%20Industries%20Support');
+    const whatsappNumber = getWhatsAppNumber();
+    const cleanNumber = whatsappNumber.replace(/\D/g, '');
+    Linking.openURL(`https://wa.me/${cleanNumber}?text=Hello%20RS%20Industries%20Support`).catch(() => {
+      Alert.alert('Error', 'Could not open WhatsApp');
+    });
   };
 
   return (
@@ -87,7 +107,7 @@ export default function SupportScreen({ navigation }) {
 
         <TouchableOpacity activeOpacity={0.7} onPress={handleCall} className="bg-[#006948]/10 px-2.5 py-1 rounded-full flex-row items-center gap-1 border border-[#006948]/20">
           <Icon name="call" size={14} color="#006948" />
-          <Text className="text-xs text-[#006948] font-bold">Call Factory</Text>
+          <Text className="text-xs text-[#006948] font-bold">{getContactPhone()}</Text>
         </TouchableOpacity>
       </View>
 

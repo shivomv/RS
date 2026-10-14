@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,19 +7,33 @@ import {
   Image,
   BackHandler,
   TouchableOpacity,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
 import { useCartStore } from '../../store/cartStore';
 
+const { width } = Dimensions.get('window');
+
 export default function ProductDetailScreen({ route, navigation }) {
   const { product } = route?.params || {};
   const { addItem } = useCartStore();
 
+  // Get cart data from store
+  const cartItemCount = useCartStore((state) => state.items.length);
+  const cartTotal = useCartStore((state) => state.totalAmount());
+
   const [toastMessage, setToastMessage] = useState(null);
   const [packQuantity, setPackQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(product?.image || null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const carouselRef = useRef(null);
+
+  // Get all product images
+  const allImages = useMemo(() => {
+    return [product?.image, ...(product?.baseImages || [])].filter(Boolean);
+  }, [product]);
 
   // Hardware Back Handler
   useEffect(() => {
@@ -126,11 +140,17 @@ export default function ProductDetailScreen({ route, navigation }) {
         </View>
 
         <Pressable
-          onPress={() => navigation.navigate('ShopHome')}
-          className="px-3 py-1.5 rounded-full bg-[#006948]/10 border border-[#006948]/20 flex-row items-center gap-1"
+          onPress={() => navigation.navigate('Shopkeeper', { screen: 'Cart' })}
+          className="relative w-10 h-10 rounded-full bg-[#006948]/10 border border-[#006948]/20 justify-center items-center"
         >
-          <Icon name="home" size={16} color="#006948" />
-          <Text className="text-xs font-bold text-[#006948]">Home</Text>
+          <Icon name="shopping-cart" size={20} color="#006948" />
+          {cartItemCount > 0 && (
+            <View className="absolute -top-1 -right-1 bg-[#006948] w-5 h-5 rounded-full justify-center items-center">
+              <Text className="text-[10px] font-bold text-white">
+                {cartItemCount > 99 ? '99+' : cartItemCount}
+              </Text>
+            </View>
+          )}
         </Pressable>
       </View>
 
@@ -148,7 +168,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 160 }}
       >
-        {/* Product Image Showcase */}
+        {/* Product Image Showcase - Swipeable Carousel */}
         <View className="bg-[#f2f3ff] px-4 pt-4 pb-6 items-center">
           <View className="w-full flex-row items-center justify-between gap-2 mb-3">
             <View className="bg-white px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-sm border border-[#dae2fd]">
@@ -161,51 +181,79 @@ export default function ProductDetailScreen({ route, navigation }) {
             </View>
           </View>
 
-          {/* Product Image */}
-          <View className="relative w-full h-56 rounded-2xl bg-white shadow-sm overflow-hidden justify-center items-center p-4 border border-[#eaedff]">
-            {imageUri ? (
-              <Image source={{ uri: imageUri }} className="w-full h-full" resizeMode="contain" />
-            ) : (
-              <Icon name="inventory-2" size={64} color="#bccac0" />
-            )}
+          {/* Product Image Carousel */}
+          {allImages.length > 0 ? (
+            <View className="w-full">
+              <ScrollView
+                ref={carouselRef}
+                horizontal
+                pagingEnabled
+                scrollEventThrottle={16}
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={(event) => {
+                  const contentOffsetX = event.nativeEvent.contentOffset.x;
+                  const currentIndex = Math.round(contentOffsetX / (width - 32));
+                  setCurrentImageIndex(currentIndex);
+                  setSelectedImage(allImages[currentIndex]);
+                }}
+                className="w-full"
+                style={{ width: width - 32 }}
+              >
+                {allImages.map((imgUri, idx) => (
+                  <View key={idx} className="relative justify-center items-center p-4 bg-white rounded-2xl border border-[#eaedff]" style={{ width: width - 32, height: 224 }}>
+                    {imgUri ? (
+                      <Image source={{ uri: imgUri }} className="w-full h-full" resizeMode="contain" />
+                    ) : (
+                      <Icon name="inventory-2" size={64} color="#bccac0" />
+                    )}
 
-            {product?.badge && (
-              <View className="absolute top-3 left-3 z-10 bg-[#006948] px-2.5 py-1 rounded-md shadow-sm">
-                <Text className="text-[9px] text-white font-bold uppercase">{product.badge}</Text>
-              </View>
-            )}
+                    {product?.badge && idx === 0 && (
+                      <View className="absolute top-3 left-3 z-10 bg-[#006948] px-2.5 py-1 rounded-md shadow-sm">
+                        <Text className="text-[9px] text-white font-bold uppercase">{product.badge}</Text>
+                      </View>
+                    )}
 
-            <View className="absolute top-3 right-3 z-10 bg-white/90 px-2 py-1 rounded-lg flex-row items-center gap-1 shadow-sm border border-[#dae2fd]">
-              <Icon name="star" size={14} color="#f59e0b" />
-              <Text className="text-xs font-bold text-[#131b2e]">4.9</Text>
+                    {idx === 0 && (
+                      <View className="absolute top-3 right-3 z-10 bg-white/90 px-2 py-1 rounded-lg flex-row items-center gap-1 shadow-sm border border-[#dae2fd]">
+                        <Icon name="star" size={14} color="#f59e0b" />
+                        <Text className="text-xs font-bold text-[#131b2e]">4.9</Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
+
+              {/* Image Counter & Indicator Dots */}
+              {allImages.length > 1 && (
+                <View className="flex-row items-center justify-center gap-2 mt-3">
+                  {allImages.map((_, idx) => (
+                    <Pressable
+                      key={idx}
+                      onPress={() => {
+                        carouselRef.current?.scrollTo({ x: idx * (width - 32), animated: true });
+                      }}
+                      className={`rounded-full transition-all ${
+                        idx === currentImageIndex ? 'bg-[#006948] w-2 h-2' : 'bg-[#bccac0] w-1.5 h-1.5'
+                      }`}
+                    />
+                  ))}
+                </View>
+              )}
+
+              {allImages.length > 1 && (
+                <View className="mt-2 flex-row justify-center">
+                  <View className="bg-[#006948]/10 px-3 py-1 rounded-full">
+                    <Text className="text-[10px] text-[#006948] font-bold">
+                      {currentImageIndex + 1} / {allImages.length}
+                    </Text>
+                  </View>
+                </View>
+              )}
             </View>
-          </View>
-
-          {/* Gallery Images Carousel */}
-          {product?.baseImages && product.baseImages.length > 0 && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="w-full mt-4"
-              contentContainerStyle={{ paddingHorizontal: 0, gap: 8 }}
-            >
-              {[product.image, ...product.baseImages].filter(Boolean).map((imgUri, idx) => (
-                <Pressable
-                  key={idx}
-                  onPress={() => setSelectedImage(imgUri)}
-                  className="w-16 h-16 rounded-xl bg-white border-2 overflow-hidden justify-center items-center shadow-sm"
-                  style={{
-                    borderColor: selectedImage === imgUri ? '#006948' : '#dae2fd',
-                  }}
-                >
-                  <Image
-                    source={{ uri: imgUri }}
-                    className="w-full h-full"
-                    resizeMode="cover"
-                  />
-                </Pressable>
-              ))}
-            </ScrollView>
+          ) : (
+            <View className="relative w-full h-56 rounded-2xl bg-white shadow-sm overflow-hidden justify-center items-center p-4 border border-[#eaedff]">
+              <Icon name="inventory-2" size={64} color="#bccac0" />
+            </View>
           )}
         </View>
 
@@ -333,28 +381,31 @@ export default function ProductDetailScreen({ route, navigation }) {
       </ScrollView>
 
       {/* Bottom Sticky Action Bar */}
-      <View className="absolute left-0 right-0 bg-white border-t border-[#dae2fd] p-4 shadow-lg flex-row items-center justify-between" style={{ bottom: 0, margin: 0, padding: 16 }}>
-        <View>
-          <Text className="text-[10px] uppercase font-bold text-[#6d7a72]">
-            Total ({packQuantity} {packQuantity === 1 ? 'Pack' : 'Packs'})
-          </Text>
-          <View className="flex-row items-baseline gap-1">
-            <Text className="text-xl font-black text-[#131b2e]">₹{totalPrice}</Text>
-            {selectedBundle?.mrp > selectedBundle?.price && (
-              <Text className="text-xs text-[#6d7a72] line-through">
-                ₹{selectedBundle.mrp * packQuantity}
-              </Text>
-            )}
+      <View className="absolute left-0 right-0 bg-white border-t border-[#dae2fd] shadow-lg" style={{ bottom: 0 }}>
+        {/* Price and Add to Cart Row */}
+        <View className="flex-row items-center justify-between px-4 py-4">
+          <View>
+            <Text className="text-[10px] uppercase font-bold text-[#6d7a72]">
+              Total ({packQuantity} {packQuantity === 1 ? 'Pack' : 'Packs'})
+            </Text>
+            <View className="flex-row items-baseline gap-1">
+              <Text className="text-xl font-black text-[#131b2e]">₹{totalPrice}</Text>
+              {selectedBundle?.mrp > selectedBundle?.price && (
+                <Text className="text-xs text-[#6d7a72] line-through">
+                  ₹{selectedBundle.mrp * packQuantity}
+                </Text>
+              )}
+            </View>
           </View>
-        </View>
 
-        <Pressable
-          onPress={handleAddToCart}
-          className="bg-[#006948] px-6 py-3.5 rounded-xl flex-row items-center gap-2 shadow-md active:opacity-90"
-        >
-          <Icon name="add-shopping-cart" size={18} color="#ffffff" />
-          <Text className="text-xs font-bold text-white uppercase tracking-wider">Add to Cart</Text>
-        </Pressable>
+          <Pressable
+            onPress={handleAddToCart}
+            className="bg-[#006948] px-6 py-3.5 rounded-xl flex-row items-center gap-2 shadow-md active:opacity-90"
+          >
+            <Icon name="add-shopping-cart" size={18} color="#ffffff" />
+            <Text className="text-xs font-bold text-white uppercase tracking-wider">Add to Cart</Text>
+          </Pressable>
+        </View>
       </View>
     </SafeAreaView>
   );

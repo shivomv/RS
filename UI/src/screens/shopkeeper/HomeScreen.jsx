@@ -16,12 +16,14 @@ import RSLogo from '../../components/RSLogo';
 import { ProductCardSkeleton, CategorySkeleton } from '../../components/Skeleton';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
+import { useCompanyStore } from '../../store/companyStore';
 import { api } from '../../services/api';
 import { getDefaultProductPricing } from '../../utils/productHelper';
 
 export default function ShopkeeperHomeScreen({ navigation }) {
   const { items, addItem, removeItem, updateQuantity, totalAmount, itemCount } = useCartStore();
   const { session } = useAuthStore();
+  const { ensureLoaded: loadCompanyDetails } = useCompanyStore();
   const [dbProducts, setDbProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +32,9 @@ export default function ShopkeeperHomeScreen({ navigation }) {
 
   const loadData = useCallback(async () => {
     try {
+      // Load company details for use across app
+      await loadCompanyDetails();
+      
       const [prodRes, catRes] = await Promise.all([
         api.getProducts().catch(() => []),
         api.getCategories().catch(() => []),
@@ -39,7 +44,7 @@ export default function ShopkeeperHomeScreen({ navigation }) {
     } catch (err) {
       console.error('[Home] Load error:', err.message);
     }
-  }, []);
+  }, [loadCompanyDetails]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
