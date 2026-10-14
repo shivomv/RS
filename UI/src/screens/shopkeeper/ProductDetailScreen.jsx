@@ -19,6 +19,7 @@ export default function ProductDetailScreen({ route, navigation }) {
 
   const [toastMessage, setToastMessage] = useState(null);
   const [packQuantity, setPackQuantity] = useState(1);
+  const [selectedImage, setSelectedImage] = useState(product?.image || null);
 
   // Hardware Back Handler
   useEffect(() => {
@@ -100,7 +101,7 @@ export default function ProductDetailScreen({ route, navigation }) {
     triggerToast(`Added ${packQuantity}x ${selectedBundle.label} (₹${totalPrice}) to cart!`);
   }, [addItem, product, selectedBundle, packQuantity, triggerToast]);
 
-  const imageUri = selectedBundle?.image || product?.image;
+  const imageUri = selectedImage || product?.image;
   const totalPrice = (selectedBundle?.price || 0) * packQuantity;
 
   return (
@@ -179,6 +180,33 @@ export default function ProductDetailScreen({ route, navigation }) {
               <Text className="text-xs font-bold text-[#131b2e]">4.9</Text>
             </View>
           </View>
+
+          {/* Gallery Images Carousel */}
+          {product?.baseImages && product.baseImages.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="w-full mt-4"
+              contentContainerStyle={{ paddingHorizontal: 0, gap: 8 }}
+            >
+              {[product.image, ...product.baseImages].filter(Boolean).map((imgUri, idx) => (
+                <Pressable
+                  key={idx}
+                  onPress={() => setSelectedImage(imgUri)}
+                  className="w-16 h-16 rounded-xl bg-white border-2 overflow-hidden justify-center items-center shadow-sm"
+                  style={{
+                    borderColor: selectedImage === imgUri ? '#006948' : '#dae2fd',
+                  }}
+                >
+                  <Image
+                    source={{ uri: imgUri }}
+                    className="w-full h-full"
+                    resizeMode="cover"
+                  />
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
         </View>
 
         {/* Master Product Name & Details */}
