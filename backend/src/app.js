@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
-const mongoose = require('mongoose');
+const { connectDB, dialect, sequelize } = require('./config/database');
+const { syncDatabase } = require('./models');
 
 // Import Master API Router
 const apiRoutes = require('./routes');
@@ -18,106 +19,59 @@ app.use((req, res, next) => {
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Correlation-ID']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Correlation-ID'],
 }));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Serverless-Compatible MongoDB Auto-Connection Middleware
+// Database Auto-Connection Middleware
+let isDbInitialized = false;
 async function ensureDbConnected(req, res, next) {
-  if (mongoose.connection.readyState === 1) {
-    return next();
-  }
-
-  const MONGO_URI = process.env.MONGO_URI;
-  if (!MONGO_URI) {
-    console.error('❌ [DB Middleware] MONGO_URI is not set in process.env');
-    return res.status(500).json({
-      success: false,
-      error: 'Database Configuration Error: MONGO_URI environment variable is missing in process.env',
-      code: 'DB_CONFIG_ERROR',
-      correlationId: req.correlationId
-    });
-  }
-
-  try {
-    if (mongoose.connection.readyState === 0) {
-      await mongoose.connect(MONGO_URI, {
-        serverSelectionTimeoutMS: 10000,
-        connectTimeoutMS: 10000,
+  if (!isDbInitialized) {
+    try {
+      await connectDB();
+      await syncDatabase();
+      isDbInitialized = true;
+    } catch (err) {
+      console.error('❌ [DB Middleware] Database Connection Error:', err.message);
+      return res.status(503).json({
+        success: false,
+        error: `Database Connection Failed: ${err.message}`,
+        code: 'DB_CONNECTION_ERROR',
+        correlationId: req.correlationId,
       });
-    } else if (mongoose.connection.readyState === 2) {
-      let retries = 50;
-      while (mongoose.connection.readyState === 2 && retries > 0) {
-        await new Promise((r) => setTimeout(r, 100));
-        retries--;
-      }
     }
-
-    if (mongoose.connection.readyState === 1) {
-      return next();
-    }
-
-    throw new Error(`MongoDB connection state is ${mongoose.connection.readyState}`);
-  } catch (err) {
-    console.error('❌ [DB Middleware] MongoDB Connection Error:', err.message);
-    return res.status(503).json({
-      success: false,
-      error: `Database Connection Failed: ${err.message}`,
-      code: 'DB_CONNECTION_ERROR',
-      correlationId: req.correlationId
-    });
   }
+  next();
 }
 
 app.use(ensureDbConnected);
 
-// Mount Master API Router for all 15 domain modules under /api
+// Mount Master API Router for all domain modules under /api
 app.use('/api', apiRoutes);
 
 // Health Check Helper
 const getHealthStatus = async (req) => {
-  const MONGO_URI = process.env.MONGO_URI;
-  if (mongoose.connection.readyState === 0 && MONGO_URI) {
-    try {
-      await mongoose.connect(MONGO_URI, {
-        serverSelectionTimeoutMS: 10000,
-        connectTimeoutMS: 10000,
-      });
-    } catch (e) {
-      console.error('❌ [Health Check] Auto-connect attempt failed:', e.message);
-    }
-  }
-
-  const dbStateMap = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
-  const readyState = mongoose.connection.readyState;
-  const dbStatus = dbStateMap[readyState] || 'unknown';
-
-  let dbStats = { connected: readyState === 1 };
-  if (readyState === 1) {
-    try {
-      dbStats = {
-        connected: true,
-        dbName: mongoose.connection.name,
-        host: mongoose.connection.host,
-      };
-    } catch (e) {
-      dbStats.error = e.message;
-    }
+  let isConnected = false;
+  try {
+    await sequelize.authenticate();
+    isConnected = true;
+  } catch (_) {
+    isConnected = false;
   }
 
   return {
-    success: readyState === 1,
+    success: isConnected,
     message: 'RS Industries API Engine is running',
     version: '2.0.0',
-    dbHealth: {
-      status: dbStatus,
-      readyState,
-      ...dbStats
+    database: {
+      dialect: dialect.toUpperCase(),
+      connected: isConnected,
+      storage: dialect === 'sqlite' ? 'backend/data/database.sqlite' : undefined,
     },
     correlationId: req.correlationId,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 };
 
@@ -138,7 +92,7 @@ app.use((req, res) => {
     success: false,
     error: `Route ${req.method} ${req.originalUrl} not found`,
     code: 'NOT_FOUND',
-    correlationId: req.correlationId
+    correlationId: req.correlationId,
   });
 });
 
@@ -149,8 +103,8 @@ app.use((err, req, res, next) => {
   res.status(statusCode).json({
     success: false,
     error: err.message || 'Internal Server Error',
-    code: err.code || 'INTERNAL_SERVER_ERROR',
-    correlationId: req.correlationId
+    code: err.code || 'INTERNAL_ERROR',
+    correlationId: req.correlationId,
   });
 });
 

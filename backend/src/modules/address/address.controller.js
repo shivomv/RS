@@ -1,24 +1,34 @@
-const Address = require('./address.model');
+const { Address } = require('../../models');
+
+function formatAddress(a) {
+  const json = a.toJSON ? a.toJSON() : a;
+  return {
+    ...json,
+    _id: String(json.id),
+  };
+}
 
 exports.getAddresses = async (req, res, next) => {
   try {
     let shopkeeperId = req.query.shopkeeperId;
-    
-    // Try to extract from Authorization header if not in query
-    if (!shopkeeperId && req.headers.authorization) {
-      const authHeader = req.headers.authorization;
-      if (authHeader.startsWith('Bearer ')) {
-        shopkeeperId = authHeader.substring(7);
-      }
+    if (!shopkeeperId && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      shopkeeperId = req.headers.authorization.substring(7);
     }
-    
-    const filter = shopkeeperId ? { shopkeeper: shopkeeperId } : {};
-    const addresses = await Address.find(filter).sort({ isDefault: -1, createdAt: -1 });
+
+    const where = {};
+    if (shopkeeperId && !isNaN(Number(shopkeeperId))) {
+      where.shopkeeperId = Number(shopkeeperId);
+    }
+
+    const addresses = await Address.findAll({
+      where,
+      order: [['isDefault', 'DESC'], ['createdAt', 'DESC']],
+    });
 
     res.json({
       success: true,
-      data: addresses,
-      correlationId: req.correlationId
+      data: addresses.map(formatAddress),
+      correlationId: req.correlationId,
     });
   } catch (error) {
     next(error);
@@ -28,21 +38,19 @@ exports.getAddresses = async (req, res, next) => {
 exports.addAddress = async (req, res, next) => {
   try {
     const addressData = { ...req.body };
-    
-    // Extract shopkeeper ID from Authorization header if not in body
-    if (!addressData.shopkeeper && req.headers.authorization) {
-      const authHeader = req.headers.authorization;
-      if (authHeader.startsWith('Bearer ')) {
-        addressData.shopkeeper = authHeader.substring(7);
-      }
+    if (!addressData.shopkeeperId && addressData.shopkeeper) {
+      addressData.shopkeeperId = Number(addressData.shopkeeper) || null;
     }
-    
+    if (!addressData.shopkeeperId && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      addressData.shopkeeperId = Number(req.headers.authorization.substring(7)) || null;
+    }
+
     const newAddress = await Address.create(addressData);
     res.status(201).json({
       success: true,
       message: 'Address added successfully',
-      data: newAddress,
-      correlationId: req.correlationId
+      data: formatAddress(newAddress),
+      correlationId: req.correlationId,
     });
   } catch (error) {
     next(error);
@@ -51,11 +59,12 @@ exports.addAddress = async (req, res, next) => {
 
 exports.updateAddress = async (req, res, next) => {
   try {
-    const updated = await Address.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updated) {
+    const address = await Address.findByPk(req.params.id);
+    if (!address) {
       return res.status(404).json({ success: false, error: 'Address not found', correlationId: req.correlationId });
     }
-    res.json({ success: true, data: updated, correlationId: req.correlationId });
+    await address.update(req.body);
+    res.json({ success: true, data: formatAddress(address), correlationId: req.correlationId });
   } catch (error) {
     next(error);
   }
@@ -63,7 +72,10 @@ exports.updateAddress = async (req, res, next) => {
 
 exports.deleteAddress = async (req, res, next) => {
   try {
-    await Address.findByIdAndDelete(req.params.id);
+    const address = await Address.findByPk(req.params.id);
+    if (address) {
+      await address.destroy();
+    }
     res.json({ success: true, message: 'Address deleted', correlationId: req.correlationId });
   } catch (error) {
     next(error);

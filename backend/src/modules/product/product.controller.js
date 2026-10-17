@@ -1,246 +1,260 @@
-const mongoose = require('mongoose');
-const Product = require('./product.model');
-const Category = require('../category/category.model');
+const { Op } = require('sequelize');
+const { Product, ProductBundle, Category } = require('../../models');
+
+function formatProductResponse(prod) {
+  const json = prod.toJSON ? prod.toJSON() : prod;
+  const bundlesList = (json.bundles || []).map((b) => ({
+    _id: String(b.id || b.bundleId),
+    bundleId: b.bundleId || `BNDL-${b.id}`,
+    label: b.label,
+    quantity: Number(b.quantity || 1),
+    price: Number(b.price || json.price || 0),
+    mrp: Number(b.mrp || json.mrp || b.price || json.price || 0),
+    stockQuantity: Number(b.stockQuantity || 100),
+    isDefault: Boolean(b.isDefault),
+  }));
+
+  const defaultBundle = bundlesList.find((b) => b.isDefault) || bundlesList[0] || {
+    bundleId: `b-${json.id}-1`,
+    label: 'Pack of 1',
+    quantity: 1,
+    price: Number(json.price || 0),
+    mrp: Number(json.mrp || json.price || 0),
+    isDefault: true,
+  };
+
+  return {
+    _id: String(json.id),
+    id: json.id,
+    masterProductId: json.id,
+    variantId: 'default',
+    name: json.name || '',
+    rawProductName: json.name,
+    variantLabel: json.subtitle || 'Standard',
+    subtitle: json.subtitle || 'Standard',
+    description: json.description || '',
+    brand: json.brand || 'RS Pro',
+    category: json.categoryName || json.category?.name || 'General',
+    categorySlug: json.categorySlug || json.category?.slug || '',
+    categoryRef: json.categoryId,
+    price: defaultBundle.price || Number(json.price || 0),
+    mrp: defaultBundle.mrp || Number(json.mrp || json.price || 0),
+    badge: json.badge || 'Wholesale',
+    image: json.image || '',
+    baseImages: Array.isArray(json.baseImages) ? json.baseImages : [],
+    stockQuantity: Number(json.stockQuantity || 100),
+    bundles: bundlesList.length > 0 ? bundlesList : [defaultBundle],
+    defaultBundle,
+    isActive: json.isActive !== false,
+    isFeatured: Boolean(json.isFeatured),
+    displayOrder: Number(json.displayOrder || 1),
+    createdAt: json.createdAt,
+    updatedAt: json.updatedAt,
+  };
+}
 
 exports.getAllProducts = async (req, res) => {
   try {
     const { category, search } = req.query;
-    let query = {};
+    const where = {};
 
-    if (category && category.trim().toUpperCase() !== 'ALL') {
-      const catInput = category.trim();
-
-      // Check if input is a MongoDB ObjectId
-      const isObjectId = mongoose.Types.ObjectId.isValid(catInput);
-
-      let matchedCat = null;
-
-      // Build conditions to find category
-      const catConditions = [];
-      
-      // If it looks like an ObjectId, search by _id
-      if (isObjectId) {
-        catConditions.push({ _id: new mongoose.Types.ObjectId(catInput) });
-      }
-      
-      // Always search by slug and name
-      catConditions.push(
-        { slug: catInput.toLowerCase() },
-        { name: { $regex: new RegExp(`^${catInput.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}`, 'i') } }
-      );
-
-      // Try to find the category
-      try {
-        matchedCat = await Category.findOne({ $or: catConditions });
-      } catch (e) {
-        console.warn('[Product Controller] Error finding category:', e.message);
-      }
-
-      // If category found, query products by categoryRef or categorySlug or category name/slug
-      if (matchedCat) {
-        const catNameEscaped = matchedCat.name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-        const catSlugEscaped = matchedCat.slug.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-        
-        query.$or = [
-          { categoryRef: matchedCat._id },
-          { categorySlug: matchedCat.slug },
-          { category: matchedCat.slug },
-          { category: matchedCat.name },
-          { category: { $regex: new RegExp(`^${catNameEscaped}`, 'i') } },
-          { category: { $regex: new RegExp(`^${catSlugEscaped}`, 'i') } },
-        ];
-      } else {
-        // If category not found in DB, search products by the raw input (slug, name, or ID)
-        const catEscaped = catInput.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-        query.$or = [
-          { categorySlug: catInput.toLowerCase() },
-          { category: catInput },
-          { category: { $regex: new RegExp(`^${catEscaped}`, 'i') } },
-        ];
-        
-        // If input looks like an ObjectId, also search by categoryRef
-        if (isObjectId) {
-          query.$or.push({ categoryRef: new mongoose.Types.ObjectId(catInput) });
-        }
-      }
-    }
-
+    // Search filter
     if (search && search.trim()) {
-      query.name = { $regex: search.trim(), $options: 'i' };
+      const term = `%${search.trim()}%`;
+      where[Op.or] = [
+        { name: { [Op.like]: term } },
+        { subtitle: { [Op.like]: term } },
+        { brand: { [Op.like]: term } },
+      ];
     }
 
-    const products = await Product.find(query).populate('categoryRef').sort({ createdAt: -1 });
-
-    const formattedProducts = [];
-
-    (products || []).forEach((p) => {
-      const doc = p.toObject ? p.toObject() : p;
-      const catObj = doc.categoryRef && typeof doc.categoryRef === 'object' ? doc.categoryRef : null;
-      const categoryName = catObj?.name || doc.category || '';
-      const categorySlug = catObj?.slug || doc.categorySlug || categoryName.toLowerCase().replace(/\s+/g, '-');
-      const variants = Array.isArray(doc.variants) ? doc.variants : [];
-
-      if (variants.length > 0) {
-        // Expand each variant into a standalone buyer-side product card
-        variants.forEach((v) => {
-          const bundles = Array.isArray(v.bundles) && v.bundles.length > 0 ? v.bundles : [
-            { bundleId: `b-${v._id || '1'}-1`, label: 'Pack of 1', quantity: 1, price: v.basePrice || doc.price || 0, mrp: v.baseMrp || doc.mrp || doc.price || 0, isDefault: true }
-          ];
-
-          const defaultBundle = bundles.find((b) => b.isDefault) || bundles[0];
-          const variantIdStr = String(v._id || v.sku || v.label).replace(/\s+/g, '-');
-          const buyerProductId = `${doc._id}_${variantIdStr}`;
-
-          formattedProducts.push({
-            _id: buyerProductId,
-            masterProductId: doc._id,
-            variantId: v._id || variantIdStr,
-            name: `${doc.name} (${v.label})`,
-            rawProductName: doc.name,
-            variantLabel: v.label,
-            description: doc.description || '',
-            category: categoryName,
-            categorySlug: categorySlug,
-            categoryRef: catObj || doc.categoryRef || null,
-            price: defaultBundle.price,
-            mrp: defaultBundle.mrp || defaultBundle.price,
-            badge: doc.badge || 'Wholesale',
-            subtitle: `${v.label} • ${defaultBundle.label}`,
-            image: defaultBundle.image || (v.variantImages && v.variantImages[0]) || doc.image || '',
-            stockQuantity: typeof v.stockQuantity === 'number' ? v.stockQuantity : doc.stockQuantity || 100,
-            bundles: bundles,
-            defaultBundle: defaultBundle,
-            isActive: doc.isActive !== false && v.isActive !== false,
-            createdAt: doc.createdAt,
-            updatedAt: doc.updatedAt,
-          });
-        });
+    // Category filter
+    if (category && category.trim().toUpperCase() !== 'ALL') {
+      const catTrim = category.trim();
+      const numId = Number(catTrim);
+      if (!isNaN(numId) && numId > 0) {
+        where[Op.or] = [
+          ...(where[Op.or] || []),
+          { categoryId: numId },
+        ];
       } else {
-        // Fallback for single product with top-level bundles
-        const defaultBundle = {
-          bundleId: `b-${doc._id}-1`,
-          label: 'Pack of 1',
-          quantity: 1,
-          price: doc.price || 0,
-          mrp: doc.mrp || doc.price || 0,
-          isDefault: true,
-        };
-        const productBundles = (Array.isArray(doc.bundles) && doc.bundles.length > 0)
-          ? doc.bundles
-          : [defaultBundle];
-        const activeDefaultBundle = productBundles.find(b => b.isDefault) || productBundles[0] || defaultBundle;
-
-        formattedProducts.push({
-          _id: String(doc._id),
-          masterProductId: doc._id,
-          variantId: 'default',
-          name: doc.name || '',
-          rawProductName: doc.name,
-          variantLabel: doc.subtitle || 'Standard',
-          description: doc.description || '',
-          category: categoryName,
-          categorySlug: categorySlug,
-          categoryRef: catObj || doc.categoryRef || null,
-          price: activeDefaultBundle.price || doc.price || 0,
-          mrp: activeDefaultBundle.mrp || doc.mrp || doc.price || 0,
-          badge: doc.badge || 'Wholesale',
-          subtitle: doc.subtitle || 'Standard',
-          image: doc.image || '',
-          baseImages: doc.baseImages || [],
-          stockQuantity: typeof doc.stockQuantity === 'number' ? doc.stockQuantity : 100,
-          bundles: productBundles,
-          defaultBundle: activeDefaultBundle,
-          isActive: doc.isActive !== false,
-          createdAt: doc.createdAt,
-          updatedAt: doc.updatedAt,
-        });
+        where[Op.or] = [
+          ...(where[Op.or] || []),
+          { categoryName: { [Op.like]: `%${catTrim}%` } },
+          { categorySlug: { [Op.like]: `%${catTrim.toLowerCase()}%` } },
+        ];
       }
+    }
+
+    const products = await Product.findAll({
+      where,
+      include: [
+        { model: ProductBundle, as: 'bundles' },
+        { model: Category, as: 'category' },
+      ],
+      order: [['displayOrder', 'ASC'], ['id', 'DESC']],
     });
 
-    return res.json(formattedProducts);
+    return res.json(products.map(formatProductResponse));
   } catch (err) {
     console.error('[ProductController] DB product query error:', err.message);
     return res.status(500).json({ error: err.message || 'Failed to fetch products' });
   }
 };
 
-async function formatProductPayload(data) {
-  const payload = { ...data };
-  if (payload.category) {
-    if (typeof payload.category === 'string') {
-      const catName = payload.category.trim();
-      const catSlug = catName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      try {
-        const catDoc = await Category.findOne({
-          $or: [
-            { name: new RegExp(`^${catName}$`, 'i') },
-            { slug: catSlug }
-          ]
-        });
-        if (catDoc) {
-          payload.categoryRef = catDoc._id;
-          payload.categorySlug = catDoc.slug;
-          payload.category = {
-            _id: catDoc._id,
-            name: catDoc.name,
-            slug: catDoc.slug,
-          };
-        } else {
-          payload.categorySlug = catSlug;
-          payload.category = {
-            name: catName,
-            slug: catSlug,
-          };
-        }
-      } catch (_) {
-        payload.categorySlug = catSlug;
-        payload.category = { name: catName, slug: catSlug };
-      }
-    } else if (typeof payload.category === 'object') {
-      if (payload.category._id) {
-        payload.categoryRef = payload.category._id;
-      }
-      if (payload.category.slug) {
-        payload.categorySlug = payload.category.slug;
-      }
-    }
-  }
-  return payload;
-}
-
 exports.createProduct = async (req, res) => {
   try {
-    const payload = await formatProductPayload(req.body);
-    const product = await Product.create(payload);
-    res.status(201).json(product);
+    const data = req.body;
+    let categoryId = data.categoryId || null;
+    let categoryName = data.categoryName || '';
+    let categorySlug = data.categorySlug || '';
+
+    // Handle category name or object
+    if (data.category) {
+      if (typeof data.category === 'string') {
+        categoryName = data.category.trim();
+        categorySlug = categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const cat = await Category.findOne({
+          where: {
+            [Op.or]: [{ name: categoryName }, { slug: categorySlug }],
+          },
+        });
+        if (cat) {
+          categoryId = cat.id;
+          categoryName = cat.name;
+          categorySlug = cat.slug;
+        }
+      } else if (typeof data.category === 'object') {
+        categoryId = data.category.id || data.category._id || categoryId;
+        categoryName = data.category.name || categoryName;
+        categorySlug = data.category.slug || categorySlug;
+      }
+    }
+
+    const product = await Product.create({
+      name: (data.name || '').trim(),
+      slug: (data.slug || (data.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')).trim(),
+      subtitle: (data.subtitle || '').trim(),
+      description: (data.description || '').trim(),
+      brand: (data.brand || 'RS Pro').trim(),
+      categoryId,
+      categoryName,
+      categorySlug,
+      price: Number(data.price || 0),
+      mrp: Number(data.mrp || data.price || 0),
+      badge: (data.badge || 'Wholesale').trim(),
+      image: (data.image || '').trim(),
+      baseImages: Array.isArray(data.baseImages) ? data.baseImages : [],
+      stockQuantity: Number(data.stockQuantity || 100),
+      displayOrder: Number(data.displayOrder || 1),
+      isActive: data.isActive !== false,
+      isFeatured: Boolean(data.isFeatured),
+    });
+
+    // Create bundles if provided
+    if (Array.isArray(data.bundles) && data.bundles.length > 0) {
+      const bundleRecords = data.bundles.map((b, i) => ({
+        productId: product.id,
+        bundleId: b.bundleId || `BNDL-${i + 1}`,
+        label: b.label || `Pack of ${b.quantity || 1}`,
+        quantity: Number(b.quantity || 1),
+        price: Number(b.price || product.price),
+        mrp: Number(b.mrp || b.price || product.price),
+        stockQuantity: Number(b.stockQuantity || 100),
+        isDefault: Boolean(b.isDefault || i === 0),
+      }));
+      await ProductBundle.bulkCreate(bundleRecords);
+    }
+
+    const created = await Product.findByPk(product.id, {
+      include: [{ model: ProductBundle, as: 'bundles' }],
+    });
+
+    return res.status(201).json(formatProductResponse(created));
   } catch (err) {
-    res.status(400).json({ error: err.message || 'Failed to create product' });
+    return res.status(400).json({ error: err.message || 'Failed to create product' });
   }
 };
 
 exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const payload = await formatProductPayload(req.body);
-    const updated = await Product.findByIdAndUpdate(id, payload, { new: true });
-    if (!updated) {
+    const product = await Product.findByPk(id);
+    if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
-    res.json(updated);
+
+    const data = req.body;
+    const updateFields = {};
+    if (data.name !== undefined) updateFields.name = data.name.trim();
+    if (data.subtitle !== undefined) updateFields.subtitle = data.subtitle.trim();
+    if (data.description !== undefined) updateFields.description = data.description.trim();
+    if (data.brand !== undefined) updateFields.brand = data.brand.trim();
+    if (data.badge !== undefined) updateFields.badge = data.badge.trim();
+    if (data.price !== undefined) updateFields.price = Number(data.price);
+    if (data.mrp !== undefined) updateFields.mrp = Number(data.mrp);
+    if (data.stockQuantity !== undefined) updateFields.stockQuantity = Number(data.stockQuantity);
+    if (data.displayOrder !== undefined) updateFields.displayOrder = Number(data.displayOrder);
+    if (data.isActive !== undefined) updateFields.isActive = Boolean(data.isActive);
+    if (data.isFeatured !== undefined) updateFields.isFeatured = Boolean(data.isFeatured);
+    if (data.image !== undefined) updateFields.image = data.image.trim();
+    if (data.baseImages !== undefined) updateFields.baseImages = data.baseImages;
+
+    if (data.category) {
+      if (typeof data.category === 'string') {
+        const cat = await Category.findOne({
+          where: { [Op.or]: [{ name: data.category.trim() }, { slug: data.category.trim().toLowerCase() }] },
+        });
+        if (cat) {
+          updateFields.categoryId = cat.id;
+          updateFields.categoryName = cat.name;
+          updateFields.categorySlug = cat.slug;
+        } else {
+          updateFields.categoryName = data.category.trim();
+        }
+      }
+    }
+
+    await product.update(updateFields);
+
+    // Update bundles if provided
+    if (Array.isArray(data.bundles)) {
+      await ProductBundle.destroy({ where: { productId: product.id } });
+      if (data.bundles.length > 0) {
+        const bundleRecords = data.bundles.map((b, i) => ({
+          productId: product.id,
+          bundleId: b.bundleId || `BNDL-${i + 1}`,
+          label: b.label || `Pack of ${b.quantity || 1}`,
+          quantity: Number(b.quantity || 1),
+          price: Number(b.price || product.price),
+          mrp: Number(b.mrp || b.price || product.price),
+          stockQuantity: Number(b.stockQuantity || 100),
+          isDefault: Boolean(b.isDefault || i === 0),
+        }));
+        await ProductBundle.bulkCreate(bundleRecords);
+      }
+    }
+
+    const updated = await Product.findByPk(product.id, {
+      include: [{ model: ProductBundle, as: 'bundles' }],
+    });
+
+    return res.json(formatProductResponse(updated));
   } catch (err) {
-    res.status(400).json({ error: err.message || 'Failed to update product' });
+    return res.status(400).json({ error: err.message || 'Failed to update product' });
   }
 };
 
 exports.deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await Product.findByIdAndDelete(id);
-    if (!deleted) {
+    const product = await Product.findByPk(id);
+    if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
-    res.json({ message: 'Product deleted successfully' });
+    await product.destroy();
+    return res.json({ success: true, message: 'Product deleted successfully' });
   } catch (err) {
-    res.status(400).json({ error: err.message || 'Failed to delete product' });
+    return res.status(400).json({ error: err.message || 'Failed to delete product' });
   }
 };

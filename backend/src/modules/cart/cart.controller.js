@@ -1,34 +1,34 @@
-const Cart = require('./cart.model');
+const { Cart } = require('../../models');
 
 exports.getCart = async (req, res, next) => {
   try {
     let shopkeeperId = req.query.shopkeeperId;
-    
-    // Try to extract from Authorization header if not in query
-    if (!shopkeeperId && req.headers.authorization) {
-      const authHeader = req.headers.authorization;
-      if (authHeader.startsWith('Bearer ')) {
-        shopkeeperId = authHeader.substring(7);
-      }
+    if (!shopkeeperId && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      shopkeeperId = req.headers.authorization.substring(7);
     }
-    
-    if (!shopkeeperId) {
+
+    const numId = Number(shopkeeperId);
+    if (!shopkeeperId || isNaN(numId)) {
       return res.json({
         success: true,
         data: { items: [], couponCode: 'RSBULK100', gstRequested: true },
-        correlationId: req.correlationId
+        correlationId: req.correlationId,
       });
     }
 
-    let cart = await Cart.findOne({ shopkeeper: shopkeeperId });
-    if (!cart) {
-      cart = { items: [], couponCode: 'RSBULK100', gstRequested: true };
-    }
+    let cart = await Cart.findOne({ where: { shopkeeperId: numId } });
+    const cartData = cart
+      ? {
+          items: cart.items || [],
+          couponCode: cart.couponCode || 'RSBULK100',
+          gstRequested: cart.gstRequested !== false,
+        }
+      : { items: [], couponCode: 'RSBULK100', gstRequested: true };
 
     res.json({
       success: true,
-      data: cart,
-      correlationId: req.correlationId
+      data: cartData,
+      correlationId: req.correlationId,
     });
   } catch (error) {
     next(error);
@@ -38,35 +38,41 @@ exports.getCart = async (req, res, next) => {
 exports.syncCart = async (req, res, next) => {
   try {
     let { shopkeeperId, items, couponCode, gstRequested } = req.body;
-    
-    // Try to extract from Authorization header if not in body
-    if (!shopkeeperId && req.headers.authorization) {
-      const authHeader = req.headers.authorization;
-      if (authHeader.startsWith('Bearer ')) {
-        shopkeeperId = authHeader.substring(7);
-      }
+    if (!shopkeeperId && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      shopkeeperId = req.headers.authorization.substring(7);
     }
-    
-    if (!shopkeeperId) {
+
+    const numId = Number(shopkeeperId);
+    if (!shopkeeperId || isNaN(numId)) {
       return res.status(400).json({
         success: false,
-        error: 'Shopkeeper ID is required to sync cart',
+        error: 'Valid numeric Shopkeeper ID is required to sync cart',
         code: 'INVALID_INPUT',
-        correlationId: req.correlationId
+        correlationId: req.correlationId,
       });
     }
 
-    const cart = await Cart.findOneAndUpdate(
-      { shopkeeper: shopkeeperId },
-      { items: items || [], couponCode: couponCode || 'RSBULK100', gstRequested: gstRequested !== false },
-      { new: true, upsert: true }
-    );
+    let [cart] = await Cart.findOrCreate({
+      where: { shopkeeperId: numId },
+      defaults: {
+        shopkeeperId: numId,
+        items: items || [],
+        couponCode: couponCode || 'RSBULK100',
+        gstRequested: gstRequested !== false,
+      },
+    });
+
+    await cart.update({
+      items: items || [],
+      couponCode: couponCode || 'RSBULK100',
+      gstRequested: gstRequested !== false,
+    });
 
     res.json({
       success: true,
       message: 'Cart synchronized successfully',
       data: cart,
-      correlationId: req.correlationId
+      correlationId: req.correlationId,
     });
   } catch (error) {
     next(error);
@@ -76,22 +82,18 @@ exports.syncCart = async (req, res, next) => {
 exports.clearCart = async (req, res, next) => {
   try {
     let { shopkeeperId } = req.body;
-    
-    // Try to extract from Authorization header if not in body
-    if (!shopkeeperId && req.headers.authorization) {
-      const authHeader = req.headers.authorization;
-      if (authHeader.startsWith('Bearer ')) {
-        shopkeeperId = authHeader.substring(7);
-      }
+    if (!shopkeeperId && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      shopkeeperId = req.headers.authorization.substring(7);
     }
-    
-    if (shopkeeperId) {
-      await Cart.deleteOne({ shopkeeper: shopkeeperId });
+
+    const numId = Number(shopkeeperId);
+    if (shopkeeperId && !isNaN(numId)) {
+      await Cart.destroy({ where: { shopkeeperId: numId } });
     }
     res.json({
       success: true,
       message: 'Cart cleared',
-      correlationId: req.correlationId
+      correlationId: req.correlationId,
     });
   } catch (error) {
     next(error);

@@ -1,9 +1,18 @@
-const Banner = require('./banner.model');
+const { Banner } = require('../../models');
+
+function formatBanner(b) {
+  const json = b.toJSON ? b.toJSON() : b;
+  return {
+    ...json,
+    _id: String(json.id),
+    imageUrl: json.image,
+  };
+}
 
 exports.getBanners = async (req, res) => {
   try {
-    const banners = await Banner.find({ isActive: true });
-    return res.json(banners || []);
+    const banners = await Banner.findAll({ where: { isActive: true } });
+    return res.json(banners.map(formatBanner));
   } catch (err) {
     console.warn('[BannerController] DB error:', err.message);
     return res.json([]);
@@ -13,9 +22,9 @@ exports.getBanners = async (req, res) => {
 exports.createBanner = async (req, res) => {
   try {
     const data = { ...req.body };
-    data.image = data.image || data.imageUrl || '';
+    data.image = (data.image || data.imageUrl || '').trim();
     const banner = await Banner.create(data);
-    res.status(201).json(banner);
+    res.status(201).json(formatBanner(banner));
   } catch (err) {
     res.status(400).json({ error: err.message || 'Failed to create banner' });
   }
@@ -24,10 +33,11 @@ exports.createBanner = async (req, res) => {
 exports.deleteBanner = async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await Banner.findByIdAndDelete(id);
-    if (!deleted) {
+    const banner = await Banner.findByPk(id);
+    if (!banner) {
       return res.status(404).json({ error: 'Banner not found' });
     }
+    await banner.destroy();
     res.json({ success: true, message: 'Banner deleted successfully' });
   } catch (err) {
     res.status(400).json({ error: err.message || 'Failed to delete banner' });

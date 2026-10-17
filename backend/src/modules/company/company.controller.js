@@ -1,12 +1,9 @@
-const Company = require('./company.model');
+const Company = require('../../models/Company');
 
-// Get company details (public endpoint for buyer app)
 exports.getCompanyDetails = async (req, res, next) => {
   try {
     let company = await Company.findOne();
-    
     if (!company) {
-      // Create default company if doesn't exist
       company = await Company.create({});
     }
 
@@ -20,21 +17,15 @@ exports.getCompanyDetails = async (req, res, next) => {
   }
 };
 
-// Update company details (admin only)
 exports.updateCompanyDetails = async (req, res, next) => {
   try {
     const updateData = req.body;
-    
     let company = await Company.findOne();
-    
+
     if (!company) {
-      // Create if doesn't exist
       company = await Company.create(updateData);
     } else {
-      // Update existing
-      Object.assign(company, updateData);
-      company.updatedAt = new Date();
-      await company.save();
+      await company.update(updateData);
     }
 
     res.json({
@@ -48,11 +39,9 @@ exports.updateCompanyDetails = async (req, res, next) => {
   }
 };
 
-// Get company details for admin
 exports.getCompanyForAdmin = async (req, res, next) => {
   try {
     let company = await Company.findOne();
-    
     if (!company) {
       company = await Company.create({});
     }

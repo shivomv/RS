@@ -1,6 +1,14 @@
-const Shopkeeper = require('../shopkeeper/shopkeeper.model');
+const { Shopkeeper } = require('../../models');
 
 const pendingTokens = new Map();
+
+function formatUser(u) {
+  const json = u.toJSON ? u.toJSON() : u;
+  return {
+    ...json,
+    _id: String(json.id),
+  };
+}
 
 exports.requestToken = async (req, res) => {
   const { mobile, name } = req.body;
@@ -42,8 +50,8 @@ exports.verifyToken = async (req, res) => {
   if (isDefaultOtp || isValidStored) {
     try {
       const nameFromRequest = storedData?.name || `Customer ${mobile.slice(-4)}`;
-      
-      let user = await Shopkeeper.findOne({ mobile });
+
+      let user = await Shopkeeper.findOne({ where: { mobile } });
       if (!user) {
         user = await Shopkeeper.create({
           name: nameFromRequest,
@@ -52,19 +60,18 @@ exports.verifyToken = async (req, res) => {
           role: 'buyer',
         });
       } else {
-        // Update name if provided
         if (nameFromRequest && nameFromRequest !== `Customer ${mobile.slice(-4)}`) {
-          user.name = nameFromRequest;
-          await user.save();
+          await user.update({ name: nameFromRequest });
         }
       }
 
       pendingTokens.delete(mobile);
+      const formatted = formatUser(user);
       return res.json({
         success: true,
         message: 'Authentication successful',
-        token: user._id.toString(),
-        user,
+        token: String(user.id),
+        user: formatted,
       });
     } catch (err) {
       console.error('DB authentication error:', err.message);

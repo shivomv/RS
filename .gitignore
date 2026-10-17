@@ -38,3 +38,9 @@ coverage/
 *.swo
 *~
 .DS_Store
+
+# SQLite Databases
+*.sqlite
+*.sqlite3
+*.db
+backend/data/
