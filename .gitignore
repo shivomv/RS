@@ -6,6 +6,9 @@ node_modules/
 .env
 .env.local
 .env.*.local
+.aws-credentials.env
+*.env
+!*.env.example
 
 # IDE
 .vscode/

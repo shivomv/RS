@@ -1,4 +1,5 @@
 const { Category } = require('../../models');
+const { uploadBase64 } = require('../../services/s3.service');
 
 function formatCategory(c) {
   const json = c.toJSON ? c.toJSON() : c;
@@ -28,10 +29,15 @@ exports.createCategory = async (req, res) => {
       return res.status(400).json({ error: 'Category name is required' });
     }
     const catSlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    let catImage = (image || icon || '').trim();
+    if (catImage.startsWith('data:')) {
+      catImage = await uploadBase64(catImage, 'categories');
+    }
+
     const category = await Category.create({
       name: name.trim(),
       slug: catSlug,
-      image: (image || icon || '').trim(), // Use image only, no icon
+      image: catImage, // Use image only, no icon
       displayOrder: Number(displayOrder || 0),
       isActive: isActive !== false,
     });
@@ -50,7 +56,11 @@ exports.updateCategory = async (req, res) => {
     }
     const updateData = { ...req.body };
     if (updateData.image || updateData.icon) {
-      updateData.image = (updateData.image || updateData.icon).trim();
+      let img = (updateData.image || updateData.icon).trim();
+      if (img.startsWith('data:')) {
+        img = await uploadBase64(img, 'categories');
+      }
+      updateData.image = img;
     }
     await category.update(updateData);
     return res.json(formatCategory(category));

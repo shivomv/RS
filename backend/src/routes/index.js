@@ -17,6 +17,7 @@ const reviewRoutes = require('../modules/review/review.routes');
 const notificationRoutes = require('../modules/notification/notification.routes');
 const auditRoutes = require('../modules/audit/audit.routes');
 const companyRoutes = require('../modules/company/company.routes');
+const uploadRoutes = require('../modules/upload/upload.routes');
 
 // Mount Domain Routes under Master API Router
 router.use('/auth', authRoutes);
@@ -34,6 +35,7 @@ router.use('/reviews', reviewRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/audits', auditRoutes);
 router.use('/company', companyRoutes);
+router.use('/upload', uploadRoutes);
 
 // API Information & Route Registry Index
 router.get('/', (req, res) => {

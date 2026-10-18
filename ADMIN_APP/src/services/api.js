@@ -1,4 +1,6 @@
-const API_BASE_URL = 'https://rs-gamma-olive.vercel.app/api';
+import ENV from '../config/env';
+
+const API_BASE_URL = ENV.API_BASE_URL;
 
 async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;

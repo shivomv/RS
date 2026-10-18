@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
 const { Product, ProductBundle, Category } = require('../../models');
+const { uploadBase64 } = require('../../services/s3.service');
 
 function formatProductResponse(prod) {
   const json = prod.toJSON ? prod.toJSON() : prod;
@@ -131,6 +132,18 @@ exports.createProduct = async (req, res) => {
       }
     }
 
+    let primaryImage = (data.image || '').trim();
+    if (primaryImage.startsWith('data:')) {
+      primaryImage = await uploadBase64(primaryImage, 'products');
+    }
+
+    let galleryImages = Array.isArray(data.baseImages) ? data.baseImages : [];
+    if (galleryImages.length > 0) {
+      galleryImages = await Promise.all(
+        galleryImages.map((img) => (typeof img === 'string' && img.startsWith('data:') ? uploadBase64(img, 'products') : img))
+      );
+    }
+
     const product = await Product.create({
       name: (data.name || '').trim(),
       slug: (data.slug || (data.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')).trim(),
@@ -143,8 +156,8 @@ exports.createProduct = async (req, res) => {
       price: Number(data.price || 0),
       mrp: Number(data.mrp || data.price || 0),
       badge: (data.badge || 'Wholesale').trim(),
-      image: (data.image || '').trim(),
-      baseImages: Array.isArray(data.baseImages) ? data.baseImages : [],
+      image: primaryImage,
+      baseImages: galleryImages,
       stockQuantity: Number(data.stockQuantity || 100),
       displayOrder: Number(data.displayOrder || 1),
       isActive: data.isActive !== false,
@@ -197,8 +210,18 @@ exports.updateProduct = async (req, res) => {
     if (data.displayOrder !== undefined) updateFields.displayOrder = Number(data.displayOrder);
     if (data.isActive !== undefined) updateFields.isActive = Boolean(data.isActive);
     if (data.isFeatured !== undefined) updateFields.isFeatured = Boolean(data.isFeatured);
-    if (data.image !== undefined) updateFields.image = data.image.trim();
-    if (data.baseImages !== undefined) updateFields.baseImages = data.baseImages;
+    if (data.image !== undefined) {
+      let img = (data.image || '').trim();
+      if (img.startsWith('data:')) {
+        img = await uploadBase64(img, 'products');
+      }
+      updateFields.image = img;
+    }
+    if (data.baseImages !== undefined && Array.isArray(data.baseImages)) {
+      updateFields.baseImages = await Promise.all(
+        data.baseImages.map((img) => (typeof img === 'string' && img.startsWith('data:') ? uploadBase64(img, 'products') : img))
+      );
+    }
 
     if (data.category) {
       if (typeof data.category === 'string') {
