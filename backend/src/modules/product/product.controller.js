@@ -221,17 +221,40 @@ exports.updateProduct = async (req, res) => {
     if (Array.isArray(data.bundles)) {
       await ProductBundle.destroy({ where: { productId: product.id } });
       if (data.bundles.length > 0) {
-        const bundleRecords = data.bundles.map((b, i) => ({
-          productId: product.id,
-          bundleId: b.bundleId || `BNDL-${i + 1}`,
-          label: b.label || `Pack of ${b.quantity || 1}`,
-          quantity: Number(b.quantity || 1),
-          price: Number(b.price || product.price),
-          mrp: Number(b.mrp || b.price || product.price),
-          stockQuantity: Number(b.stockQuantity || 100),
-          isDefault: Boolean(b.isDefault || i === 0),
-        }));
+        const bundleRecords = data.bundles.map((b, i) => {
+          const isSingleUnit = Number(b.quantity || 1) === 1;
+          const isDef = Boolean(b.isDefault || i === 0);
+          const currentPrice = updateFields.price !== undefined ? updateFields.price : Number(product.price);
+          const currentMrp = updateFields.mrp !== undefined ? updateFields.mrp : Number(product.mrp || product.price);
+          const bPrice = (isSingleUnit || isDef) ? currentPrice : Number(b.price || currentPrice);
+          const bMrp = (isSingleUnit || isDef) ? currentMrp : Number(b.mrp || b.price || currentPrice);
+
+          return {
+            productId: product.id,
+            bundleId: b.bundleId || `BNDL-${i + 1}`,
+            label: b.label || (isSingleUnit ? 'Pack of 1' : `Pack of ${b.quantity || 1}`),
+            quantity: Number(b.quantity || 1),
+            price: bPrice,
+            mrp: bMrp,
+            stockQuantity: Number(b.stockQuantity || 100),
+            isDefault: isDef,
+          };
+        });
         await ProductBundle.bulkCreate(bundleRecords);
+      }
+    } else if (updateFields.price !== undefined || updateFields.mrp !== undefined) {
+      // Sync existing default/single-unit bundles if price changed without bundles payload
+      const singleBundle = await ProductBundle.findOne({
+        where: {
+          productId: product.id,
+          [Op.or]: [{ quantity: 1 }, { isDefault: true }],
+        },
+      });
+      if (singleBundle) {
+        const bundleUpdates = {};
+        if (updateFields.price !== undefined) bundleUpdates.price = updateFields.price;
+        if (updateFields.mrp !== undefined) bundleUpdates.mrp = updateFields.mrp;
+        await singleBundle.update(bundleUpdates);
       }
     }
 

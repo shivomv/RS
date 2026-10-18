@@ -245,15 +245,48 @@ export default function ProductManagementScreen({
 
     setSaving(true);
     try {
-      const formattedBundles = (bundles || []).map((b, i) => ({
-        bundleId: b.bundleId || `BNDL-${i + 1}`,
-        label: b.label || `Pack of ${b.quantity || 1}`,
-        quantity: Number(b.quantity || 1),
-        price: Number(b.price || price),
-        mrp: Number(b.mrp || b.price || price),
-        stockQuantity: Number(b.stockQuantity || 100),
-        isDefault: Boolean(b.isDefault || i === 0),
-      }));
+      let formattedBundles = (bundles || []).map((b, i) => {
+        const isSingleUnit = Number(b.quantity || 1) === 1;
+        const isDef = Boolean(b.isDefault || (i === 0 && !bundles.some((x) => x.isDefault)));
+        // Single unit or default pack always syncs with the updated Wholesale Price and MRP
+        const bundlePrice = (isSingleUnit || isDef) ? Number(price) : Number(b.price || price);
+        const bundleMrp = (isSingleUnit || isDef) ? Number(mrp || price) : Number(b.mrp || b.price || price);
+
+        return {
+          bundleId: b.bundleId || `BNDL-${i + 1}`,
+          label: b.label || (isSingleUnit ? 'Pack of 1' : `Pack of ${b.quantity || 1}`),
+          quantity: Number(b.quantity || 1),
+          price: bundlePrice,
+          mrp: bundleMrp,
+          stockQuantity: Number(b.stockQuantity || 100),
+          isDefault: isDef,
+        };
+      });
+
+      // Ensure at least one default bundle exists
+      if (formattedBundles.length > 0 && !formattedBundles.some((b) => b.isDefault)) {
+        const singleIdx = formattedBundles.findIndex((b) => Number(b.quantity) === 1);
+        if (singleIdx >= 0) {
+          formattedBundles[singleIdx].isDefault = true;
+        } else {
+          formattedBundles[0].isDefault = true;
+        }
+      }
+
+      // If no bundles are configured, provide the default single pack bundle
+      if (formattedBundles.length === 0) {
+        formattedBundles = [
+          {
+            bundleId: 'BNDL-1',
+            label: 'Pack of 1',
+            quantity: 1,
+            price: Number(price),
+            mrp: Number(mrp || price),
+            stockQuantity: Number(stockQuantity || 100),
+            isDefault: true,
+          },
+        ];
+      }
 
       const payload = {
         name: (name || '').trim(),
@@ -273,8 +306,11 @@ export default function ProductManagementScreen({
         bundles: formattedBundles,
       };
 
-      if (selectedProduct?._id) {
-        await adminApi.updateProduct(selectedProduct._id, payload);
+      const rawId = selectedProduct?.masterProductId || selectedProduct?.id || selectedProduct?._id;
+      const targetId = typeof rawId === 'string' ? rawId.split('_')[0] : rawId;
+
+      if (targetId) {
+        await adminApi.updateProduct(targetId, payload);
         Alert.alert('Product Saved', `Updated ${name} with ${formattedBundles.length} bundle tier(s).`);
       } else {
         await adminApi.createProduct(payload);
@@ -663,7 +699,16 @@ export default function ProductManagementScreen({
                 </Text>
                 <TextInput
                   value={price}
-                  onChangeText={setPrice}
+                  onChangeText={(val) => {
+                    setPrice(val);
+                    setBundles((prev) =>
+                      (prev || []).map((b) =>
+                        Number(b.quantity || 1) === 1 || b.isDefault
+                          ? { ...b, price: Number(val) || 0 }
+                          : b
+                      )
+                    );
+                  }}
                   placeholder="e.g. 99"
                   placeholderTextColor="#94a3b8"
                   keyboardType="numeric"
@@ -677,7 +722,16 @@ export default function ProductManagementScreen({
                 </Text>
                 <TextInput
                   value={mrp}
-                  onChangeText={setMrp}
+                  onChangeText={(val) => {
+                    setMrp(val);
+                    setBundles((prev) =>
+                      (prev || []).map((b) =>
+                        Number(b.quantity || 1) === 1 || b.isDefault
+                          ? { ...b, mrp: Number(val) || 0 }
+                          : b
+                      )
+                    );
+                  }}
                   placeholder="e.g. 150"
                   placeholderTextColor="#94a3b8"
                   keyboardType="numeric"
