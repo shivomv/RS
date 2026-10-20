@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator, RefreshControl, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { adminApi } from '../services/api';
 import { CategoryCardSkeleton, SkeletonList } from '../components/Skeletons';
 import Alert from '../utils/alert';
@@ -36,6 +37,7 @@ export default function CategoryManagementScreen({ categories: initialCategories
   const [editingCategory, setEditingCategory] = useState(null);
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('cleaning-services');
+  const [image, setImage] = useState('');
   const [displayOrder, setDisplayOrder] = useState('1');
   const [saving, setSaving] = useState(false);
 
@@ -44,14 +46,40 @@ export default function CategoryManagementScreen({ categories: initialCategories
       setEditingCategory(cat);
       setName(cat.name || '');
       setIcon(cat.icon || 'cleaning-services');
+      setImage(cat.image || '');
       setDisplayOrder(String(cat.displayOrder || '1'));
     } else {
       setEditingCategory(null);
       setName('');
       setIcon('cleaning-services');
+      setImage('');
       setDisplayOrder(String(categoryList.length + 1));
     }
     setActiveView('editor');
+  };
+
+  const handlePickCategoryImage = async () => {
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        selectionLimit: 1,
+        includeBase64: true,
+        quality: 0.7,
+        maxWidth: 800,
+        maxHeight: 800,
+      });
+      if (!result.didCancel && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const img = asset.base64
+          ? `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`
+          : asset.uri;
+        if (img) {
+          setImage(img);
+        }
+      }
+    } catch (err) {
+      Alert.alert('Gallery Error', 'Could not open device gallery');
+    }
   };
 
   const handleSave = async () => {
@@ -59,7 +87,13 @@ export default function CategoryManagementScreen({ categories: initialCategories
     setSaving(true);
     try {
       const slug = name.trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
-      const payload = { name: name.trim(), slug, icon: icon.trim() || 'cleaning-services', displayOrder: Number(displayOrder || 1) };
+      const payload = {
+        name: name.trim(),
+        slug,
+        icon: icon.trim() || 'cleaning-services',
+        image: image.trim() || icon.trim() || 'cleaning-services',
+        displayOrder: Number(displayOrder || 1)
+      };
       if (editingCategory?._id) {
         await adminApi.updateCategory(editingCategory._id, payload);
         Alert.alert('Saved', `Updated ${name} successfully.`);
@@ -110,6 +144,44 @@ export default function CategoryManagementScreen({ categories: initialCategories
                 placeholderTextColor="#94a3b8"
                 className="bg-input rounded-2xl px-4 py-3.5 text-xs font-bold text-ink border border-border" />
               <Text className="text-[10px] text-faint mt-1">Icon name from Google MaterialIcons set.</Text>
+            </View>
+            <View className="mb-4">
+              <Text className="text-[11px] font-bold text-muted mb-2 uppercase tracking-wider">
+                Category Image (Square Full-Size)
+              </Text>
+              
+              {image ? (
+                <View className="items-center mb-2">
+                  <View className="w-28 h-28 rounded-2xl bg-input border border-border overflow-hidden mb-3">
+                    <Image source={{ uri: image }} className="w-full h-full" resizeMode="cover" />
+                  </View>
+                  <View className="flex-row gap-2">
+                    <Pressable
+                      onPress={handlePickCategoryImage}
+                      className="bg-brand px-3.5 py-2 rounded-xl flex-row items-center gap-1.5 active:opacity-90"
+                    >
+                      <Icon name="photo-library" size={16} color="#ffffff" />
+                      <Text className="text-xs font-bold text-white">Change Photo</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setImage('')}
+                      className="bg-red-500/10 px-3.5 py-2 rounded-xl border border-red-500/30 flex-row items-center gap-1.5 active:opacity-90"
+                    >
+                      <Icon name="delete" size={16} color="#ef4444" />
+                      <Text className="text-xs font-bold text-red-500">Remove</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : (
+                <Pressable
+                  onPress={handlePickCategoryImage}
+                  className="border-2 border-dashed border-border rounded-2xl p-6 items-center justify-center bg-input/50 mb-2 active:opacity-75"
+                >
+                  <Icon name="add-photo-alternate" size={36} color="#006948" />
+                  <Text className="text-xs font-extrabold text-ink mt-2">Upload Image from Gallery</Text>
+                  <Text className="text-[10px] text-muted mt-0.5">Auto-centered square crop • Full size</Text>
+                </Pressable>
+              )}
             </View>
             <View>
               <Text className="text-[11px] font-bold text-muted mb-1 uppercase tracking-wider">Display Sort Order</Text>
@@ -167,8 +239,12 @@ export default function CategoryManagementScreen({ categories: initialCategories
             <Pressable key={cat._id || cat.name} onPress={() => openEditor(cat)}
               className="bg-surface rounded-2xl p-4 mb-3 border border-border flex-row items-center justify-between active:opacity-90">
               <View className="flex-row items-center gap-3">
-                <View className="w-12 h-12 rounded-2xl bg-brand/10 justify-center items-center border border-brand/20">
-                  <Icon name={cat.icon || 'cleaning-services'} size={24} color="#006948" />
+                <View className="w-12 h-12 rounded-2xl bg-[#006948]/10 justify-center items-center border border-border overflow-hidden">
+                  {cat.image && (cat.image.startsWith('http') || cat.image.startsWith('data:')) ? (
+                    <Image source={{ uri: cat.image }} className="w-full h-full" resizeMode="cover" />
+                  ) : (
+                    <Icon name={cat.icon || cat.image || 'cleaning-services'} size={24} color="#006948" />
+                  )}
                 </View>
                 <View>
                   <Text className="text-sm font-black text-ink">{cat.name}</Text>

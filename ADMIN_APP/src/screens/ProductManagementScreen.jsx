@@ -400,12 +400,12 @@ export default function ProductManagementScreen({
         {/* View Page Scroll Body */}
         <ScrollView className="flex-1 p-4" contentContainerStyle={{ paddingBottom: 60 }}>
           {/* Primary Product Image Banner */}
-          <View className="items-center mb-4 bg-surface rounded-3xl p-5 border border-border shadow-xl">
+          <View className="items-center mb-4 bg-surface rounded-3xl border border-border shadow-xl overflow-hidden">
             {selectedProduct.image ? (
               <Image
                 source={{ uri: selectedProduct.image }}
-                className="w-52 h-52 rounded-2xl"
-                resizeMode="contain"
+                className="w-full h-56"
+                resizeMode="cover"
               />
             ) : (
               <View className="w-52 h-52 rounded-2xl bg-input items-center justify-center border border-border">
@@ -771,8 +771,8 @@ export default function ProductManagementScreen({
                   <View className="mb-4 items-center">
                     <Image
                       source={{ uri: image }}
-                      className="w-48 h-48 rounded-2xl bg-input border border-border mb-3"
-                      resizeMode="contain"
+                      className="w-48 h-48 rounded-2xl bg-input border border-border mb-3 overflow-hidden"
+                      resizeMode="cover"
                     />
                     <View className="flex-row gap-2">
                       <Pressable
@@ -1120,7 +1120,8 @@ export default function ProductManagementScreen({
                 {prod.image ? (
                   <Image
                     source={{ uri: prod.image }}
-                    className="w-16 h-16 rounded-2xl bg-input"
+                    className="w-16 h-16 rounded-2xl bg-input overflow-hidden"
+                    resizeMode="cover"
                   />
                 ) : (
                   <View className="w-16 h-16 rounded-2xl bg-input items-center justify-center border border-border">

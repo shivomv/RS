@@ -77,12 +77,14 @@ $RemoteCommands = @(
     "tar -xzf $RemoteTmpArchive -C $RemoteDir",
     "rm -f $RemoteTmpArchive",
     "mkdir -p $RemoteDir/data",
-    "chmod -R 777 $RemoteDir/data",
     "cd $RemoteDir",
-    "sudo docker compose down --remove-orphans || true",
-    "sudo docker compose up -d --build",
-    "sleep 6",
-    "sudo docker ps -f name=rs-backend",
+    "npm install --omit=dev --no-audit",
+    "pm2 stop rs-backend 2>/dev/null || true",
+    "sleep 1",
+    "pm2 start src/server.js --name rs-backend || pm2 restart rs-backend",
+    "pm2 save",
+    "sleep 3",
+    "pm2 status",
     "curl -I http://127.0.0.1:5000/api/products"
 ) -join "`n"
 

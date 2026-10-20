@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "501792961564",
+    "project_id": "rsadmin-97ba7",
+    "storage_bucket": "rsadmin-97ba7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:501792961564:android:430ac1b58904bc1b1b5bd9",
+        "android_client_info": {
+          "package_name": "com.rsindustries.admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAVOaBmz0gevnmmTMJWbfWETW0WOSAu73I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

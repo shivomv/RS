@@ -10,6 +10,8 @@ import BuyerManagementScreen from '../screens/BuyerManagementScreen';
 import SupportTicketScreen from '../screens/SupportTicketScreen';
 import BannerManagementScreen from '../screens/BannerManagementScreen';
 import AboutManagementScreen from '../screens/AboutManagementScreen';
+import AdminManagementScreen from '../screens/AdminManagementScreen';
+import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -30,6 +32,8 @@ export default function AppNavigator() {
       <Stack.Screen name="TicketList" component={SupportTicketScreen} />
       <Stack.Screen name="BannerList" component={BannerManagementScreen} />
       <Stack.Screen name="AboutList" component={AboutManagementScreen} />
+      <Stack.Screen name="AdminList" component={AdminManagementScreen} />
+      <Stack.Screen name="Settings" component={NotificationSettingsScreen} />
     </Stack.Navigator>
   );
 }

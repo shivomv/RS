@@ -27,3 +27,23 @@ exports.createTicket = async (req, res) => {
     res.status(400).json({ error: err.message || 'Failed to create support ticket' });
   }
 };
+
+exports.replyTicket = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { message } = req.body;
+    const ticket = await SupportTicket.findByPk(id);
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    await ticket.update({ status: 'resolved' });
+    return res.json({
+      success: true,
+      message: 'Reply sent successfully',
+      ticket: formatTicket(ticket),
+      reply: message,
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Failed to reply to ticket' });
+  }
+};

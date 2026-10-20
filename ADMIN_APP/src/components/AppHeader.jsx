@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { navigate } from '../navigation/navigationRef';
 
 export default function AppHeader({ activeTab, onOpenDrawer, onRefresh }) {
   return (
@@ -20,14 +21,23 @@ export default function AppHeader({ activeTab, onOpenDrawer, onRefresh }) {
         </View>
       </View>
 
-      {onRefresh ? (
+      <View className="flex-row items-center gap-2">
         <Pressable
-          onPress={onRefresh}
+          onPress={() => navigate('Settings')}
           className="w-9 h-9 rounded-2xl bg-input justify-center items-center border border-border active:opacity-70"
         >
-          <Icon name="refresh" size={20} color="#006948" />
+          <Icon name="notifications-none" size={20} color="#006948" />
         </Pressable>
-      ) : null}
+
+        {onRefresh ? (
+          <Pressable
+            onPress={onRefresh}
+            className="w-9 h-9 rounded-2xl bg-input justify-center items-center border border-border active:opacity-70"
+          >
+            <Icon name="refresh" size={20} color="#006948" />
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }

@@ -30,14 +30,17 @@ export default function AddAddressScreen({ navigation }) {
 
     setLoading(true);
     try {
+      const sId = session.user._id || session.user.id;
       const addressData = {
-        shopkeeper: session.user._id,
+        shopkeeper: sId,
+        shopkeeperId: sId,
+        fullAddress: address,
         streetAddress: address,
         facilityName: name,
-        city,
-        pincode,
-        landmark,
-        contactPhone: phone,
+        city: city || '',
+        pincode: pincode || '',
+        landmark: landmark || '',
+        contactPhone: phone || '',
       };
       await api.addAddress(addressData);
       alertService.success('Success', `Delivery facility "${name}" saved successfully.`, () => {

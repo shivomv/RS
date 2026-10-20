@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Modal, TextInput, Pressable, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, Modal, TextInput, Pressable, ScrollView, ActivityIndicator, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { launchImageLibrary } from 'react-native-image-picker';
 
 export default function ProductModal({
   visible,
@@ -70,6 +71,30 @@ export default function ProductModal({
       alert(err.message || 'Failed to save product');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePickProductImage = async () => {
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        selectionLimit: 1,
+        includeBase64: true,
+        quality: 0.7,
+        maxWidth: 1024,
+        maxHeight: 1024,
+      });
+      if (!result.didCancel && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const img = asset.base64
+          ? `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`
+          : asset.uri;
+        if (img) {
+          setImage(img);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not open gallery', err);
     }
   };
 
@@ -213,18 +238,44 @@ export default function ProductModal({
               </View>
             </View>
 
-            {/* Image URL */}
+            {/* Product Image Upload */}
             <View className="mb-6">
-              <Text className="text-[11px] font-bold text-[#8c9ba5] mb-1 uppercase tracking-wider">
-                Product Image URL
+              <Text className="text-[11px] font-bold text-[#8c9ba5] mb-2 uppercase tracking-wider">
+                Product Image (Square Full-Size)
               </Text>
-              <TextInput
-                value={image}
-                onChangeText={setImage}
-                placeholder="https://..."
-                placeholderTextColor="#5b6a82"
-                className="bg-[#1c263d] rounded-2xl px-4 py-3 text-xs font-bold text-white border border-[#2d3a58]"
-              />
+              
+              {image ? (
+                <View className="items-center mb-2">
+                  <View className="w-32 h-32 rounded-2xl bg-[#0f172a] border border-[#2d3a58] overflow-hidden mb-3">
+                    <Image source={{ uri: image }} className="w-full h-full" resizeMode="cover" />
+                  </View>
+                  <View className="flex-row gap-2">
+                    <Pressable
+                      onPress={handlePickProductImage}
+                      className="bg-[#006948] px-3.5 py-2 rounded-xl flex-row items-center gap-1.5 active:opacity-90"
+                    >
+                      <Icon name="photo-library" size={16} color="#ffffff" />
+                      <Text className="text-xs font-bold text-white">Change Photo</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setImage('')}
+                      className="bg-red-500/10 px-3.5 py-2 rounded-xl border border-red-500/30 flex-row items-center gap-1.5 active:opacity-90"
+                    >
+                      <Icon name="delete" size={16} color="#ef4444" />
+                      <Text className="text-xs font-bold text-red-500">Remove</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : (
+                <Pressable
+                  onPress={handlePickProductImage}
+                  className="border-2 border-dashed border-[#2d3a58] rounded-2xl p-6 items-center justify-center bg-[#1c263d]/50 mb-2 active:opacity-75"
+                >
+                  <Icon name="add-photo-alternate" size={36} color="#006948" />
+                  <Text className="text-xs font-extrabold text-white mt-2">Upload Photo from Gallery</Text>
+                  <Text className="text-[10px] text-[#8c9ba5] mt-0.5">Auto-uploaded to S3 • Full size cover</Text>
+                </Pressable>
+              )}
             </View>
 
             {/* Action Save Button */}

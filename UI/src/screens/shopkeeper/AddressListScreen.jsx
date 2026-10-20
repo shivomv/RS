@@ -43,9 +43,15 @@ export default function AddressListScreen({ navigation }) {
         
         // Transform API response to match UI format
         const formattedAddresses = addressList.map((addr) => ({
-          id: addr._id,
+          id: addr._id || addr.id,
           title: addr.facilityName || 'Facility',
-          address: addr.streetAddress,
+          address: addr.fullAddress || addr.streetAddress || '',
+          fullAddress: addr.fullAddress || addr.streetAddress || '',
+          streetAddress: addr.fullAddress || addr.streetAddress || '',
+          facilityName: addr.facilityName || '',
+          city: addr.city || '',
+          pincode: addr.pincode || '',
+          contactPhone: addr.contactPhone || '',
           contact: addr.contactPhone || 'N/A',
           isDefault: addr.isDefault || false,
         }));

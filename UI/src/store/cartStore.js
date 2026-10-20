@@ -164,7 +164,18 @@ export const useCartStore = create((set, get) => ({
       return { items: nextItems };
     }),
 
-  clearCart: () => set({ items: [] }),
+  clearCart: async () => {
+    set({ items: [] });
+    try {
+      const { session } = useAuthStore.getState();
+      const sId = session?.user?._id || session?.user?.id;
+      if (sId) {
+        await api.clearCartBackend(sId);
+      }
+    } catch (err) {
+      console.warn('[Cart] Backend clear warning:', err.message);
+    }
+  },
 
   itemCount: () => get().items.length,
 

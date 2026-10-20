@@ -36,12 +36,12 @@ export default function ProductDetailViewModal({
           {/* Body Scroll View */}
           <ScrollView className="p-5">
             {/* Main Product Image Banner */}
-            <View className="items-center mb-4 bg-[#0f172a] rounded-2xl p-4 border border-[#2d3a58]">
+            <View className="items-center mb-4 bg-[#0f172a] rounded-2xl border border-[#2d3a58] overflow-hidden">
               {product.image ? (
                 <Image
                   source={{ uri: product.image }}
-                  className="w-48 h-48 rounded-2xl"
-                  resizeMode="contain"
+                  className="w-full h-52"
+                  resizeMode="cover"
                 />
               ) : (
                 <View className="w-48 h-48 rounded-2xl bg-[#1c263d] items-center justify-center border border-[#2d3a58]">

@@ -18,7 +18,7 @@ const SupportTicket = sequelize.define('SupportTicket', {
   },
   buyerName: {
     type: DataTypes.STRING,
-    defaultValue: 'Indiranagar Facilities Ltd',
+    allowNull: true,
   },
   subject: {
     type: DataTypes.STRING,

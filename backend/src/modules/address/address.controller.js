@@ -4,6 +4,7 @@ function formatAddress(a) {
   const json = a.toJSON ? a.toJSON() : a;
   return {
     ...json,
+    streetAddress: json.fullAddress || json.streetAddress || '',
     _id: String(json.id),
   };
 }
@@ -38,6 +39,9 @@ exports.getAddresses = async (req, res, next) => {
 exports.addAddress = async (req, res, next) => {
   try {
     const addressData = { ...req.body };
+    if (!addressData.fullAddress && addressData.streetAddress) {
+      addressData.fullAddress = addressData.streetAddress;
+    }
     if (!addressData.shopkeeperId && addressData.shopkeeper) {
       addressData.shopkeeperId = Number(addressData.shopkeeper) || null;
     }

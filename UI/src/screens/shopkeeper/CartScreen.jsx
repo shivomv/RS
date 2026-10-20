@@ -156,12 +156,12 @@ export default function CartScreen({ navigation }) {
                       idx < items.length - 1 ? 'border-b border-[#f2f3ff]' : ''
                     }`}
                   >
-                    <View className="w-16 h-16 rounded-xl bg-[#f2f3ff] justify-center items-center p-1 border border-[#eaedff]">
+                    <View className="w-16 h-16 rounded-xl bg-[#f2f3ff] justify-center items-center border border-[#eaedff] overflow-hidden">
                       {item.image ? (
                         <Image
                           source={{ uri: item.image }}
                           className="w-full h-full"
-                          resizeMode="contain"
+                          resizeMode="cover"
                         />
                       ) : (
                         <Icon name="inventory-2" size={32} color="#bccac0" />

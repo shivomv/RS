@@ -4,10 +4,10 @@ import {
   Text,
   Pressable,
   StatusBar,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import RSLogo from '../../components/RSLogo';
 
 export default function AuthChoiceScreen({ navigation }) {
   return (
@@ -19,19 +19,19 @@ export default function AuthChoiceScreen({ navigation }) {
         <View />
 
         {/* Center - Logo & Message */}
-        <View className="items-center gap-6">
-          {/* Logo */}
-          <View className="w-24 h-24 rounded-3xl bg-white shadow-lg justify-center items-center border border-[#e2e7e3]">
-            <Icon name="water-drop" size={56} color="#006948" />
-          </View>
+        <View className="items-center">
+          <Image
+            source={require('../../assets/logo.png')}
+            style={{ width: 220, height: 110 }}
+            resizeMode="contain"
+          />
 
           {/* Text */}
-          <View className="items-center gap-2">
-            <RSLogo size="lg" />
-            <Text className="text-lg font-bold text-[#131b2e] mt-3">
-              Welcome to RS Industries
+          <View className="items-center mt-4">
+            <Text className="text-xl font-bold text-[#131b2e]">
+              Welcome to RS Enterprise
             </Text>
-            <Text className="text-sm text-[#6d7a72] text-center leading-relaxed px-4">
+            <Text className="text-xs text-[#6d7a72] text-center leading-relaxed px-4 mt-2">
               Direct from Factory • Ultra-Pure Formulations • Express Delivery
             </Text>
           </View>

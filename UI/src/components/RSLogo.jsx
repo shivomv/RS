@@ -1,20 +1,21 @@
 import React from 'react';
-import { View, Text } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { View, Text, Image } from 'react-native';
 
 export const RSLogo = ({ size = 'md', showText = true }) => {
-  const iconSize = size === 'sm' ? 22 : size === 'lg' ? 36 : 28;
+  const imgDim = size === 'sm' ? 28 : size === 'lg' ? 44 : 34;
   const textSize = size === 'sm' ? 'text-base' : size === 'lg' ? 'text-2xl' : 'text-xl';
 
   return (
     <View className="flex-row items-center gap-2">
-      <View className="w-8 h-8 rounded-lg bg-[#006948] justify-center items-center shadow-sm">
-        <Icon name="shield-check" size={iconSize - 6} color="#ffffff" />
-      </View>
+      <Image
+        source={require('../assets/logo-card.png')}
+        style={{ width: imgDim, height: imgDim, borderRadius: 8 }}
+        resizeMode="contain"
+      />
       {showText && (
         <View className="flex-col">
           <Text className={`font-extrabold text-[#006948] tracking-tight ${textSize}`}>
-            RS Industries
+            RS Enterprise
           </Text>
         </View>
       )}

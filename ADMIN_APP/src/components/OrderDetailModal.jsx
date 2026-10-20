@@ -10,14 +10,14 @@ export default function OrderDetailModal({
   order = null,
   onStatusUpdated,
 }) {
-  const [driverName, setDriverName] = useState('Ramesh Kumar (RS Dispatch)');
-  const [driverPhone, setDriverPhone] = useState('+919876512345');
+  const [driverName, setDriverName] = useState('');
+  const [driverPhone, setDriverPhone] = useState('');
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     if (order) {
-      setDriverName(order.driverName || 'Ramesh Kumar (RS Dispatch)');
-      setDriverPhone(order.driverPhone || '+919876512345');
+      setDriverName(order.driverName || '');
+      setDriverPhone(order.driverPhone || '');
     }
   }, [order]);
 
@@ -66,7 +66,7 @@ export default function OrderDetailModal({
   const total = order.totalAmount || order.total || 0;
   const buyerName = order.buyerSnapshot?.name || order.buyerName || 'Shopkeeper Account';
   const buyerMobile = order.buyerSnapshot?.mobile || order.buyerPhone || 'N/A';
-  const deliveryAddress = order.deliveryAddressSnapshot?.fullAddress || order.deliveryAddress || 'Indiranagar, Bengaluru';
+  const deliveryAddress = order.deliveryAddressSnapshot?.fullAddress || order.deliveryAddress || 'Address not provided';
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>

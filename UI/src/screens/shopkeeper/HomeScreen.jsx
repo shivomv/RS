@@ -214,14 +214,20 @@ export default function ShopkeeperHomeScreen({ navigation }) {
                   className="items-center mr-4 w-[74px]"
                   onPress={() => navigation.navigate('Catalog', { categoryId: cat.slug || cat._id || cat.name })}
                 >
-                  <View className="w-16 h-16 rounded-2xl bg-white p-2 shadow-sm justify-center items-center mb-1.5 border border-[#eaedff]">
+                  <View className="w-16 h-16 rounded-2xl bg-[#f2f3ff] shadow-sm justify-center items-center mb-1.5 border border-[#eaedff] overflow-hidden">
                     {cat.img || cat.image || cat.iconUrl ? (
-                      <Image source={{ uri: cat.img || cat.image || cat.iconUrl }} className="w-full h-full" resizeMode="contain" />
+                      <Image
+                        source={{ uri: cat.img || cat.image || cat.iconUrl }}
+                        className="w-full h-full"
+                        resizeMode="cover"
+                      />
                     ) : (
-                      <Icon name={cat.icon || 'cleaning-services'} size={28} color="#006948" />
+                      <View className="w-full h-full justify-center items-center bg-[#006948]/10">
+                        <Icon name={cat.icon || 'cleaning-services'} size={28} color="#006948" />
+                      </View>
                     )}
                   </View>
-                  <Text className="text-[11px] text-[#131b2e] text-center font-medium leading-tight" numberOfLines={2}>
+                  <Text className="text-[11px] text-[#131b2e] text-center font-semibold leading-tight" numberOfLines={2}>
                     {cat.name || cat.title}
                   </Text>
                 </TouchableOpacity>
@@ -266,11 +272,11 @@ export default function ShopkeeperHomeScreen({ navigation }) {
                         delayPressIn={0}
                         onPress={() => navigation.navigate('ProductDetail', { product })}
                       >
-                        <View className="relative w-full h-32 rounded-xl bg-[#f2f3ff] justify-center items-center p-2 mb-2 overflow-hidden border border-[#eaedff]">
+                        <View className="relative w-full h-36 rounded-xl bg-[#f2f3ff] justify-center items-center mb-2 overflow-hidden border border-[#eaedff]">
                           <Image
                             source={{ uri: product.image }}
                             className="w-full h-full"
-                            resizeMode="contain"
+                            resizeMode="cover"
                           />
                           {product.badge && (
                             <View className="absolute top-2 left-2 z-10 bg-[#85f8c4] px-1.5 py-0.5 rounded shadow-sm">
@@ -362,11 +368,11 @@ export default function ShopkeeperHomeScreen({ navigation }) {
                           delayPressIn={0}
                           onPress={() => navigation.navigate('ProductDetail', { product })}
                         >
-                          <View className="relative w-full h-28 rounded-xl bg-[#f2f3ff] justify-center items-center p-2 mb-2 overflow-hidden border border-[#eaedff]">
+                          <View className="relative w-full h-36 rounded-xl bg-[#f2f3ff] justify-center items-center mb-2 overflow-hidden border border-[#eaedff]">
                             <Image
                               source={{ uri: defaultInfo.image || product.image }}
                               className="w-full h-full"
-                              resizeMode="contain"
+                              resizeMode="cover"
                             />
                             {product.badge && (
                               <View className="absolute top-1.5 left-1.5 z-10 bg-[#9cf2e8] px-1.5 py-0.5 rounded shadow-sm">

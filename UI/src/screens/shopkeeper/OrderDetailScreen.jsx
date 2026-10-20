@@ -7,26 +7,32 @@ import RSLogo from '../../components/RSLogo';
 export default function OrderDetailScreen({ route, navigation }) {
   const { order } = route.params || {};
 
-  const orderData = order || {
-    id: 'RS-ORD-8942',
-    date: '18 Sep 2026, 10:30 AM',
-    status: 'Dispatching',
-    total: 3450,
-    gst: 621,
-    deliveryAddress: 'Indiranagar Facilities Ltd, Plot 42, 10th Main, Bengaluru - 560038',
-    driverName: 'Ramesh Kumar (RS Dispatch)',
-    driverPhone: '+91 98765 12345',
-    items: [
-      { id: '1', name: 'RS Pro Citrus Floor Cleaner', subtitle: '500ml Bottle', qty: 10, price: 99 },
-      { id: '2', name: 'PowerShield Pine Disinfectant', subtitle: '1L Disinfectant', qty: 5, price: 149 },
-      { id: '3', name: 'Commercial Kitchen Degreaser', subtitle: '5L Canister', qty: 2, price: 580 },
-    ],
-  };
+  if (!order) {
+    return (
+      <SafeAreaView className="flex-1 bg-[#faf8ff] justify-center items-center px-6">
+        <Icon name="receipt-long" size={64} color="#6d7a72" />
+        <Text className="text-base font-bold text-[#131b2e] mt-4">Order Not Found</Text>
+        <Text className="text-xs text-[#6d7a72] text-center mt-1 mb-6">
+          The requested order details could not be retrieved.
+        </Text>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          className="bg-[#006948] px-6 py-2.5 rounded-xl active:opacity-80"
+        >
+          <Text className="text-xs text-white font-bold">Go Back</Text>
+        </Pressable>
+      </SafeAreaView>
+    );
+  }
+
+  const orderData = order;
+  const orderId = orderData.orderId || orderData._id || orderData.id || 'N/A';
+  const orderDate = orderData.date || (orderData.createdAt ? new Date(orderData.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '');
 
   const handleDownloadInvoice = () => {
     Alert.alert(
       'Tax Invoice Downloaded',
-      `Official GST Tax Invoice for Order #${orderData.id} has been saved to your downloads folder.`,
+      `Official GST Tax Invoice for Order #${orderId} has been saved to your downloads folder.`,
       [{ text: 'OK' }]
     );
   };
@@ -51,8 +57,8 @@ export default function OrderDetailScreen({ route, navigation }) {
             <Icon name="arrow-back" size={20} color="#131b2e" />
           </Pressable>
           <View>
-            <Text className="text-base font-bold text-[#131b2e]">Order #{orderData.id}</Text>
-            <Text className="text-[10px] text-[#6d7a72]">{orderData.date}</Text>
+            <Text className="text-base font-bold text-[#131b2e]">Order #{orderId}</Text>
+            {orderDate ? <Text className="text-[10px] text-[#6d7a72]">{orderDate}</Text> : null}
           </View>
         </View>
         <RSLogo size="sm" showText={false} />
@@ -67,7 +73,7 @@ export default function OrderDetailScreen({ route, navigation }) {
               <Text className="text-sm font-bold text-[#131b2e]">Live Delivery Tracking</Text>
             </View>
             <View className="bg-[#85f8c4] px-2 py-0.5 rounded-full">
-              <Text className="text-[10px] text-[#002114] font-bold uppercase">{orderData.status}</Text>
+              <Text className="text-[10px] text-[#002114] font-bold uppercase">{orderData.status || 'Pending'}</Text>
             </View>
           </View>
 
@@ -102,19 +108,28 @@ export default function OrderDetailScreen({ route, navigation }) {
 
         {/* Assigned Dispatch Executive */}
         <View className="bg-[#e2e7ff] rounded-2xl p-3.5 mb-4 flex-row items-center justify-between shadow-sm">
-          <View className="flex-row items-center gap-3">
+          <View className="flex-row items-center gap-3 flex-1 mr-2">
             <View className="w-10 h-10 rounded-full bg-[#006948] justify-center items-center">
               <Icon name="person" size={22} color="#ffffff" />
             </View>
-            <View>
-              <Text className="text-xs font-bold text-[#131b2e]">{orderData.driverName}</Text>
-              <Text className="text-[10px] text-[#3d4a42]">Express Delivery Representative</Text>
+            <View className="flex-1">
+              <Text className="text-xs font-bold text-[#131b2e]">
+                {orderData.driverName || 'Dispatch Partner Pending Assignment'}
+              </Text>
+              <Text className="text-[10px] text-[#3d4a42]">
+                {orderData.driverName ? 'Express Delivery Representative' : 'Will be assigned upon warehouse dispatch'}
+              </Text>
             </View>
           </View>
-          <Pressable className="bg-[#006948] px-3 py-1.5 rounded-lg flex-row items-center gap-1 active:opacity-80">
-            <Icon name="call" size={14} color="#ffffff" />
-            <Text className="text-[10px] text-white font-bold">Call</Text>
-          </Pressable>
+          {orderData.driverPhone ? (
+            <Pressable
+              onPress={() => Alert.alert('Contact Delivery Partner', `Call ${orderData.driverPhone}?`)}
+              className="bg-[#006948] px-3 py-1.5 rounded-lg flex-row items-center gap-1 active:opacity-80"
+            >
+              <Icon name="call" size={14} color="#ffffff" />
+              <Text className="text-[10px] text-white font-bold">Call</Text>
+            </Pressable>
+          ) : null}
         </View>
 
         {/* Delivery Address Snapshot */}
@@ -124,7 +139,7 @@ export default function OrderDetailScreen({ route, navigation }) {
             <Text className="text-xs font-bold text-[#131b2e]">Delivery Destination (Snapshot)</Text>
           </View>
           <Text className="text-xs text-[#3d4a42] leading-relaxed">
-            {orderData.deliveryAddressSnapshot?.fullAddress || orderData.deliveryAddress}
+            {orderData.deliveryAddressSnapshot?.fullAddress || orderData.deliveryAddress || 'Address not specified'}
           </Text>
         </View>
 

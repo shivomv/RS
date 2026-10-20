@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Pressable, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAdminAuth } from '../store/adminAuthStore';
@@ -11,7 +11,7 @@ export default function AdminLoginScreen() {
   const [errorMsg, setErrorMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setErrorMsg('');
     if (!mobile || mobile.length < 10) {
       setErrorMsg('Please enter a valid 10-digit mobile number.');
@@ -22,22 +22,32 @@ export default function AdminLoginScreen() {
       return;
     }
     setSubmitting(true);
-    setTimeout(() => {
-      const res = login(mobile, pin);
+    try {
+      const res = await login(mobile, pin);
+      if (!res.success) {
+        setErrorMsg(res.error || 'Authentication failed');
+      }
+    } catch (e) {
+      setErrorMsg(e.message || 'Login failed');
+    } finally {
       setSubmitting(false);
-      if (!res.success) { setErrorMsg(res.error); }
-    }, 400);
+    }
   };
 
   return (
     <SafeAreaView className="flex-1 bg-background justify-center px-6">
       {/* Brand Header */}
       <View className="items-center mb-8">
-        <View className="w-20 h-20 rounded-3xl bg-brand justify-center items-center shadow-md mb-4">
-          <Icon name="admin-panel-settings" size={44} color="#ffffff" />
+        <Image
+          source={require('../assets/logo.png')}
+          style={{ width: 220, height: 95 }}
+          resizeMode="contain"
+        />
+        <View className="flex-row items-center gap-1.5 mt-2 bg-[#002d62]/10 px-3 py-1 rounded-full border border-[#002d62]/20">
+          <Icon name="admin-panel-settings" size={15} color="#002d62" />
+          <Text className="text-xs font-bold text-[#002d62] uppercase tracking-wider">Admin Console</Text>
         </View>
-        <Text className="text-2xl font-black text-ink tracking-wide text-center">RS Admin Console</Text>
-        <Text className="text-xs text-muted text-center mt-1">Wholesale Distribution & Control Portal</Text>
+        <Text className="text-xs text-muted text-center mt-1.5">Wholesale Distribution & Control Portal</Text>
       </View>
 
       {/* Login Card */}

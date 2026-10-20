@@ -26,11 +26,11 @@ const Shopkeeper = sequelize.define('Shopkeeper', {
   },
   gstin: {
     type: DataTypes.STRING,
-    defaultValue: '29AABCU9603R1ZM',
+    allowNull: true,
   },
   email: {
     type: DataTypes.STRING,
-    defaultValue: 'procurement@indiranagarfacilities.com',
+    allowNull: true,
   },
   role: {
     type: DataTypes.STRING,

@@ -92,7 +92,7 @@ export default function SupportTicketScreen({ tickets: initialTickets = [], onRe
             <View className="border-t border-border pt-3">
               <Text className="text-[10px] font-bold text-muted">Reported By:</Text>
               <Text className="text-xs font-black text-ink">{selectedTicket.shopkeeperName || selectedTicket.buyerName || 'Registered Account'}</Text>
-              <Text className="text-xs font-bold text-brand-dim">📞 {selectedTicket.mobile || '+919876543210'}</Text>
+              <Text className="text-xs font-bold text-brand-dim">📞 {selectedTicket.mobile || selectedTicket.contactPhone || 'N/A'}</Text>
             </View>
           </View>
 

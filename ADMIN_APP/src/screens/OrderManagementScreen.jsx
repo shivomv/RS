@@ -31,7 +31,7 @@ const formatDate = (dateStr) => {
 };
 
 const getFullAddress = (ord) => {
-  if (!ord) return 'Bengaluru, Karnataka';
+  if (!ord) return 'Address not specified';
   const snap = ord.deliveryAddressSnapshot;
   if (snap && snap.fullAddress) {
     const parts = [
@@ -42,7 +42,7 @@ const getFullAddress = (ord) => {
     ].filter(Boolean);
     return parts.join(', ');
   }
-  return ord.deliveryAddress || 'Bengaluru, Karnataka';
+  return ord.deliveryAddress || 'Address not specified';
 };
 
 const getItemBundleLabel = (item) => {
@@ -81,8 +81,26 @@ export default function OrderManagementScreen({ orders: initialOrders = [], onRe
   useEffect(() => {
     if (route?.params?.selectedOrder) {
       openOrderView(route.params.selectedOrder);
+    } else if (route?.params?.orderId) {
+      const targetId = String(route.params.orderId);
+      const match = orderList.find(
+        (o) => String(o.orderId || o.id || o._id) === targetId
+      );
+      if (match) {
+        openOrderView(match);
+      } else {
+        adminApi.getOrders().then((res) => {
+          const list = Array.isArray(res) ? res : res?.data || [];
+          setOrderList(list);
+          const found = list.find(
+            (o) => String(o.orderId || o.id || o._id) === targetId
+          );
+          if (found) openOrderView(found);
+        }).catch(() => {});
+      }
     }
-  }, [route?.params?.selectedOrder]);
+  }, [route?.params?.selectedOrder, route?.params?.orderId]);
+
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -318,6 +336,7 @@ export default function OrderManagementScreen({ orders: initialOrders = [], onRe
             {items.map((item, idx) => {
               const qty = Number(item.quantity) || 1;
               const unitPrice = Number(item.unitPrice || item.price || 0);
+              const lineTotal = qty * unitPrice;
               const bundleLabel = getItemBundleLabel(item);
 
               return (

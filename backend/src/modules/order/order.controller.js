@@ -1,5 +1,7 @@
 const { Op } = require('sequelize');
 const { Order, Shopkeeper } = require('../../models');
+const fcmService = require('../../services/fcm.service');
+const realtimeService = require('../../services/realtime.service');
 
 function formatOrderResponse(ord) {
   const json = ord.toJSON ? ord.toJSON() : ord;
@@ -85,13 +87,13 @@ exports.createOrder = async (req, res) => {
     });
 
     const deliveryAddressSnapshot = orderData.deliveryAddressSnapshot || {
-      fullAddress: orderData.deliveryAddress || 'Indiranagar, Bengaluru - 560038',
+      fullAddress: orderData.deliveryAddress || '',
       capturedAt: new Date(),
     };
 
     const buyerSnapshot = orderData.buyerSnapshot || {
-      name: orderData.buyerName || 'Indiranagar Facilities Ltd',
-      mobile: orderData.buyerPhone || '+919876543210',
+      name: orderData.buyerName || '',
+      mobile: orderData.buyerPhone || '',
     };
 
     const sub = Number(orderData.subtotal || items.reduce((s, i) => s + (i.unitPrice * i.quantity), 0) || 0);
@@ -110,8 +112,8 @@ exports.createOrder = async (req, res) => {
     const newOrder = await Order.create({
       orderId,
       shopkeeperId,
-      buyerName: buyerSnapshot.name,
-      buyerPhone: buyerSnapshot.mobile,
+      buyerName: buyerSnapshot.name || orderData.buyerName || null,
+      buyerPhone: buyerSnapshot.mobile || orderData.buyerPhone || null,
       items,
       buyerSnapshot,
       deliveryAddressSnapshot,
@@ -121,11 +123,16 @@ exports.createOrder = async (req, res) => {
       totalAmount: tot,
       transactionId: orderData.transactionId || orderData.txnId || null,
       paymentStatus: orderData.paymentStatus || (orderData.transactionId ? 'paid' : 'pending'),
-      paymentMethod: orderData.paymentMethod || 'Google Pay (Tez UPI)',
-      deliveryAddress: deliveryAddressSnapshot.fullAddress,
-      driverName: orderData.driverName || 'Ramesh Kumar (RS Dispatch)',
-      driverPhone: orderData.driverPhone || '+919876512345',
+      paymentMethod: orderData.paymentMethod || 'Cash on Delivery (COD)',
+      deliveryAddress: deliveryAddressSnapshot.fullAddress || orderData.deliveryAddress || null,
+      driverName: orderData.driverName || null,
+      driverPhone: orderData.driverPhone || null,
       status: orderData.status || 'pending',
+    });
+
+    // Trigger Real-Time Instant Order Push & Live Event Broadcast to Admin devices
+    realtimeService.broadcastNewOrder(newOrder).catch((err) => {
+      console.warn('[OrderController] Realtime order broadcast error:', err.message);
     });
 
     return res.status(201).json(formatOrderResponse(newOrder));

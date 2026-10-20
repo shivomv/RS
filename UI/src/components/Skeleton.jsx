@@ -53,9 +53,9 @@ export function CategorySkeleton() {
 // Vertical Sidenav Category Item Skeleton
 export function CategoryItemSkeleton() {
   return (
-    <View className="py-4 px-2 items-center">
-      <Skeleton width={44} height={44} borderRadius={12} className="mb-2" />
-      <Skeleton width={50} height={10} borderRadius={4} />
+    <View className="py-3 px-1.5 items-center">
+      <Skeleton width={42} height={42} borderRadius={12} className="mb-1.5" />
+      <Skeleton width={48} height={9} borderRadius={4} />
     </View>
   );
 }

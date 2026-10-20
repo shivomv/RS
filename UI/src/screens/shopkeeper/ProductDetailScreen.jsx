@@ -200,9 +200,9 @@ export default function ProductDetailScreen({ route, navigation }) {
                 style={{ width: width - 32 }}
               >
                 {allImages.map((imgUri, idx) => (
-                  <View key={idx} className="relative justify-center items-center p-4 bg-white rounded-2xl border border-[#eaedff]" style={{ width: width - 32, height: 224 }}>
+                  <View key={idx} className="relative justify-center items-center bg-white rounded-2xl border border-[#eaedff] overflow-hidden" style={{ width: width - 32, height: 260 }}>
                     {imgUri ? (
-                      <Image source={{ uri: imgUri }} className="w-full h-full" resizeMode="contain" />
+                      <Image source={{ uri: imgUri }} className="w-full h-full" resizeMode="cover" />
                     ) : (
                       <Icon name="inventory-2" size={64} color="#bccac0" />
                     )}

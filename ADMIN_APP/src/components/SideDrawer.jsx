@@ -144,6 +144,10 @@ export default function SideDrawer({
     { key: 'tickets', label: 'Support Desk', icon: 'headset-mic', badge: null },
     { key: 'banners', label: 'Hero Banners', icon: 'view-carousel', badge: null },
     { key: 'about', label: 'Company Profile', icon: 'info', badge: null },
+    ...(session?.user?.role === 'SUPERADMIN'
+      ? [{ key: 'admins', label: 'Admin Access Control', icon: 'manage-accounts', badge: 'Superadmin' }]
+      : []),
+    { key: 'settings', label: 'Notification Settings', icon: 'notifications-active', badge: null },
   ];
 
   if (!visible && !isRendered) {
@@ -187,10 +191,10 @@ export default function SideDrawer({
               </View>
               <View className="flex-1">
                 <Text className="text-sm font-black text-ink tracking-wide" numberOfLines={1}>
-                  {session?.user?.name || 'RS Admin Director'}
+                  {session?.user?.name || 'RS Admin'}
                 </Text>
                 <Text className="text-[11px] font-bold text-brand mt-0.5" numberOfLines={1}>
-                  ● Active Session
+                  ● {session?.user?.role || 'ADMIN'} • {session?.user?.mobile || ''}
                 </Text>
               </View>
             </View>

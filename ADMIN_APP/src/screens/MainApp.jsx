@@ -5,9 +5,12 @@ import SideDrawer from '../components/SideDrawer';
 import AppHeader from '../components/AppHeader';
 import AppNavigator from '../navigation/AppNavigator';
 import { adminApi } from '../services/api';
+import { registerDeviceToken } from '../services/notificationService';
+import { useAdminAuth } from '../store/adminAuthStore';
 import { navigate } from '../navigation/navigationRef';
 
 export default function MainApp() {
+  const { session } = useAdminAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState({
@@ -17,6 +20,14 @@ export default function MainApp() {
     totalProducts: 0,
     totalBuyers: 0,
   });
+
+  // Ensure admin device is registered with backend
+  useEffect(() => {
+    const adminIdentifier = session?.user?.mobile || 'primary_admin';
+    registerDeviceToken(adminIdentifier).catch((err) => {
+      console.warn('[MainApp] Auto-register device error:', err.message);
+    });
+  }, [session?.user?.mobile]);
 
   useEffect(() => {
     (async () => {
@@ -53,6 +64,8 @@ export default function MainApp() {
       tickets: 'TicketList',
       banners: 'BannerList',
       about: 'AboutList',
+      admins: 'AdminList',
+      settings: 'Settings',
     };
 
     const targetScreen = screenMap[tabKey] || 'Dashboard';

@@ -78,7 +78,7 @@ export default function BuyerManagementScreen({ buyers: initialBuyers = [] }) {
               </View>
               <View className="flex-row justify-between py-2 border-b border-border">
                 <Text className="text-xs text-muted">GSTIN Registration:</Text>
-                <Text className="text-xs font-bold text-ink">{selectedBuyer.gstin || '29AABCU9603R1ZM'}</Text>
+                <Text className="text-xs font-bold text-ink">{selectedBuyer.gstin || 'Not Provided'}</Text>
               </View>
               <View className="flex-row justify-between py-2 border-b border-border">
                 <Text className="text-xs text-muted">Account Type:</Text>
@@ -87,7 +87,7 @@ export default function BuyerManagementScreen({ buyers: initialBuyers = [] }) {
               <View className="py-2">
                 <Text className="text-xs text-muted mb-1">Registered Shop Address:</Text>
                 <Text className="text-xs font-bold text-ink leading-relaxed">
-                  {selectedBuyer.address || 'Commercial Market, Indiranagar, Bengaluru, KA'}
+                  {selectedBuyer.address || 'Address Not Provided'}
                 </Text>
               </View>
             </View>
@@ -133,7 +133,7 @@ export default function BuyerManagementScreen({ buyers: initialBuyers = [] }) {
               <Text className="text-xs font-bold text-muted mb-1">Owner: {b.name}</Text>
               <Text className="text-xs font-bold text-brand-dim mb-2">📞 {b.mobile}</Text>
               <View className="flex-row items-center justify-between border-t border-border pt-2">
-                <Text className="text-[10px] text-faint">GSTIN: {b.gstin || '29AABCU9603R1ZM'}</Text>
+                <Text className="text-[10px] text-faint">GSTIN: {b.gstin || 'N/A'}</Text>
                 <Text className="text-xs font-bold text-brand">View Account →</Text>
               </View>
             </Pressable>

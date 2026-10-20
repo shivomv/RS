@@ -106,19 +106,20 @@ export default function CheckoutPaymentScreen({ navigation }) {
       });
 
       // Freeze Immutable Address & Buyer Snapshot
+      const resolvedAddress = selectedAddr.fullAddress || selectedAddr.streetAddress || selectedAddr.address || '';
       const addressSnapshot = {
-        fullAddress: selectedAddr.streetAddress,
-        facilityName: selectedAddr.facilityName,
-        city: selectedAddr.city,
-        pincode: selectedAddr.pincode,
-        landmark: selectedAddr.landmark,
-        contactPhone: selectedAddr.contactPhone,
+        fullAddress: resolvedAddress,
+        facilityName: selectedAddr.facilityName || '',
+        city: selectedAddr.city || '',
+        pincode: selectedAddr.pincode || '',
+        landmark: selectedAddr.landmark || '',
+        contactPhone: selectedAddr.contactPhone || '',
         capturedAt: new Date().toISOString(),
       };
 
       const buyerSnapshot = {
-        name: session?.user?.name || session?.user?.shopName || 'Registered Customer',
-        mobile: session?.mobile || session?.user?.mobile || '9876543210',
+        name: session?.user?.name || session?.user?.shopName || 'Registered Buyer',
+        mobile: session?.mobile || session?.user?.mobile || '',
       };
 
       const financialSnapshot = {
@@ -138,12 +139,13 @@ export default function CheckoutPaymentScreen({ navigation }) {
         totalAmount: total,
         paymentMethod: 'Cash on Delivery (COD)',
         paymentStatus: 'pending',
-        deliveryAddress: selectedAddr.streetAddress,
+        deliveryAddress: resolvedAddress,
         deliveryAddressSnapshot: addressSnapshot,
         buyerSnapshot: buyerSnapshot,
         financialSnapshot: financialSnapshot,
         items: itemSnapshots,
-        shopkeeper: session?.user?._id,
+        shopkeeper: session?.user?._id || session?.user?.id,
+        shopkeeperId: session?.user?._id || session?.user?.id,
       };
 
       const createdOrder = await addOrder(orderPayload);

@@ -298,6 +298,8 @@ exports.deleteProduct = async (req, res) => {
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
+    // Delete associated child bundles to satisfy foreign key constraints
+    await ProductBundle.destroy({ where: { productId: product.id } });
     await product.destroy();
     return res.json({ success: true, message: 'Product deleted successfully' });
   } catch (err) {

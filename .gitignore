@@ -47,3 +47,7 @@ coverage/
 *.sqlite3
 *.db
 backend/data/
+
+# Secrets & Service Accounts
+*firebase-service-account*.json
+!*firebase-service-account*.example.json

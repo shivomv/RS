@@ -18,11 +18,11 @@ const Order = sequelize.define('Order', {
   },
   buyerName: {
     type: DataTypes.STRING,
-    defaultValue: 'Indiranagar Facilities Ltd',
+    allowNull: true,
   },
   buyerPhone: {
     type: DataTypes.STRING,
-    defaultValue: '+919876543210',
+    allowNull: true,
   },
   items: {
     type: DataTypes.JSON,
@@ -57,7 +57,7 @@ const Order = sequelize.define('Order', {
   },
   paymentMethod: {
     type: DataTypes.STRING,
-    defaultValue: 'Google Pay (Tez UPI)',
+    defaultValue: 'Cash on Delivery (COD)',
   },
   transactionId: {
     type: DataTypes.STRING,
@@ -69,15 +69,15 @@ const Order = sequelize.define('Order', {
   },
   deliveryAddress: {
     type: DataTypes.TEXT,
-    defaultValue: 'Indiranagar, Bengaluru - 560038',
+    allowNull: true,
   },
   driverName: {
     type: DataTypes.STRING,
-    defaultValue: 'Ramesh Kumar (RS Dispatch)',
+    allowNull: true,
   },
   driverPhone: {
     type: DataTypes.STRING,
-    defaultValue: '+919876512345',
+    allowNull: true,
   },
   status: {
     type: DataTypes.STRING,

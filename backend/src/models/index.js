@@ -14,6 +14,8 @@ const InventoryBatch = require('./InventoryBatch');
 const Review = require('./Review');
 const Notification = require('./Notification');
 const AuditLog = require('./AuditLog');
+const AdminDevice = require('./AdminDevice');
+const AdminUser = require('./AdminUser');
 
 // ── Define Associations ──────────────────────────────────────────────
 Category.hasMany(Product, { foreignKey: 'categoryId', as: 'products' });
@@ -46,6 +48,24 @@ Review.belongsTo(Product, { foreignKey: 'productId', as: 'product' });
 Shopkeeper.hasMany(Notification, { foreignKey: 'shopkeeperId', as: 'notifications' });
 Notification.belongsTo(Shopkeeper, { foreignKey: 'shopkeeperId', as: 'shopkeeper' });
 
+async function seedDefaultSuperAdmin() {
+  try {
+    const count = await AdminUser.count();
+    if (count === 0) {
+      await AdminUser.create({
+        name: 'Super Admin',
+        mobile: process.env.SUPERADMIN_MOBILE || '9026773268',
+        pin: process.env.SUPERADMIN_PIN || '9999',
+        role: 'SUPERADMIN',
+        isActive: true,
+      });
+      console.log('✅ [Database] Seeded initial Super Admin into database.');
+    }
+  } catch (e) {
+    console.warn('[Database] Super Admin seed check:', e.message);
+  }
+}
+
 /**
  * Synchronize all database tables with current models
  * @param {Object} options - Sequelize sync options
@@ -54,6 +74,7 @@ async function syncDatabase(options = {}) {
   try {
     await sequelize.sync(options);
     console.log('✅ [Database] All models synchronized successfully.');
+    await seedDefaultSuperAdmin();
   } catch (error) {
     console.error('❌ [Database] Synchronization failed:', error.message);
     throw error;
@@ -77,5 +98,7 @@ module.exports = {
   Review,
   Notification,
   AuditLog,
+  AdminDevice,
+  AdminUser,
   syncDatabase,
 };

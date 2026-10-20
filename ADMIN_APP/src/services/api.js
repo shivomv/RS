@@ -64,4 +64,18 @@ export const adminApi = {
   // Company Management
   getCompanyDetails: () => request('/company'),
   updateCompanyDetails: (data) => request('/company', { method: 'PUT', body: JSON.stringify(data) }),
+
+  // Admin Notification Device Tokens
+  registerDeviceToken: (payload) => request('/admin/device-token', { method: 'POST', body: JSON.stringify(payload) }),
+  unregisterDeviceToken: (payload) => request('/admin/device-token', {
+    method: 'DELETE',
+    body: JSON.stringify(typeof payload === 'string' ? { token: payload } : payload),
+  }),
+
+  // Admin Authentication & Access Control
+  loginAdmin: (payload) => request('/admin/login', { method: 'POST', body: JSON.stringify(payload) }),
+  getAdminUsers: () => request('/admin/users'),
+  createAdminUser: (payload) => request('/admin/users', { method: 'POST', body: JSON.stringify(payload) }),
+  deleteAdminUser: (id) => request(`/admin/users/${id}`, { method: 'DELETE' }),
 };
+

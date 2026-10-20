@@ -195,12 +195,12 @@ export default function CatalogScreen({ navigation, route }) {
           className="flex-1"
         >
           {/* Product Image Box */}
-          <View className="relative h-28 bg-[#f5f7f6] items-center justify-center p-1.5">
+          <View className="relative h-32 bg-[#f5f7f6] items-center justify-center overflow-hidden">
             {imageUri ? (
               <Image
                 source={{ uri: imageUri }}
                 className="w-full h-full"
-                resizeMode="contain"
+                resizeMode="cover"
               />
             ) : (
               <Icon name="inventory-2" size={36} color="#9aa59f" />
@@ -305,7 +305,7 @@ export default function CatalogScreen({ navigation, route }) {
       {/* Main Body */}
       <View className="flex-1 flex-row">
         {/* Left Category Sidebar (Sidenav) */}
-        <View className="w-[28%] bg-white border-r border-[#e2e7e3]">
+        <View className="w-[24%] bg-white border-r border-[#e2e7e3]">
           {loadingCategories ? (
             <View className="py-2">
               <CategoryItemSkeleton />
@@ -319,7 +319,7 @@ export default function CatalogScreen({ navigation, route }) {
               data={categories}
               keyExtractor={(item, index) => String(item._id || item.slug || `category-${index}`)}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingVertical: 6 }}
+              contentContainerStyle={{ paddingVertical: 4 }}
               renderItem={({ item }) => {
                 const isSelected =
                   selectedCat &&
@@ -330,7 +330,7 @@ export default function CatalogScreen({ navigation, route }) {
                   <TouchableOpacity
                     activeOpacity={0.8}
                     onPress={() => handleCategoryPress(item)}
-                    className={`relative py-3.5 px-2 items-center border-b border-[#f0f3f1] ${
+                    className={`relative py-3 px-1.5 items-center border-b border-[#f0f3f1] ${
                       isSelected ? 'bg-[#006948]/10' : 'bg-white'
                     }`}
                   >
@@ -340,14 +340,14 @@ export default function CatalogScreen({ navigation, route }) {
 
                     <View
                       className={`w-11 h-11 rounded-xl items-center justify-center overflow-hidden ${
-                        isSelected ? 'bg-[#006948]/15 border border-[#006948]/30' : 'bg-[#f3f5f4] border border-[#e2e7e3]/60'
+                        isSelected ? 'bg-[#006948]/15 border-2 border-[#006948]' : 'bg-[#f3f5f4] border border-[#e2e7e3]/60'
                       }`}
                     >
                       {item.image || item.img ? (
                         <Image
                           source={{ uri: item.image || item.img }}
                           className="w-full h-full"
-                          resizeMode="contain"
+                          resizeMode="cover"
                         />
                       ) : (
                         <Icon
@@ -359,7 +359,7 @@ export default function CatalogScreen({ navigation, route }) {
                     </View>
 
                     <Text
-                      className={`text-[9.5px] text-center mt-1.5 font-bold ${
+                      className={`text-[9px] text-center mt-1 font-bold leading-tight ${
                         isSelected ? 'text-[#006948]' : 'text-[#4f5b55]'
                       }`}
                       numberOfLines={2}

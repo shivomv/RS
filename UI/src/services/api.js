@@ -95,6 +95,10 @@ export const api = {
   syncCart: (shopkeeperId, items) => apiClient.post('/cart/sync', { shopkeeperId, items }),
   clearCartBackend: (shopkeeperId) => apiClient.post('/cart/clear', { shopkeeperId }),
 
+  // Support Tickets API
+  createTicket: (data) => apiClient.post('/tickets', data),
+  getTickets: () => apiClient.get('/tickets'),
+
   // Company API
   getCompanyDetails: () => apiClient.get('/company'),
 };

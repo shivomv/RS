@@ -9,6 +9,7 @@ import {
   Platform,
   StatusBar,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -105,13 +106,13 @@ export default function LoginScreen({ navigation }) {
         >
           {/* Hero Section */}
           <View className="items-center text-center mb-6 pt-6">
-            <View className="relative mb-3">
-              <View className="w-16 h-16 rounded-2xl bg-[#00855d]/10 justify-center items-center shadow-sm">
-                <Icon name="water-drop" size={32} color="#006948" />
-              </View>
-            </View>
+            <Image
+              source={require('../../assets/logo.png')}
+              style={{ width: 190, height: 85 }}
+              resizeMode="contain"
+            />
 
-            <Text className="text-xl font-extrabold text-[#131b2e] tracking-tight text-center">
+            <Text className="text-xl font-extrabold text-[#131b2e] tracking-tight text-center mt-3">
               Welcome Back
             </Text>
 
@@ -178,15 +179,17 @@ export default function LoginScreen({ navigation }) {
 
             {/* BUTTON - Send OTP or Verify */}
             <Pressable
-              activeOpacity={0.9}
+              activeOpacity={0.85}
               disabled={
                 localLoading || isLoading || 
                 (showOtpInput ? otp.length !== 5 : mobile.length !== 10)
               }
               onPress={showOtpInput ? handleVerifyOtp : handleSendOtp}
-              className={`w-full h-12 rounded-xl flex-row items-center justify-center gap-2 shadow-md ${
-                (localLoading || isLoading || (showOtpInput ? otp.length !== 5 : mobile.length !== 10)) ? 'bg-[#00855d]/40' : 'bg-[#006948]'
-              }`}
+              style={{
+                backgroundColor: '#006948',
+                opacity: (localLoading || isLoading || (showOtpInput ? otp.length !== 5 : mobile.length !== 10)) ? 0.45 : 1,
+              }}
+              className="w-full h-12 rounded-xl flex-row items-center justify-center gap-2 shadow-sm"
             >
               {localLoading || isLoading ? (
                 <>
