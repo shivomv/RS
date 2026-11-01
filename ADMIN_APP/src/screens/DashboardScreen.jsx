@@ -10,7 +10,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { adminApi } from '../services/api';
 import { OrderCardSkeleton, SkeletonList } from '../components/Skeletons';
 
-export default function DashboardScreen({ navigation }) {
+export default function DashboardScreen({ navigation, onSelectTab }) {
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -98,7 +98,7 @@ export default function DashboardScreen({ navigation }) {
       {/* Recent Orders Feed */}
       <View className="flex-row items-center justify-between mb-3">
         <Text className="text-[11px] font-black text-faint uppercase tracking-wider">Recent Orders Feed</Text>
-        <Pressable onPress={() => navigation.navigate('OrderList')}>
+        <Pressable onPress={() => (onSelectTab ? onSelectTab('orders') : navigation?.navigate('OrderList'))}>
           <Text className="text-xs font-bold text-brand">View All →</Text>
         </Pressable>
       </View>
@@ -117,7 +117,7 @@ export default function DashboardScreen({ navigation }) {
           return (
             <Pressable
               key={ord._id || ord.orderId}
-              onPress={() => navigation.navigate('OrderList', { selectedOrder: ord })}
+              onPress={() => (onSelectTab ? onSelectTab('orders', { selectedOrder: ord }) : navigation?.navigate('OrderList', { selectedOrder: ord }))}
               className="bg-surface rounded-2xl p-4 mb-3 border border-border flex-row items-center justify-between active:opacity-80 shadow-sm"
             >
               <View className="flex-1 pr-3">

@@ -40,16 +40,20 @@ apiClient.interceptors.response.use(
 
 // Clean API Endpoint Methods using single Axios instance
 export const api = {
-  // Auth APIs (Universal OTP 12345 verified by backend)
+  // Auth APIs (Exclusively Google Sign-In)
+  googleLogin: (payload) => apiClient.post('/auth/google', payload),
+  updateProfile: (profileData) => apiClient.put('/auth/profile', profileData),
+  uploadImage: (image, folder = 'profiles') => apiClient.post('/upload', { image, folder }),
+  directLogin: (payload) => apiClient.post('/auth/direct-login', payload),
   requestOtp: (mobile, name) => apiClient.post('/auth/request-otp', { mobile, name }),
-  verifyOtp: (mobile, otp) => apiClient.post('/auth/verify-otp', { mobile, otp }),
+  verifyOtp: (mobile, otp, shopName) => apiClient.post('/auth/verify-otp', { mobile, otp, shopName }),
 
   // Categories API
   getCategories: () => apiClient.get('/categories'),
 
   // Products API
-  getProducts: (category = '', search = '') => {
-    const params = {};
+  getProducts: (category = '', search = '', page = 1, limit = 50) => {
+    const params = { page, limit };
     if (category && category.trim().toUpperCase() !== 'ALL') {
       params.category = category.trim();
     }
@@ -73,9 +77,14 @@ export const api = {
   getBanners: () => apiClient.get('/banners'),
 
   // Orders Procurement API
-  getOrders: () => apiClient.get('/orders'),
+  getOrders: (shopkeeperId) => {
+    const params = shopkeeperId ? { shopkeeperId } : {};
+    return apiClient.get('/orders', { params });
+  },
   createOrder: (orderData) => apiClient.post('/orders', orderData),
+  cancelOrder: (id, reason = '') => apiClient.post(`/orders/${id}/cancel`, { reason }),
   updateOrderStatus: (id, status) => apiClient.patch(`/orders/${id}/status`, { status }),
+  getOrderInvoiceUrl: (id) => `${API_BASE_URL}/orders/${id}/invoice`,
 
   // B2B Net 30 Credit Ledger Invoices API
   getLedgers: () => apiClient.get('/ledgers'),

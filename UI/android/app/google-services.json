@@ -1,0 +1,92 @@
+{
+  "project_info": {
+    "project_number": "501792961564",
+    "project_id": "rsadmin-97ba7",
+    "storage_bucket": "rsadmin-97ba7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:501792961564:android:0a8e8c75ccad778c1b5bd9",
+        "android_client_info": {
+          "package_name": "com.rsindustries"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "501792961564-ljsaf2n6jv646v4c1oli93ei59mvp5bo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rsindustries",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "501792961564-uscacve3ha3d8kjfpp0e13r0p52rb5b6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rsindustries",
+            "certificate_hash": "a787042ef5e5881335c9ae07e94db5445fdc6eb2"
+          }
+        },
+        {
+          "client_id": "501792961564-43g03e5a90rnihr7r4gnt9ecik9625aq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAVOaBmz0gevnmmTMJWbfWETW0WOSAu73I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "501792961564-2kjj759e9jgsohi5ka043u0t87pskeja.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:501792961564:android:430ac1b58904bc1b1b5bd9",
+        "android_client_info": {
+          "package_name": "com.rsindustries.admin"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "501792961564-lnf5blsteg7n2u19m85cc9bnnbqshbb2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rsindustries.admin",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "501792961564-43g03e5a90rnihr7r4gnt9ecik9625aq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAVOaBmz0gevnmmTMJWbfWETW0WOSAu73I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "501792961564-2kjj759e9jgsohi5ka043u0t87pskeja.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

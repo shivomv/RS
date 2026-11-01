@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Modal,
   RefreshControl,
+  Switch,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { adminApi } from '../services/api';
@@ -20,12 +21,14 @@ export default function AdminManagementScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Modal State
+  // Modal State (Create / Edit)
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingAdminId, setEditingAdminId] = useState(null);
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
-  const [pin, setPin] = useState('9999');
   const [role, setRole] = useState('ADMIN');
+  const [isActive, setIsActive] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -45,52 +48,78 @@ export default function AdminManagementScreen() {
     fetchAdmins();
   }, []);
 
-  const handleCreateAdmin = async () => {
+  const openCreateModal = () => {
+    setEditingAdminId(null);
+    setName('');
+    setEmail('');
+    setMobile('');
+    setRole('ADMIN');
+    setIsActive(true);
+    setErrorMsg('');
+    setModalVisible(true);
+  };
+
+  const openEditModal = (adm) => {
+    setEditingAdminId(adm.id);
+    setName(adm.name || '');
+    setEmail(adm.email || '');
+    setMobile(adm.mobile || '');
+    setRole(adm.role || 'ADMIN');
+    setIsActive(adm.isActive !== false);
+    setErrorMsg('');
+    setModalVisible(true);
+  };
+
+  const handleSaveAdmin = async () => {
     setErrorMsg('');
     if (!name.trim()) {
       setErrorMsg('Please enter admin name.');
       return;
     }
-    if (!mobile || mobile.trim().length < 10) {
-      setErrorMsg('Please enter a valid 10-digit mobile number.');
-      return;
-    }
 
     setSaving(true);
     try {
-      const res = await adminApi.createAdminUser({
+      const payload = {
         name: name.trim(),
-        mobile: mobile.trim(),
-        pin: pin.trim() || '9999',
+        email: email.trim() ? email.trim().toLowerCase() : null,
+        mobile: mobile.trim() ? mobile.trim().replace(/\D/g, '').slice(-10) : null,
         role,
-      });
+        isActive,
+      };
+
+      let res;
+      if (editingAdminId) {
+        res = await adminApi.updateAdminUser(editingAdminId, payload);
+      } else {
+        res = await adminApi.createAdminUser(payload);
+      }
 
       if (res && res.success) {
-        Alert.alert('Success', 'New Admin created successfully!');
+        Alert.alert(
+          'Success',
+          editingAdminId ? 'Admin updated successfully!' : 'New Admin created successfully!'
+        );
         setModalVisible(false);
-        setName('');
-        setMobile('');
-        setPin('9999');
         fetchAdmins();
       } else {
-        setErrorMsg(res?.error || 'Failed to create admin');
+        setErrorMsg(res?.error || 'Failed to save admin');
       }
     } catch (e) {
-      setErrorMsg(e.message || 'Error creating admin');
+      setErrorMsg(e.message || 'Error saving admin');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDeleteAdmin = (adminUser) => {
-    if (adminUser.role === 'SUPERADMIN') {
-      Alert.alert('Restricted', 'Super Admin accounts cannot be deleted.');
+    if (adminUser.role === 'SUPERADMIN' && adminUser.id === session?.user?.id) {
+      Alert.alert('Restricted', 'You cannot delete your own Super Admin account.');
       return;
     }
 
     Alert.alert(
       'Remove Admin',
-      `Are you sure you want to revoke admin access for ${adminUser.name} (${adminUser.mobile})?`,
+      `Are you sure you want to revoke admin access for ${adminUser.name} (${adminUser.email || adminUser.mobile})?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -124,7 +153,7 @@ export default function AdminManagementScreen() {
 
         {isSuperAdmin && (
           <Pressable
-            onPress={() => setModalVisible(true)}
+            onPress={openCreateModal}
             className="bg-brand px-3 py-2 rounded-xl flex-row items-center gap-1.5 active:opacity-80"
           >
             <Icon name="person-add" size={16} color="#ffffff" />
@@ -155,7 +184,7 @@ export default function AdminManagementScreen() {
             </View>
             <View>
               <Text className="text-xs font-black text-ink">{session?.user?.name || 'Admin'}</Text>
-              <Text className="text-[11px] text-muted font-medium">{session?.user?.mobile}</Text>
+              <Text className="text-[11px] text-muted font-medium">{session?.user?.email || session?.user?.mobile}</Text>
             </View>
           </View>
           <View className="bg-brand/10 border border-brand/20 px-2.5 py-1 rounded-full">
@@ -212,17 +241,33 @@ export default function AdminManagementScreen() {
                         </Text>
                       </View>
                     </View>
-                    <Text className="text-xs text-muted font-bold mt-0.5">{adm.mobile}</Text>
+                    {adm.email ? (
+                      <Text className="text-xs text-brand font-bold mt-0.5">{adm.email}</Text>
+                    ) : null}
+                    {adm.mobile ? (
+                      <Text className="text-xs text-muted font-medium mt-0.5">📱 {adm.mobile}</Text>
+                    ) : null}
                   </View>
                 </View>
 
-                {isSuperAdmin && !isSuper && (
-                  <Pressable
-                    onPress={() => handleDeleteAdmin(adm)}
-                    className="w-9 h-9 rounded-xl bg-red-50 justify-center items-center border border-red-200 active:opacity-70"
-                  >
-                    <Icon name="delete-outline" size={18} color="#ef4444" />
-                  </Pressable>
+                {isSuperAdmin && (
+                  <View className="flex-row items-center gap-2">
+                    <Pressable
+                      onPress={() => openEditModal(adm)}
+                      className="w-9 h-9 rounded-xl bg-blue-50 justify-center items-center border border-blue-200 active:opacity-70"
+                    >
+                      <Icon name="edit" size={17} color="#2563eb" />
+                    </Pressable>
+
+                    {!isSuper && (
+                      <Pressable
+                        onPress={() => handleDeleteAdmin(adm)}
+                        className="w-9 h-9 rounded-xl bg-red-50 justify-center items-center border border-red-200 active:opacity-70"
+                      >
+                        <Icon name="delete-outline" size={18} color="#ef4444" />
+                      </Pressable>
+                    )}
+                  </View>
                 )}
               </View>
             );
@@ -230,14 +275,16 @@ export default function AdminManagementScreen() {
         )}
       </ScrollView>
 
-      {/* Add Admin Modal */}
+      {/* Add / Edit Admin Modal */}
       <Modal visible={modalVisible} transparent animationType="fade">
         <View className="flex-1 bg-black/50 justify-center px-4">
           <View className="bg-surface rounded-3xl p-6 border border-border">
             <View className="flex-row items-center justify-between mb-4">
               <View className="flex-row items-center gap-2">
-                <Icon name="person-add" size={20} color="#006948" />
-                <Text className="text-base font-black text-ink">Add New Admin</Text>
+                <Icon name={editingAdminId ? 'edit' : 'person-add'} size={20} color="#006948" />
+                <Text className="text-base font-black text-ink">
+                  {editingAdminId ? 'Edit Admin Details' : 'Add New Admin'}
+                </Text>
               </View>
               <Pressable
                 onPress={() => setModalVisible(false)}
@@ -265,9 +312,23 @@ export default function AdminManagementScreen() {
               className="bg-input rounded-2xl px-4 py-3 border border-border text-sm font-bold text-ink mb-3"
             />
 
+            {/* Google Email */}
+            <Text className="text-[11px] font-bold text-muted mb-1 uppercase tracking-wider">
+              Google Account Email (Required for Google Sign-In)
+            </Text>
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              placeholder="admin@gmail.com"
+              placeholderTextColor="#94a3b8"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              className="bg-input rounded-2xl px-4 py-3 border border-border text-sm font-bold text-ink mb-3"
+            />
+
             {/* Mobile */}
             <Text className="text-[11px] font-bold text-muted mb-1 uppercase tracking-wider">
-              Mobile Number
+              Mobile Number (Optional)
             </Text>
             <TextInput
               value={mobile}
@@ -279,25 +340,11 @@ export default function AdminManagementScreen() {
               className="bg-input rounded-2xl px-4 py-3 border border-border text-sm font-bold text-ink mb-3"
             />
 
-            {/* PIN */}
-            <Text className="text-[11px] font-bold text-muted mb-1 uppercase tracking-wider">
-              Access PIN (Default: 9999)
-            </Text>
-            <TextInput
-              value={pin}
-              onChangeText={setPin}
-              placeholder="Enter PIN"
-              placeholderTextColor="#94a3b8"
-              keyboardType="number-pad"
-              maxLength={6}
-              className="bg-input rounded-2xl px-4 py-3 border border-border text-sm font-bold text-ink mb-4"
-            />
-
             {/* Role Choice */}
             <Text className="text-[11px] font-bold text-muted mb-2 uppercase tracking-wider">
               Assigned Role
             </Text>
-            <View className="flex-row gap-2 mb-6">
+            <View className="flex-row gap-2 mb-4">
               <Pressable
                 onPress={() => setRole('ADMIN')}
                 className={`flex-1 py-2.5 rounded-xl border items-center ${
@@ -328,6 +375,19 @@ export default function AdminManagementScreen() {
               </Pressable>
             </View>
 
+            {/* Active Toggle */}
+            <View className="flex-row items-center justify-between bg-input p-3 rounded-2xl border border-border mb-6">
+              <View>
+                <Text className="text-xs font-bold text-ink">Account Status</Text>
+                <Text className="text-[10px] text-muted">{isActive ? 'Active (Access Granted)' : 'Disabled'}</Text>
+              </View>
+              <Switch
+                value={isActive}
+                onValueChange={setIsActive}
+                trackColor={{ false: '#cbd5e1', true: '#006948' }}
+              />
+            </View>
+
             {/* Action Buttons */}
             <View className="flex-row gap-3">
               <Pressable
@@ -338,14 +398,16 @@ export default function AdminManagementScreen() {
               </Pressable>
 
               <Pressable
-                onPress={handleCreateAdmin}
+                onPress={handleSaveAdmin}
                 disabled={saving}
                 className="flex-1 bg-brand rounded-2xl py-3.5 items-center justify-center active:opacity-90"
               >
                 {saving ? (
                   <ActivityIndicator size="small" color="#ffffff" />
                 ) : (
-                  <Text className="text-xs font-black text-white">Save Admin</Text>
+                  <Text className="text-xs font-black text-white">
+                    {editingAdminId ? 'Save Changes' : 'Create Admin'}
+                  </Text>
                 )}
               </Pressable>
             </View>

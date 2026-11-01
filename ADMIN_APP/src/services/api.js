@@ -2,14 +2,27 @@ import ENV from '../config/env';
 
 const API_BASE_URL = ENV.API_BASE_URL;
 
+let currentAdminToken = null;
+
+export function setAdminAuthToken(token) {
+  currentAdminToken = token;
+}
+
+export function getAdminAuthToken() {
+  return currentAdminToken;
+}
+
 async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
   try {
+    const authHeaders = currentAdminToken ? { Authorization: `Bearer ${currentAdminToken}` } : {};
+
     const response = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        ...authHeaders,
         ...(options.headers || {}),
       },
     });
@@ -27,7 +40,16 @@ async function request(endpoint, options = {}) {
 
 export const adminApi = {
   // Orders Operations
-  getOrders: () => request('/orders'),
+  getOrders: (params = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit) q.append('limit', String(params.limit));
+    if (params.offset !== undefined) q.append('offset', String(params.offset));
+    if (params.page) q.append('page', String(params.page));
+    if (params.status && params.status.toUpperCase() !== 'ALL') q.append('status', params.status);
+    if (params.shopkeeperId) q.append('shopkeeperId', String(params.shopkeeperId));
+    const qs = q.toString();
+    return request('/orders' + (qs ? `?${qs}` : ''));
+  },
   updateOrderStatus: (id, status) => request(`/orders/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
   updateOrderDetails: (id, payload) => request(`/orders/${id}/status`, { method: 'PUT', body: JSON.stringify(payload) }),
 
@@ -74,8 +96,10 @@ export const adminApi = {
 
   // Admin Authentication & Access Control
   loginAdmin: (payload) => request('/admin/login', { method: 'POST', body: JSON.stringify(payload) }),
+  loginAdminGoogle: (payload) => request('/admin/google', { method: 'POST', body: JSON.stringify(payload) }),
   getAdminUsers: () => request('/admin/users'),
   createAdminUser: (payload) => request('/admin/users', { method: 'POST', body: JSON.stringify(payload) }),
+  updateAdminUser: (id, payload) => request(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteAdminUser: (id) => request(`/admin/users/${id}`, { method: 'DELETE' }),
 };
 

@@ -1,37 +1,54 @@
 const { AdminDevice, AdminUser } = require('../../models');
+const { generateToken } = require('../../middlewares/auth.middleware');
+const { hashPin, verifyPin } = require('../../services/security.service');
 
 /**
  * Admin Login & Automatic Device Registration
  * POST /api/admin/login
- * Pure database-driven authentication with zero hardcoded credentials
+ * Allows direct login without PIN or with PIN
  */
 exports.loginAdmin = async (req, res) => {
   try {
-    const { mobile, pin, deviceToken, deviceModel } = req.body;
+    const { mobile, email, pin, deviceToken, deviceModel } = req.body;
 
-    if (!mobile || String(mobile).trim().length < 10) {
-      return res.status(400).json({ success: false, error: 'Valid 10-digit mobile number is required' });
+    const cleanMobile = mobile ? String(mobile).trim() : '';
+    const cleanEmail = email ? String(email).trim().toLowerCase() : '';
+
+    if (!cleanMobile && !cleanEmail) {
+      return res.status(400).json({ success: false, error: 'Mobile number or Email is required' });
     }
-    if (!pin) {
-      return res.status(400).json({ success: false, error: 'Admin PIN is required' });
-    }
 
-    const cleanMobile = String(mobile).trim();
-    const cleanPin = String(pin).trim();
+    const where = { isActive: true };
+    if (cleanEmail) where.email = cleanEmail;
+    else if (cleanMobile) where.mobile = cleanMobile;
 
-    // Pure database query - no hardcoded mobile numbers
-    const admin = await AdminUser.findOne({ where: { mobile: cleanMobile, isActive: true } });
+    const admin = await AdminUser.findOne({ where });
     if (!admin) {
       return res.status(401).json({
         success: false,
-        error: 'Access denied: Mobile number is not registered as an authorized Admin.',
+        error: 'Access denied: You are not registered as an authorized Admin.',
       });
     }
 
-    // Validate PIN strictly against database record
-    if (admin.pin !== cleanPin) {
-      return res.status(401).json({ success: false, error: 'Invalid Admin PIN.' });
+    // Optional PIN validation if PIN was provided and admin has pin set
+    if (pin && admin.pin) {
+      const isPinValid = verifyPin(String(pin).trim(), admin.pin);
+      if (!isPinValid) {
+        return res.status(401).json({ success: false, error: 'Invalid Admin PIN.' });
+      }
     }
+
+    // Generate secure JWT token
+    const token = generateToken({
+      id: admin.id,
+      name: admin.name,
+      mobile: admin.mobile,
+      email: admin.email,
+      role: admin.role,
+      isAdmin: true,
+    });
+
+    const adminIdStr = cleanEmail || cleanMobile || 'admin';
 
     // Auto-register Device Token on Login if provided
     if (deviceToken && typeof deviceToken === 'string' && deviceToken.trim()) {
@@ -42,34 +59,115 @@ exports.loginAdmin = async (req, res) => {
           token: trimmedToken,
           deviceModel: deviceModel || 'Android Admin App',
           platform: 'android',
-          adminIdentifier: cleanMobile,
+          adminIdentifier: adminIdStr,
           isActive: true,
           lastSeenAt: new Date(),
         },
       });
       if (!created) {
         await device.update({
-          adminIdentifier: cleanMobile,
+          adminIdentifier: adminIdStr,
           deviceModel: deviceModel || device.deviceModel,
           isActive: true,
           lastSeenAt: new Date(),
         });
       }
-      console.log(`[AdminAuth] Device registered on login for admin ${cleanMobile}: ${trimmedToken.substring(0, 15)}...`);
     }
 
     return res.status(200).json({
       success: true,
-      message: 'Admin authenticated successfully',
+      message: 'Admin authenticated successfully (No PIN required)',
+      token,
       user: {
         id: admin.id,
         name: admin.name,
         mobile: admin.mobile,
+        email: admin.email,
         role: admin.role,
       },
     });
   } catch (error) {
     console.error('[AdminController] Login error:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+/**
+ * Admin Login via Google (Zero PIN needed)
+ * POST /api/admin/google
+ */
+exports.loginAdminGoogle = async (req, res) => {
+  try {
+    const { email, name, googleId, deviceToken, deviceModel } = req.body;
+    if (!email && !googleId) {
+      return res.status(400).json({ success: false, error: 'Google authentication details required.' });
+    }
+
+    const cleanEmail = email ? String(email).trim().toLowerCase() : '';
+
+    // Search by email or googleId in registered admin database
+    let admin = null;
+    if (cleanEmail) {
+      admin = await AdminUser.findOne({ where: { email: cleanEmail, isActive: true } });
+    }
+    if (!admin && googleId) {
+      admin = await AdminUser.findOne({ where: { googleId, isActive: true } });
+    }
+
+    if (!admin) {
+      return res.status(403).json({
+        success: false,
+        error: `Access Denied: ${cleanEmail || 'This account'} is not an authorized administrator. Please contact Super Admin.`,
+      });
+    }
+
+    // Register FCM device token
+    if (deviceToken && typeof deviceToken === 'string' && deviceToken.trim()) {
+      const trimmedToken = deviceToken.trim();
+      const [device, created] = await AdminDevice.findOrCreate({
+        where: { token: trimmedToken },
+        defaults: {
+          token: trimmedToken,
+          deviceModel: deviceModel || 'Android Admin App',
+          platform: 'android',
+          adminIdentifier: cleanEmail || admin.mobile || 'admin',
+          isActive: true,
+          lastSeenAt: new Date(),
+        },
+      });
+      if (!created) {
+        await device.update({
+          adminIdentifier: cleanEmail || admin.mobile || 'admin',
+          deviceModel: deviceModel || device.deviceModel,
+          isActive: true,
+          lastSeenAt: new Date(),
+        });
+      }
+    }
+
+    const token = generateToken({
+      id: admin.id,
+      name: admin.name,
+      email: admin.email,
+      mobile: admin.mobile,
+      role: admin.role,
+      isAdmin: true,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Admin authenticated successfully via Google (No PIN required)',
+      token,
+      user: {
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+        mobile: admin.mobile,
+        role: admin.role,
+      },
+    });
+  } catch (error) {
+    console.error('[AdminController] Google login error:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -82,7 +180,7 @@ exports.getAdminUsers = async (req, res) => {
   try {
     const admins = await AdminUser.findAll({
       order: [['role', 'DESC'], ['createdAt', 'ASC']],
-      attributes: ['id', 'name', 'mobile', 'role', 'isActive', 'createdAt'],
+      attributes: ['id', 'name', 'email', 'mobile', 'role', 'isActive', 'avatarUrl', 'createdAt'],
     });
 
     return res.status(200).json({
@@ -100,26 +198,35 @@ exports.getAdminUsers = async (req, res) => {
  */
 exports.createAdminUser = async (req, res) => {
   try {
-    const { name, mobile, pin, role } = req.body;
+    const { name, email, mobile, pin, role } = req.body;
 
-    if (!mobile || String(mobile).trim().length < 10) {
-      return res.status(400).json({ success: false, error: 'Valid 10-digit mobile number is required' });
-    }
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, error: 'Name is required' });
     }
 
-    const cleanMobile = String(mobile).trim();
+    const cleanEmail = email ? String(email).trim().toLowerCase() : null;
+    const cleanMobile = mobile ? String(mobile).trim() : null;
 
-    const existing = await AdminUser.findOne({ where: { mobile: cleanMobile } });
-    if (existing) {
-      return res.status(400).json({ success: false, error: 'An admin with this mobile already exists' });
+    if (cleanMobile) {
+      const existing = await AdminUser.findOne({ where: { mobile: cleanMobile } });
+      if (existing) {
+        return res.status(400).json({ success: false, error: 'An admin with this mobile already exists' });
+      }
     }
 
+    if (cleanEmail) {
+      const existingEmail = await AdminUser.findOne({ where: { email: cleanEmail } });
+      if (existingEmail) {
+        return res.status(400).json({ success: false, error: 'An admin with this email already exists' });
+      }
+    }
+
+    const rawPin = pin ? String(pin).trim() : '9999';
     const newAdmin = await AdminUser.create({
       name: name.trim(),
+      email: cleanEmail,
       mobile: cleanMobile,
-      pin: pin ? String(pin).trim() : '9999',
+      pin: hashPin(rawPin),
       role: role === 'SUPERADMIN' ? 'SUPERADMIN' : 'ADMIN',
       isActive: true,
     });
@@ -130,6 +237,7 @@ exports.createAdminUser = async (req, res) => {
       data: {
         id: newAdmin.id,
         name: newAdmin.name,
+        email: newAdmin.email,
         mobile: newAdmin.mobile,
         role: newAdmin.role,
         isActive: newAdmin.isActive,
@@ -137,6 +245,57 @@ exports.createAdminUser = async (req, res) => {
     });
   } catch (error) {
     console.error('[AdminController] Create admin error:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+/**
+ * Update an existing admin user (Super Admin action)
+ * PUT /api/admin/users/:id
+ */
+exports.updateAdminUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, mobile, role, isActive, avatarUrl } = req.body;
+
+    const admin = await AdminUser.findByPk(id);
+    if (!admin) {
+      return res.status(404).json({ success: false, error: 'Admin account not found' });
+    }
+
+    const updates = {};
+    if (name && name.trim()) updates.name = name.trim();
+    if (email !== undefined) updates.email = email ? String(email).trim().toLowerCase() : null;
+    if (mobile !== undefined) updates.mobile = mobile ? String(mobile).trim() : null;
+    if (role && ['SUPERADMIN', 'ADMIN'].includes(role)) updates.role = role;
+    if (isActive !== undefined) updates.isActive = Boolean(isActive);
+
+    if (avatarUrl) {
+      if (avatarUrl.startsWith('data:') || avatarUrl.length > 500) {
+        const { uploadBase64 } = require('../../services/s3.service');
+        updates.avatarUrl = await uploadBase64(avatarUrl, 'admin-avatars');
+      } else {
+        updates.avatarUrl = avatarUrl;
+      }
+    }
+
+    await admin.update(updates);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Admin account updated successfully',
+      data: {
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+        mobile: admin.mobile,
+        role: admin.role,
+        isActive: admin.isActive,
+        avatarUrl: admin.avatarUrl,
+      },
+    });
+  } catch (error) {
+    console.error('[AdminController] Update admin error:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 };

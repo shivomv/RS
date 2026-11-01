@@ -1,5 +1,6 @@
 const { Category } = require('../../models');
 const { uploadBase64 } = require('../../services/s3.service');
+const redisService = require('../../services/redis.service');
 
 function formatCategory(c) {
   const json = c.toJSON ? c.toJSON() : c;
@@ -41,6 +42,7 @@ exports.createCategory = async (req, res) => {
       displayOrder: Number(displayOrder || 0),
       isActive: isActive !== false,
     });
+    await redisService.invalidateProductCache();
     return res.status(201).json(formatCategory(category));
   } catch (err) {
     return res.status(400).json({ error: err.message || 'Failed to create category' });
@@ -63,6 +65,7 @@ exports.updateCategory = async (req, res) => {
       updateData.image = img;
     }
     await category.update(updateData);
+    await redisService.invalidateProductCache();
     return res.json(formatCategory(category));
   } catch (err) {
     return res.status(400).json({ error: err.message || 'Failed to update category' });

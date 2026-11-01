@@ -50,19 +50,81 @@ Notification.belongsTo(Shopkeeper, { foreignKey: 'shopkeeperId', as: 'shopkeeper
 
 async function seedDefaultSuperAdmin() {
   try {
-    const count = await AdminUser.count();
-    if (count === 0) {
+    const { Op } = require('sequelize');
+    const email = process.env.SUPERADMIN_EMAIL;
+    const mobile = process.env.SUPERADMIN_MOBILE;
+
+    if (!email && !mobile) {
+      return;
+    }
+
+    const whereConditions = [];
+    if (email) whereConditions.push({ email });
+    if (mobile) whereConditions.push({ mobile });
+
+    let superAdmin = await AdminUser.findOne({
+      where: {
+        [Op.or]: whereConditions,
+      },
+    });
+
+    if (!superAdmin) {
       await AdminUser.create({
-        name: 'Super Admin',
-        mobile: process.env.SUPERADMIN_MOBILE || '9026773268',
-        pin: process.env.SUPERADMIN_PIN || '9999',
+        name: process.env.SUPERADMIN_NAME || 'Super Admin',
+        email,
+        mobile,
+        pin: process.env.SUPERADMIN_PIN || null,
         role: 'SUPERADMIN',
         isActive: true,
       });
-      console.log('✅ [Database] Seeded initial Super Admin into database.');
+      console.log(`✅ [Database] Seeded Super Admin from env: ${email || mobile}`);
+    } else {
+      await superAdmin.update({
+        ...(email && { email }),
+        ...(mobile && { mobile }),
+        role: 'SUPERADMIN',
+        isActive: true,
+      });
+      console.log(`✅ [Database] Synchronized Super Admin from env: ${email || mobile}`);
     }
   } catch (e) {
     console.warn('[Database] Super Admin seed check:', e.message);
+  }
+}
+
+async function ensureColumns() {
+  const qi = sequelize.getQueryInterface();
+  const tables = {
+    shopkeepers: [
+      { name: 'googleId', type: 'VARCHAR(255)' },
+      { name: 'avatarUrl', type: 'TEXT' },
+    ],
+    orders: [
+      { name: 'statusHistory', type: 'JSON' },
+      { name: 'cancellationReason', type: 'VARCHAR(255)' },
+    ],
+    support_tickets: [
+      { name: 'replies', type: 'JSON' },
+    ],
+    admin_users: [
+      { name: 'email', type: 'VARCHAR(255)' },
+      { name: 'googleId', type: 'VARCHAR(255)' },
+      { name: 'avatarUrl', type: 'TEXT' },
+    ],
+  };
+
+  for (const [table, cols] of Object.entries(tables)) {
+    try {
+      const desc = await qi.describeTable(table).catch(() => null);
+      if (desc) {
+        for (const col of cols) {
+          if (!desc[col.name]) {
+            await sequelize.query(`ALTER TABLE ${table} ADD COLUMN ${col.name} ${col.type};`);
+            console.log(`✅ [Database] Added missing column ${col.name} to ${table}`);
+          }
+        }
+      }
+    } catch (_) {}
   }
 }
 
@@ -73,6 +135,7 @@ async function seedDefaultSuperAdmin() {
 async function syncDatabase(options = {}) {
   try {
     await sequelize.sync(options);
+    await ensureColumns();
     console.log('✅ [Database] All models synchronized successfully.');
     await seedDefaultSuperAdmin();
   } catch (error) {

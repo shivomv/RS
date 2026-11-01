@@ -110,13 +110,18 @@ export default function ShopkeeperHomeScreen({ navigation }) {
               activeOpacity={0.7}
               className="w-10 h-10 rounded-full overflow-hidden border border-[#bccac0] justify-center items-center bg-[#f2f3ff]"
             >
-              {session ? (
+              {session?.user?.avatarUrl || session?.user?.avatar ? (
                 <Image
                   source={{
-                    uri: session.user?.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDO2ijUAJMNwM-QODTNqSRCuJgJck70ZUjFztadUdQ6FY5QFQu1PRfZXrHv48QsDfm2odixXZVku1HckHrgpzBJXDjUuSQvqGsjB-N20z0l40gEeMYHfDd2UGxvKusUOYDZockQrFLPsfy6Mrv8tAG9ouXqm6-sobkEwc13Pinr0UynpcUjCcmLovh45QuDwt8IRv9A2Z1Yh6Uxjz6IeRLO0kDvVPUD7AcwYTdY6Ts-67cMaQugjx_D',
+                    uri: session.user.avatarUrl || session.user.avatar,
                   }}
                   className="w-full h-full"
+                  resizeMode="cover"
                 />
+              ) : session?.user?.name ? (
+                <Text className="text-sm font-extrabold text-[#006948]">
+                  {session.user.name.charAt(0).toUpperCase()}
+                </Text>
               ) : (
                 <Icon name="person-outline" size={22} color="#006948" />
               )}

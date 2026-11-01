@@ -13,7 +13,7 @@ export default function AddAddressScreen({ navigation }) {
   const [address, setAddress] = useState('');
   const [landmark, setLandmark] = useState('');
   const [pincode, setPincode] = useState('');
-  const [city, setCity] = useState('Bengaluru');
+  const [city, setCity] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -42,9 +42,10 @@ export default function AddAddressScreen({ navigation }) {
         landmark: landmark || '',
         contactPhone: phone || '',
       };
-      await api.addAddress(addressData);
+      const res = await api.addAddress(addressData);
+      const newAddressId = res?.data?._id || res?.data?.id || res?._id || res?.id;
       alertService.success('Success', `Delivery facility "${name}" saved successfully.`, () => {
-        navigation.goBack();
+        navigation.navigate('CheckoutPayment', { selectedAddressId: String(newAddressId || '') });
       });
     } catch (err) {
       alertService.error('Error', err.message || 'Failed to save address');
@@ -106,7 +107,8 @@ export default function AddAddressScreen({ navigation }) {
             <View className="w-32">
               <Text className="text-xs font-bold text-[#131b2e] mb-1.5">Pincode *</Text>
               <TextInput
-                placeholder="560038"
+                placeholder="6-digit pincode"
+                placeholderTextColor="#6d7a72"
                 keyboardType="numeric"
                 maxLength={6}
                 value={pincode}
@@ -120,6 +122,8 @@ export default function AddAddressScreen({ navigation }) {
             <View className="flex-1">
               <Text className="text-xs font-bold text-[#131b2e] mb-1.5">City</Text>
               <TextInput
+                placeholder="Enter city"
+                placeholderTextColor="#6d7a72"
                 value={city}
                 onChangeText={setCity}
                 className="bg-[#f2f3ff] rounded-xl px-3 h-11 text-xs text-[#131b2e]"

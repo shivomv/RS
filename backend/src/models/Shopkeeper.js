@@ -13,12 +13,16 @@ const Shopkeeper = sequelize.define('Shopkeeper', {
   },
   mobile: {
     type: DataTypes.STRING,
-    allowNull: false,
-    unique: true,
+    allowNull: true,
   },
   shopName: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
+    defaultValue: 'Retail Store',
+  },
+  avatarUrl: {
+    type: DataTypes.TEXT,
+    allowNull: true,
   },
   address: {
     type: DataTypes.TEXT,
@@ -29,6 +33,10 @@ const Shopkeeper = sequelize.define('Shopkeeper', {
     allowNull: true,
   },
   email: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  googleId: {
     type: DataTypes.STRING,
     allowNull: true,
   },

@@ -3,6 +3,7 @@ import {
   View,
   Text,
   ScrollView,
+  FlatList,
   Pressable,
   TextInput,
   Image,
@@ -57,25 +58,62 @@ const getItemBundleLabel = (item) => {
   );
 };
 
+const PAGE_SIZE = 10;
+
 export default function OrderManagementScreen({ orders: initialOrders = [], onRefresh, route }) {
   const [orderList, setOrderList] = useState(initialOrders);
   const [loading, setLoading] = useState(initialOrders.length === 0);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
-  const fetchOrdersData = async () => {
+  const [activeView, setActiveView] = useState('list');
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [driverName, setDriverName] = useState('');
+  const [driverPhone, setDriverPhone] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [updating, setUpdating] = useState(false);
+
+  const fetchOrdersData = async (offset = 0, append = false, status = statusFilter) => {
+    if (append) {
+      setLoadingMore(true);
+    } else if (offset === 0 && !refreshing) {
+      setLoading(true);
+    }
+
     try {
-      const res = await adminApi.getOrders().catch(() => []);
-      setOrderList(Array.isArray(res) ? res : res?.data || []);
+      const res = await adminApi.getOrders({
+        limit: PAGE_SIZE,
+        offset,
+        status: status !== 'ALL' ? status : undefined,
+      }).catch(() => []);
+
+      const list = Array.isArray(res) ? res : res?.data || [];
+
+      if (list.length < PAGE_SIZE) {
+        setHasMore(false);
+      } else {
+        setHasMore(true);
+      }
+
+      setOrderList((prev) => {
+        if (!append) return list;
+        const existingIds = new Set(prev.map((o) => String(o.orderId || o.id || o._id)));
+        const newItems = list.filter((o) => !existingIds.has(String(o.orderId || o.id || o._id)));
+        return [...prev, ...newItems];
+      });
     } catch (e) {
       console.error('[OrderManagementScreen] Fetch error:', e);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   };
 
   useEffect(() => {
-    fetchOrdersData();
+    fetchOrdersData(0, false, 'ALL');
   }, []);
 
   useEffect(() => {
@@ -89,7 +127,7 @@ export default function OrderManagementScreen({ orders: initialOrders = [], onRe
       if (match) {
         openOrderView(match);
       } else {
-        adminApi.getOrders().then((res) => {
+        adminApi.getOrders({ limit: PAGE_SIZE, offset: 0 }).then((res) => {
           const list = Array.isArray(res) ? res : res?.data || [];
           setOrderList(list);
           const found = list.find(
@@ -101,21 +139,27 @@ export default function OrderManagementScreen({ orders: initialOrders = [], onRe
     }
   }, [route?.params?.selectedOrder, route?.params?.orderId]);
 
-
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchOrdersData();
+    fetchOrdersData(0, false, statusFilter);
     if (typeof onRefresh === 'function') onRefresh();
   };
 
-  const [activeView, setActiveView] = useState('list');
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
-  const [updating, setUpdating] = useState(false);
+  const handleLoadMore = () => {
+    if (loading || loadingMore || !hasMore || refreshing) return;
+    fetchOrdersData(orderList.length, true, statusFilter);
+  };
+
+  const handleStatusFilterChange = (newStatus) => {
+    setStatusFilter(newStatus);
+    setHasMore(true);
+    fetchOrdersData(0, false, newStatus);
+  };
 
   const openOrderView = (ord) => {
     setSelectedOrder(ord);
+    setDriverName(ord.driverName || '');
+    setDriverPhone(ord.driverPhone || '');
     setActiveView('view');
   };
 
@@ -139,10 +183,25 @@ export default function OrderManagementScreen({ orders: initialOrders = [], onRe
     setUpdating(true);
     try {
       const id = selectedOrder._id || selectedOrder.orderId;
-      await adminApi.updateOrderDetails(id, { status: newStatus });
+      await adminApi.updateOrderDetails(id, {
+        status: newStatus,
+        driverName: driverName.trim(),
+        driverPhone: driverPhone.trim(),
+      });
       Alert.alert('Order Updated', `Order marked as ${newStatus.toUpperCase()}`);
-      setSelectedOrder((prev) => ({ ...prev, status: newStatus }));
-      fetchOrdersData();
+      setSelectedOrder((prev) => ({
+        ...prev,
+        status: newStatus,
+        driverName: driverName.trim(),
+        driverPhone: driverPhone.trim(),
+      }));
+      setOrderList((prev) =>
+        prev.map((o) =>
+          String(o.orderId || o.id || o._id) === String(id)
+            ? { ...o, status: newStatus, driverName: driverName.trim(), driverPhone: driverPhone.trim() }
+            : o
+        )
+      );
       if (typeof onRefresh === 'function') onRefresh();
     } catch (err) {
       Alert.alert('Update Failed', err.message || 'Failed to update order');
@@ -185,7 +244,7 @@ export default function OrderManagementScreen({ orders: initialOrders = [], onRe
     const gstAmount =
       selectedOrder.financialSnapshot?.gstAmount ??
       selectedOrder.gstAmount ??
-      Math.round(subtotal * 0.18);
+      0; // Zero GST wholesale
     const deliveryFee =
       selectedOrder.financialSnapshot?.deliveryFee ?? selectedOrder.deliveryFee ?? 0;
     const discountAmount =
@@ -401,8 +460,8 @@ export default function OrderManagementScreen({ orders: initialOrders = [], onRe
             </View>
 
             <View className="flex-row justify-between py-1.5 border-b border-border">
-              <Text className="text-xs text-muted">GST Taxes (18%)</Text>
-              <Text className="text-xs font-bold text-ink">₹{gstAmount.toLocaleString('en-IN')}</Text>
+              <Text className="text-xs text-muted">GST Taxes</Text>
+              <Text className="text-xs font-bold text-emerald-600">₹0 (Zero GST Wholesale)</Text>
             </View>
 
             <View className="flex-row justify-between py-1.5 border-b border-border">
@@ -434,64 +493,229 @@ export default function OrderManagementScreen({ orders: initialOrders = [], onRe
             </View>
           </View>
 
-          {/* Status Progression Actions */}
-          <Text className="text-[11px] font-black text-muted uppercase tracking-wider mb-3">
-            Fulfillment Progression
-          </Text>
-
-          {updating ? (
-            <ActivityIndicator size="small" color="#006948" className="my-4" />
-          ) : (
-            <View className="gap-2.5 mb-6">
-              {st !== 'confirmed' && st !== 'delivered' && st !== 'cancelled' && (
-                <Pressable
-                  onPress={() => handleUpdateStatus('confirmed')}
-                  className="bg-blue-600 rounded-2xl py-3.5 items-center flex-row justify-center gap-2 active:opacity-90 shadow-sm"
-                >
-                  <Icon name="check-circle" size={18} color="#fff" />
-                  <Text className="text-xs font-black text-white uppercase tracking-wider">
-                    Confirm & Accept Order
-                  </Text>
-                </Pressable>
-              )}
-
-              {st !== 'dispatching' && st !== 'delivered' && st !== 'cancelled' && (
-                <Pressable
-                  onPress={() => handleUpdateStatus('dispatching')}
-                  className="bg-purple-600 rounded-2xl py-3.5 items-center flex-row justify-center gap-2 active:opacity-90 shadow-sm"
-                >
-                  <Icon name="local-shipping" size={18} color="#fff" />
-                  <Text className="text-xs font-black text-white uppercase tracking-wider">
-                    Mark Order Dispatching
-                  </Text>
-                </Pressable>
-              )}
-
-              {st !== 'delivered' && st !== 'cancelled' && (
-                <Pressable
-                  onPress={() => handleUpdateStatus('delivered')}
-                  className="bg-emerald-600 rounded-2xl py-3.5 items-center flex-row justify-center gap-2 active:opacity-90 shadow-sm"
-                >
-                  <Icon name="task-alt" size={18} color="#fff" />
-                  <Text className="text-xs font-black text-white uppercase tracking-wider">
-                    Mark Order Delivered
-                  </Text>
-                </Pressable>
-              )}
-
+          {/* Status Progression Section */}
+          <View className="mt-2 mb-6">
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-[11px] font-black text-muted uppercase tracking-wider">
+                Step-Wise Fulfillment Progression
+              </Text>
               {st !== 'cancelled' && (
-                <Pressable
-                  onPress={() => handleUpdateStatus('cancelled')}
-                  className="rounded-2xl py-3 items-center flex-row justify-center gap-2 active:opacity-90 mt-1 border border-red-500/30 bg-red-500/10"
-                >
-                  <Icon name="cancel" size={18} color="#ef4444" />
-                  <Text className="text-xs font-black text-red-500 uppercase tracking-wider">
-                    Cancel Order
-                  </Text>
-                </Pressable>
+                <Text className="text-[10px] font-bold text-brand-dim">
+                  {st === 'pending'
+                    ? 'Step 1 of 4: Placed'
+                    : st === 'confirmed'
+                    ? 'Step 2 of 4: Confirmed'
+                    : st === 'dispatching'
+                    ? 'Step 3 of 4: Dispatching'
+                    : 'Step 4 of 4: Delivered'}
+                </Text>
               )}
             </View>
-          )}
+
+            {/* Visual Step Tracker */}
+            {st !== 'cancelled' && (
+              <View className="bg-surface rounded-3xl p-4 mb-4 border border-border shadow-sm">
+                <View className="flex-row items-center justify-between">
+                  {[
+                    { key: 'pending', label: 'Placed', icon: 'receipt-long' },
+                    { key: 'confirmed', label: 'Confirmed', icon: 'check-circle' },
+                    { key: 'dispatching', label: 'Dispatching', icon: 'local-shipping' },
+                    { key: 'delivered', label: 'Delivered', icon: 'task-alt' },
+                  ].map((step, idx) => {
+                    const stepOrder = { pending: 0, confirmed: 1, dispatching: 2, delivered: 3 };
+                    const curIdx = stepOrder[st] ?? 0;
+                    const isDone = idx < curIdx;
+                    const isCurrent = idx === curIdx;
+
+                    let circleBg = 'bg-input border-border';
+                    let iconColor = '#94a3b8';
+                    let iconName = step.icon;
+                    if (isDone) {
+                      circleBg = 'bg-emerald-500 border-emerald-500';
+                      iconColor = '#ffffff';
+                      iconName = 'check';
+                    } else if (isCurrent) {
+                      circleBg = 'bg-[#006948] border-[#006948] shadow-sm';
+                      iconColor = '#ffffff';
+                    }
+
+                    return (
+                      <View key={step.key} className="items-center flex-1">
+                        <View
+                          className={`w-8 h-8 rounded-full border-2 items-center justify-center mb-1.5 ${circleBg}`}
+                        >
+                          <Icon name={iconName} size={15} color={iconColor} />
+                        </View>
+                        <Text
+                          className={`text-[9px] font-black uppercase text-center ${
+                            isCurrent
+                              ? 'text-[#006948]'
+                              : isDone
+                              ? 'text-emerald-700'
+                              : 'text-muted'
+                          }`}
+                        >
+                          {step.label}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {/* Cancelled Order Banner */}
+            {st === 'cancelled' && (
+              <View className="bg-red-500/10 border border-red-500/30 rounded-3xl p-5 mb-4 items-center">
+                <View className="w-12 h-12 rounded-full bg-red-500/20 items-center justify-center mb-2">
+                  <Icon name="cancel" size={26} color="#ef4444" />
+                </View>
+                <Text className="text-sm font-black text-red-500 uppercase tracking-wider">
+                  Order Cancelled
+                </Text>
+                <Text className="text-xs text-muted text-center mt-1">
+                  This wholesale order has been cancelled and reserved stock restored.
+                </Text>
+              </View>
+            )}
+
+            {/* Driver Assignment Card (editable during confirmed or dispatching) */}
+            {(st === 'confirmed' || st === 'dispatching') && (
+              <View className="bg-surface rounded-3xl p-4 mb-4 border border-border shadow-sm">
+                <View className="flex-row items-center gap-2 mb-3">
+                  <View className="w-7 h-7 rounded-lg bg-purple-500/10 items-center justify-center">
+                    <Icon name="local-shipping" size={16} color="#8b5cf6" />
+                  </View>
+                  <Text className="text-xs font-black text-ink uppercase tracking-wider">
+                    Logistics & Delivery Representative
+                  </Text>
+                </View>
+                <View className="mb-2.5">
+                  <Text className="text-[10px] font-bold text-muted mb-1 uppercase">Assigned Driver Name</Text>
+                  <TextInput
+                    value={driverName}
+                    onChangeText={setDriverName}
+                    placeholder="e.g. Ramesh Kumar / Factory Van 04"
+                    placeholderTextColor="#94a3b8"
+                    className="bg-input rounded-xl px-3 py-2 text-xs font-bold text-ink border border-border"
+                  />
+                </View>
+                <View>
+                  <Text className="text-[10px] font-bold text-muted mb-1 uppercase">Driver Phone Number</Text>
+                  <TextInput
+                    value={driverPhone}
+                    onChangeText={setDriverPhone}
+                    placeholder="e.g. 9876543210"
+                    placeholderTextColor="#94a3b8"
+                    keyboardType="phone-pad"
+                    className="bg-input rounded-xl px-3 py-2 text-xs font-bold text-ink border border-border"
+                  />
+                </View>
+              </View>
+            )}
+
+            {/* Step-by-Step Progressive Actions */}
+            {updating ? (
+              <ActivityIndicator size="small" color="#006948" className="my-4" />
+            ) : (
+              <View className="gap-2.5 mb-6">
+                {/* STEP 1 -> STEP 2: Only show when status is pending */}
+                {st === 'pending' && (
+                  <Pressable
+                    onPress={() => handleUpdateStatus('confirmed')}
+                    className="bg-blue-600 rounded-2xl py-3.5 px-4 items-center flex-row justify-center gap-2 active:opacity-90 shadow-sm"
+                  >
+                    <Icon name="check-circle" size={18} color="#fff" />
+                    <View className="items-center">
+                      <Text className="text-xs font-black text-white uppercase tracking-wider">
+                        Confirm & Accept Order
+                      </Text>
+                      <Text className="text-[10px] text-blue-100 font-medium">
+                        Advance to Step 2: Accept for warehouse packing
+                      </Text>
+                    </View>
+                  </Pressable>
+                )}
+
+                {/* STEP 2 -> STEP 3: Only show when status is confirmed */}
+                {st === 'confirmed' && (
+                  <Pressable
+                    onPress={() => handleUpdateStatus('dispatching')}
+                    className="bg-purple-600 rounded-2xl py-3.5 px-4 items-center flex-row justify-center gap-2 active:opacity-90 shadow-sm"
+                  >
+                    <Icon name="local-shipping" size={18} color="#fff" />
+                    <View className="items-center">
+                      <Text className="text-xs font-black text-white uppercase tracking-wider">
+                        Mark Order Dispatching
+                      </Text>
+                      <Text className="text-[10px] text-purple-100 font-medium">
+                        Advance to Step 3: Out for delivery with driver
+                      </Text>
+                    </View>
+                  </Pressable>
+                )}
+
+                {/* STEP 3 -> STEP 4: Only show when status is dispatching */}
+                {st === 'dispatching' && (
+                  <Pressable
+                    onPress={() => handleUpdateStatus('delivered')}
+                    className="bg-emerald-600 rounded-2xl py-3.5 px-4 items-center flex-row justify-center gap-2 active:opacity-90 shadow-sm"
+                  >
+                    <Icon name="task-alt" size={18} color="#fff" />
+                    <View className="items-center">
+                      <Text className="text-xs font-black text-white uppercase tracking-wider">
+                        Mark Order Delivered & Fulfilled
+                      </Text>
+                      <Text className="text-[10px] text-emerald-100 font-medium">
+                        Advance to Step 4: Confirm delivery & COD collected
+                      </Text>
+                    </View>
+                  </Pressable>
+                )}
+
+                {/* STEP 4: Terminal status - Delivered */}
+                {st === 'delivered' && (
+                  <View className="bg-emerald-500/10 border border-emerald-500/30 rounded-3xl p-5 items-center">
+                    <View className="w-12 h-12 rounded-full bg-emerald-500/20 items-center justify-center mb-2">
+                      <Icon name="task-alt" size={26} color="#10b981" />
+                    </View>
+                    <Text className="text-sm font-black text-emerald-700 uppercase tracking-wider">
+                      Order Fully Delivered & Fulfilled
+                    </Text>
+                    <Text className="text-xs text-muted text-center mt-1">
+                      This wholesale order has been successfully fulfilled.
+                    </Text>
+                  </View>
+                )}
+
+                {/* Cancel Button: Allowed only before order is delivered or already cancelled */}
+                {st !== 'delivered' && st !== 'cancelled' && (
+                  <Pressable
+                    onPress={() => {
+                      Alert.alert(
+                        'Cancel Order',
+                        `Are you sure you want to cancel Order #${selectedOrder.orderId || selectedOrder._id}? Stock will be restored to inventory.`,
+                        [
+                          { text: 'Keep Order', style: 'cancel' },
+                          {
+                            text: 'Yes, Cancel Order',
+                            style: 'destructive',
+                            onPress: () => handleUpdateStatus('cancelled'),
+                          },
+                        ]
+                      );
+                    }}
+                    className="rounded-2xl py-3 items-center flex-row justify-center gap-2 active:opacity-90 mt-1 border border-red-500/30 bg-red-500/10"
+                  >
+                    <Icon name="cancel" size={16} color="#ef4444" />
+                    <Text className="text-xs font-black text-red-500 uppercase tracking-wider">
+                      Cancel Order
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            )}
+          </View>
         </ScrollView>
       </View>
     );
@@ -535,7 +759,7 @@ export default function OrderManagementScreen({ orders: initialOrders = [], onRe
             return (
               <Pressable
                 key={k}
-                onPress={() => setStatusFilter(k)}
+                onPress={() => handleStatusFilterChange(k)}
                 className={`px-3.5 py-1.5 rounded-full mr-2 border ${
                   isActive ? 'bg-brand border-brand' : 'bg-input border-border active:bg-border'
                 }`}
@@ -553,92 +777,107 @@ export default function OrderManagementScreen({ orders: initialOrders = [], onRe
         </ScrollView>
       </View>
 
-      {/* Orders List */}
-      <ScrollView
-        className="flex-1 p-4"
-        contentContainerStyle={{ paddingBottom: 60 }}
+      {/* Orders List with Infinite Scroll (10 per batch) */}
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => String(item.orderId || item.id || item._id)}
+        renderItem={({ item: ord }) => {
+          const st = String(ord.status || 'pending').toLowerCase();
+          const bc = statusColor(st);
+          const items = ord.items || [];
+          const fullAddress = getFullAddress(ord);
+          const total = ord.totalAmount || ord.total || 0;
+          const buyerName = ord.buyerSnapshot?.name || ord.buyerName || 'Shopkeeper Account';
+          const buyerMobile = ord.buyerSnapshot?.mobile || ord.buyerPhone || '';
+
+          return (
+            <Pressable
+              key={ord._id || ord.orderId}
+              onPress={() => openOrderView(ord)}
+              className="bg-surface rounded-3xl p-4 mb-3.5 border border-border shadow-sm active:opacity-90"
+            >
+              {/* Header Row: ID, Date, Status */}
+              <View className="flex-row items-center justify-between mb-2">
+                <View>
+                  <Text className="text-xs font-black text-ink">
+                    Order #{ord.orderId || ord._id}
+                  </Text>
+                  <Text className="text-[10px] text-muted font-medium">
+                    {formatDate(ord.createdAt)}
+                  </Text>
+                </View>
+
+                <View
+                  className="px-2.5 py-0.5 rounded-full border flex-row items-center gap-1"
+                  style={{ backgroundColor: `${bc}15`, borderColor: `${bc}30` }}
+                >
+                  <View className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: bc }} />
+                  <Text
+                    className="text-[10px] font-black uppercase tracking-wider"
+                    style={{ color: bc }}
+                  >
+                    {st}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Buyer & Address Row */}
+              <View className="bg-input/60 rounded-2xl p-3 mb-3 border border-border/60">
+                <View className="flex-row items-center justify-between mb-1">
+                  <Text className="text-xs font-black text-ink">{buyerName}</Text>
+                  {buyerMobile ? (
+                    <Text className="text-[10px] font-bold text-brand-dim">📞 {buyerMobile}</Text>
+                  ) : null}
+                </View>
+                <Text className="text-[11px] text-secondary leading-snug font-medium" numberOfLines={2}>
+                  📍 {fullAddress}
+                </Text>
+              </View>
+
+              {/* Footer: Item Count and Overall Bill */}
+              <View className="flex-row items-center justify-between border-t border-border pt-2.5">
+                <Text className="text-[11px] font-bold text-muted">
+                  {items.length} Product{items.length !== 1 ? 's' : ''} • {ord.paymentMethod || 'COD'}
+                </Text>
+                <View className="flex-row items-baseline gap-1">
+                  <Text className="text-[10px] font-bold text-muted uppercase">Total:</Text>
+                  <Text className="text-base font-black text-brand-dim">
+                    ₹{total.toLocaleString('en-IN')}
+                  </Text>
+                </View>
+              </View>
+            </Pressable>
+          );
+        }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#006948" />
         }
-      >
-        {loading ? (
-          <SkeletonList Component={OrderCardSkeleton} count={4} />
-        ) : filtered.length === 0 ? (
-          <View className="py-16 items-center">
-            <Icon name="receipt-long" size={48} color="#cbd5e1" />
-            <Text className="text-sm font-bold text-muted mt-3">No orders found</Text>
-          </View>
-        ) : (
-          filtered.map((ord) => {
-            const st = String(ord.status || 'pending').toLowerCase();
-            const bc = statusColor(st);
-            const items = ord.items || [];
-            const fullAddress = getFullAddress(ord);
-            const total = ord.totalAmount || ord.total || 0;
-            const buyerName = ord.buyerSnapshot?.name || ord.buyerName || 'Shopkeeper Account';
-            const buyerMobile = ord.buyerSnapshot?.mobile || ord.buyerPhone || '';
-
-            return (
-              <Pressable
-                key={ord._id || ord.orderId}
-                onPress={() => openOrderView(ord)}
-                className="bg-surface rounded-3xl p-4 mb-3.5 border border-border shadow-sm active:opacity-90"
-              >
-                {/* Header Row: ID, Date, Status */}
-                <View className="flex-row items-center justify-between mb-2">
-                  <View>
-                    <Text className="text-xs font-black text-ink">
-                      Order #{ord.orderId || ord._id}
-                    </Text>
-                    <Text className="text-[10px] text-muted font-medium">
-                      {formatDate(ord.createdAt)}
-                    </Text>
-                  </View>
-
-                  <View
-                    className="px-2.5 py-0.5 rounded-full border flex-row items-center gap-1"
-                    style={{ backgroundColor: `${bc}15`, borderColor: `${bc}30` }}
-                  >
-                    <View className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: bc }} />
-                    <Text
-                      className="text-[10px] font-black uppercase tracking-wider"
-                      style={{ color: bc }}
-                    >
-                      {st}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Buyer & Address Row */}
-                <View className="bg-input/60 rounded-2xl p-3 mb-3 border border-border/60">
-                  <View className="flex-row items-center justify-between mb-1">
-                    <Text className="text-xs font-black text-ink">{buyerName}</Text>
-                    {buyerMobile ? (
-                      <Text className="text-[10px] font-bold text-brand-dim">📞 {buyerMobile}</Text>
-                    ) : null}
-                  </View>
-                  <Text className="text-[11px] text-secondary leading-snug font-medium" numberOfLines={2}>
-                    📍 {fullAddress}
-                  </Text>
-                </View>
-
-                {/* Footer: Item Count and Overall Bill */}
-                <View className="flex-row items-center justify-between border-t border-border pt-2.5">
-                  <Text className="text-[11px] font-bold text-muted">
-                    {items.length} Product{items.length !== 1 ? 's' : ''} • {ord.paymentMethod || 'COD'}
-                  </Text>
-                  <View className="flex-row items-baseline gap-1">
-                    <Text className="text-[10px] font-bold text-muted uppercase">Total:</Text>
-                    <Text className="text-base font-black text-brand-dim">
-                      ₹{total.toLocaleString('en-IN')}
-                    </Text>
-                  </View>
-                </View>
-              </Pressable>
-            );
-          })
-        )}
-      </ScrollView>
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.4}
+        ListEmptyComponent={
+          loading ? (
+            <SkeletonList Component={OrderCardSkeleton} count={4} />
+          ) : (
+            <View className="py-16 items-center">
+              <Icon name="receipt-long" size={48} color="#cbd5e1" />
+              <Text className="text-sm font-bold text-muted mt-3">No orders found</Text>
+            </View>
+          )
+        }
+        ListFooterComponent={
+          loadingMore ? (
+            <View className="py-4 items-center justify-center flex-row gap-2">
+              <ActivityIndicator size="small" color="#006948" />
+              <Text className="text-xs text-muted font-bold">Loading older orders (10)...</Text>
+            </View>
+          ) : !hasMore && orderList.length > 0 ? (
+            <View className="py-4 items-center">
+              <Text className="text-[11px] text-muted font-medium">All {orderList.length} orders loaded</Text>
+            </View>
+          ) : null
+        }
+      />
     </View>
   );
 }

@@ -183,7 +183,7 @@ export default function NotificationSettingsScreen({ navigation }) {
       <View className="px-5 pt-12 pb-4 bg-surface border-b border-border flex-row items-center justify-between shadow-sm">
         <View className="flex-row items-center gap-3">
           <Pressable
-            onPress={() => navigation.goBack()}
+            onPress={() => (navigation?.goBack ? navigation.goBack() : navigate('Dashboard'))}
             className="w-9 h-9 rounded-full bg-input justify-center items-center border border-border active:opacity-70"
           >
             <Icon name="arrow-back" size={20} color="#0f172a" />

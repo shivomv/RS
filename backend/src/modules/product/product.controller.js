@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const { Product, ProductBundle, Category } = require('../../models');
 const { uploadBase64 } = require('../../services/s3.service');
+const redisService = require('../../services/redis.service');
 
 function formatProductResponse(prod) {
   const json = prod.toJSON ? prod.toJSON() : prod;
@@ -56,7 +57,20 @@ function formatProductResponse(prod) {
 
 exports.getAllProducts = async (req, res) => {
   try {
-    const { category, search } = req.query;
+    const { category, search, page, limit } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
+    const offset = (pageNum - 1) * limitNum;
+
+    const cacheKey = `products:list:${(category || 'ALL').trim().toUpperCase()}:${(search || '').trim().toLowerCase()}:${pageNum}:${limitNum}`;
+
+    // 1. Check Redis Cache
+    const cached = await redisService.get(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const where = {};
 
     // Search filter
@@ -94,9 +108,16 @@ exports.getAllProducts = async (req, res) => {
         { model: Category, as: 'category' },
       ],
       order: [['displayOrder', 'ASC'], ['id', 'DESC']],
+      limit: limitNum,
+      offset: offset,
     });
 
-    return res.json(products.map(formatProductResponse));
+    const result = products.map(formatProductResponse);
+
+    // 2. Save in Redis with short TTL (60s)
+    await redisService.set(cacheKey, result, 60);
+
+    return res.json(result);
   } catch (err) {
     console.error('[ProductController] DB product query error:', err.message);
     return res.status(500).json({ error: err.message || 'Failed to fetch products' });
@@ -182,6 +203,9 @@ exports.createProduct = async (req, res) => {
     const created = await Product.findByPk(product.id, {
       include: [{ model: ProductBundle, as: 'bundles' }],
     });
+
+    // Invalidate Redis Cache on new product
+    await redisService.invalidateProductCache();
 
     return res.status(201).json(formatProductResponse(created));
   } catch (err) {
@@ -285,6 +309,9 @@ exports.updateProduct = async (req, res) => {
       include: [{ model: ProductBundle, as: 'bundles' }],
     });
 
+    // Invalidate Redis Cache immediately on price/detail update so users see new price
+    await redisService.invalidateProductCache();
+
     return res.json(formatProductResponse(updated));
   } catch (err) {
     return res.status(400).json({ error: err.message || 'Failed to update product' });
@@ -301,6 +328,10 @@ exports.deleteProduct = async (req, res) => {
     // Delete associated child bundles to satisfy foreign key constraints
     await ProductBundle.destroy({ where: { productId: product.id } });
     await product.destroy();
+
+    // Invalidate Redis Cache immediately on deletion
+    await redisService.invalidateProductCache();
+
     return res.json({ success: true, message: 'Product deleted successfully' });
   } catch (err) {
     return res.status(400).json({ error: err.message || 'Failed to delete product' });

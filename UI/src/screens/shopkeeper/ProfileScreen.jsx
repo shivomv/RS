@@ -1,15 +1,29 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, Alert, BackHandler, TextInput, Modal, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  Alert,
+  BackHandler,
+  TextInput,
+  Modal,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { launchImageLibrary } from 'react-native-image-picker';
 import RSLogo from '../../components/RSLogo';
 import { useAuthStore } from '../../store/authStore';
 
 export default function ProfileScreen({ navigation }) {
-  const { session, logout } = useAuthStore();
+  const { session, logout, updateProfile } = useAuthStore();
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editName, setEditName] = useState(session?.user?.name || session?.user?.shopName || '');
+  const [editMobile, setEditMobile] = useState(session?.mobile || session?.user?.mobile || '');
   const [updating, setUpdating] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Hardware Android Back Button Handler
   useEffect(() => {
@@ -40,22 +54,63 @@ export default function ProfileScreen({ navigation }) {
     ]);
   };
 
-  const handleSaveName = async () => {
+  const handlePickProfileImage = async () => {
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        selectionLimit: 1,
+        includeBase64: true,
+        quality: 0.7,
+        maxWidth: 600,
+        maxHeight: 600,
+      });
+
+      if (!result.didCancel && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const base64Data = asset.base64
+          ? `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`
+          : null;
+
+        if (!base64Data) {
+          Alert.alert('Error', 'Could not read image file.');
+          return;
+        }
+
+        setUploadingImage(true);
+        const res = await updateProfile({ avatarUrl: base64Data });
+        if (res && res.success) {
+          Alert.alert('Success', 'Profile picture updated successfully!');
+        }
+      }
+    } catch (err) {
+      Alert.alert('Upload Failed', err.message || 'Could not upload profile picture.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
     if (!editName.trim()) {
       Alert.alert('Error', 'Name cannot be empty');
       return;
     }
 
+    const cleanedMobile = editMobile ? String(editMobile).replace(/\D/g, '').slice(-10) : '';
+    if (cleanedMobile && cleanedMobile.length !== 10) {
+      Alert.alert('Error', 'Mobile number must be a valid 10-digit number.');
+      return;
+    }
+
     setUpdating(true);
     try {
-      // Update session with new name
-      if (session?.user) {
-        session.user.name = editName.trim();
-      }
+      await updateProfile({
+        name: editName.trim(),
+        mobile: cleanedMobile,
+      });
       setEditModalVisible(false);
-      Alert.alert('Success', 'Name updated successfully');
+      Alert.alert('Success', 'Profile updated successfully!');
     } catch (err) {
-      Alert.alert('Error', 'Failed to update name');
+      Alert.alert('Error', err.message || 'Failed to update profile');
     } finally {
       setUpdating(false);
     }
@@ -92,7 +147,7 @@ export default function ProfileScreen({ navigation }) {
               Welcome to RS Industries Portal
             </Text>
             <Text className="text-xs text-[#3d4a42] text-center mt-1.5 px-2 leading-relaxed">
-              Log in with your registered mobile number to track dispatches, inspect GST tax invoices, and access your profile.
+              Log in with your Google account to track dispatches, inspect GST invoices, and access your profile.
             </Text>
 
             <TouchableOpacity
@@ -101,13 +156,17 @@ export default function ProfileScreen({ navigation }) {
               className="bg-[#006948] w-full rounded-2xl py-3.5 items-center justify-center flex-row gap-2 mt-6 shadow-md"
             >
               <Icon name="login" size={20} color="#ffffff" />
-              <Text className="text-sm text-white font-extrabold">Log In / Register</Text>
+              <Text className="text-sm text-white font-extrabold">Log In / Register with Google</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
       </SafeAreaView>
     );
   }
+
+  const avatarUri = session.user?.avatarUrl || session.user?.avatar || null;
+
+  const userMobile = session.mobile || session.user?.mobile || '';
 
   // Render Full User Profile View for Authenticated Partners
   return (
@@ -128,14 +187,40 @@ export default function ProfileScreen({ navigation }) {
       >
         {/* User Card */}
         <View className="bg-[#006948] px-6 py-6 items-center relative">
-          <View className="w-20 h-20 rounded-full overflow-hidden border-2 border-white mb-3 shadow-md bg-white/20 justify-center items-center">
-            <Image
-              source={{
-                uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDO2ijUAJMNwM-QODTNqSRCuJgJck70ZUjFztadUdQ6FY5QFQu1PRfZXrHv48QsDfm2odixXZVku1HckHrgpzBJXDjUuSQvqGsjB-N20z0l40gEeMYHfDd2UGxvKusUOYDZockQrFLPsfy6Mrv8tAG9ouXqm6-sobkEwc13Pinr0UynpcUjCcmLovh45QuDwt8IRv9A2Z1Yh6Uxjz6IeRLO0kDvVPUD7AcwYTdY6Ts-67cMaQugjx_D',
-              }}
-              className="w-full h-full"
-            />
+          {/* Avatar with Camera Upload Badge */}
+          <View className="relative mb-3">
+            <View className="w-24 h-24 rounded-full overflow-hidden border-2 border-white shadow-md bg-white/20 justify-center items-center">
+              {uploadingImage ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <Image
+                  source={{ uri: avatarUri }}
+                  className="w-full h-full"
+                  resizeMode="cover"
+                />
+              )}
+            </View>
+
+            <TouchableOpacity
+              onPress={handlePickProfileImage}
+              disabled={uploadingImage}
+              activeOpacity={0.8}
+              className="absolute bottom-0 right-0 bg-[#002114] w-8 h-8 rounded-full border-2 border-white items-center justify-center shadow"
+            >
+              <Icon name="photo-camera" size={16} color="#ffffff" />
+            </TouchableOpacity>
           </View>
+
+          <TouchableOpacity
+            onPress={handlePickProfileImage}
+            disabled={uploadingImage}
+            className="mb-2"
+          >
+            <Text className="text-[11px] text-[#85f8c4] font-bold">
+              📷 Tap to change profile picture
+            </Text>
+          </TouchableOpacity>
+
           <View className="flex-row items-center gap-2 justify-center">
             <Text className="text-white text-lg font-bold">
               {session.user?.name || session.user?.shopName || 'Registered Customer'}
@@ -143,6 +228,7 @@ export default function ProfileScreen({ navigation }) {
             <TouchableOpacity
               onPress={() => {
                 setEditName(session.user?.name || session.user?.shopName || '');
+                setEditMobile(session.mobile || session.user?.mobile || '');
                 setEditModalVisible(true);
               }}
               className="bg-white/20 p-1.5 rounded-full"
@@ -150,8 +236,9 @@ export default function ProfileScreen({ navigation }) {
               <Icon name="edit" size={14} color="#ffffff" />
             </TouchableOpacity>
           </View>
+
           <Text className="text-[#85f8c4] text-xs font-semibold mt-0.5">
-            Mobile: {session.mobile || session.user?.mobile} • Role: {session.role || session.user?.role || 'buyer'}
+            {userMobile ? `Mobile: ${userMobile}` : 'Mobile: Not Set (Required for Orders)'} • {session.user?.email || 'Google Account'}
           </Text>
         </View>
 
@@ -208,7 +295,7 @@ export default function ProfileScreen({ navigation }) {
         </View>
       </ScrollView>
 
-      {/* Edit Name Modal */}
+      {/* Edit Profile Modal (Name & Mobile Number) */}
       <Modal
         visible={editModalVisible}
         transparent
@@ -217,16 +304,38 @@ export default function ProfileScreen({ navigation }) {
       >
         <View className="flex-1 bg-black/50 justify-center items-center p-4">
           <View className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-lg">
-            <Text className="text-lg font-bold text-[#131b2e] mb-4">Edit Name</Text>
-            
-            <TextInput
-              value={editName}
-              onChangeText={setEditName}
-              placeholder="Enter your name"
-              placeholderTextColor="#6d7a72"
-              className="bg-[#f2f3ff] rounded-xl px-4 py-3 mb-4 text-[#131b2e] font-semibold"
-              editable={!updating}
-            />
+            <Text className="text-lg font-bold text-[#131b2e] mb-1">Edit Profile Details</Text>
+            <Text className="text-xs text-[#6d7a72] mb-4">
+              Your 10-digit mobile number is mandatory to place orders.
+            </Text>
+
+            <View className="mb-3">
+              <Text className="text-[10px] font-bold text-[#6d7a72] mb-1 uppercase">Full Name</Text>
+              <TextInput
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Enter your name"
+                placeholderTextColor="#6d7a72"
+                className="bg-[#f2f3ff] rounded-xl px-4 py-2.5 text-[#131b2e] font-semibold text-sm"
+                editable={!updating}
+              />
+            </View>
+
+            <View className="mb-5">
+              <Text className="text-[10px] font-bold text-[#6d7a72] mb-1 uppercase">
+                10-Digit Mobile Number (Mandatory for Orders)
+              </Text>
+              <TextInput
+                value={editMobile}
+                onChangeText={(t) => setEditMobile(t.replace(/\D/g, '').slice(0, 10))}
+                keyboardType="phone-pad"
+                maxLength={10}
+                placeholder="e.g. 9876543210"
+                placeholderTextColor="#6d7a72"
+                className="bg-[#f2f3ff] rounded-xl px-4 py-2.5 text-[#131b2e] font-semibold text-sm"
+                editable={!updating}
+              />
+            </View>
 
             <View className="flex-row gap-3">
               <TouchableOpacity
@@ -238,7 +347,7 @@ export default function ProfileScreen({ navigation }) {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={handleSaveName}
+                onPress={handleSaveProfile}
                 disabled={updating}
                 className="flex-1 bg-[#006948] rounded-xl py-3 items-center flex-row justify-center gap-2"
               >

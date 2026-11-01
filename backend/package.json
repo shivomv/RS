@@ -1,12 +1,12 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "RS Industries Enterprise Backend",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "seed": "node src/seedSql.js",
+    "seed": "node src/scripts/seed.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -19,6 +19,8 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "firebase-admin": "^14.5.0",
+    "google-auth-library": "^9.15.0",
+    "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.24.6",
     "nodemon": "^3.1.14",
     "sequelize": "^6.37.8",

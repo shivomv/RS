@@ -7,11 +7,13 @@ import RSLogo from '../../components/RSLogo';
 export default function OrderSuccessScreen({ route, navigation }) {
   const { order } = route.params || {};
 
-  const orderData = order || {
-    id: 'RS-ORD-8942',
-    total: 3450,
-    items: [],
-  };
+  const orderData = order || {};
+  const displayOrderId = orderData.orderId || orderData.id || orderData._id || 'RS-ORD';
+  const displayTotal =
+    orderData.totalAmount ??
+    orderData.total ??
+    orderData.financialSnapshot?.totalAmount ??
+    0;
 
   return (
     <SafeAreaView className="flex-1 bg-[#faf8ff] justify-between">
@@ -29,29 +31,33 @@ export default function OrderSuccessScreen({ route, navigation }) {
           Order Placed Successfully!
         </Text>
         <Text className="text-xs text-[#3d4a42] text-center mb-4 leading-relaxed">
-          Your order <Text className="font-bold text-[#006948]">#{orderData.id}</Text> has been verified by RS Industries dispatch team.
+          Your order <Text className="font-bold text-[#006948]">#{displayOrderId}</Text> has been verified by RS Industries dispatch team.
         </Text>
 
-        {/* Delivery Guarantee Banner */}
-        <View className="w-full bg-[#99efe5] rounded-2xl p-4 mb-6 items-center shadow-sm">
+        {/* Factory Dispatch Information Banner */}
+        <View className="w-full bg-[#e8f5e9] rounded-2xl p-4 mb-6 items-center border border-[#c8e6c9] shadow-sm">
           <View className="flex-row items-center gap-2 mb-1">
-            <Icon name="bolt" size={20} color="#006f67" />
-            <Text className="text-sm font-bold text-[#006f67]">Express Delivery Guarantee</Text>
+            <Icon name="local-shipping" size={20} color="#006948" />
+            <Text className="text-sm font-bold text-[#006948]">Factory Wholesale Dispatch</Text>
           </View>
-          <Text className="text-xs text-[#006f67] font-extrabold">Arriving in ~25 Minutes</Text>
+          <Text className="text-xs text-[#3d4a42] text-center font-medium">Standard logistics dispatch across industrial zones</Text>
         </View>
 
         {/* Order Brief Box */}
         <View className="w-full bg-white rounded-2xl p-4 border border-[#eaedff] shadow-sm mb-6">
-          <View className="flex-row justify-between py-1.5 border-b border-[#f2f3ff]">
+          <View className="flex-row justify-between py-2 border-b border-[#f2f3ff]">
             <Text className="text-xs text-[#6d7a72]">Order ID</Text>
-            <Text className="text-xs font-bold text-[#131b2e]">#{orderData.id}</Text>
+            <Text className="text-xs font-bold text-[#131b2e]">#{displayOrderId}</Text>
           </View>
-          <View className="flex-row justify-between py-1.5 border-b border-[#f2f3ff]">
+          <View className="flex-row justify-between py-2 border-b border-[#f2f3ff]">
             <Text className="text-xs text-[#6d7a72]">Total Amount</Text>
-            <Text className="text-xs font-bold text-[#006948]">₹{orderData.total}</Text>
+            <Text className="text-sm font-black text-[#006948]">₹{Number(displayTotal).toLocaleString('en-IN')}</Text>
           </View>
-          <View className="flex-row justify-between py-1.5">
+          <View className="flex-row justify-between py-2 border-b border-[#f2f3ff]">
+            <Text className="text-xs text-[#6d7a72]">Payment Mode</Text>
+            <Text className="text-xs font-bold text-[#131b2e]">{orderData.paymentMethod || 'Cash on Delivery (COD)'}</Text>
+          </View>
+          <View className="flex-row justify-between py-2">
             <Text className="text-xs text-[#6d7a72]">GST Invoice Status</Text>
             <Text className="text-xs font-bold text-[#006f67]">Generated & Emailed</Text>
           </View>
@@ -61,7 +67,7 @@ export default function OrderSuccessScreen({ route, navigation }) {
       {/* Action Buttons */}
       <View className="p-4 gap-3 bg-white border-t border-[#dae2fd]">
         <Pressable
-          onPress={() => navigation.replace('OrderDetail', { order: orderData })}
+          onPress={() => navigation.replace('OrderDetail', { order: { ...orderData, orderId: displayOrderId, total: displayTotal, totalAmount: displayTotal } })}
           className="bg-[#006948] rounded-xl py-3.5 items-center shadow-sm active:opacity-90"
         >
           <Text className="text-white font-bold text-xs uppercase tracking-wider">Track Order Live</Text>

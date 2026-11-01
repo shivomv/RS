@@ -17,15 +17,15 @@ export default function SplashScreen({ navigation }) {
       if (session?.token) {
         navigation.reset({
           index: 0,
-          routes: [{ name: session.role === 'admin' ? 'Admin' : 'Shopkeeper' }],
+          routes: [{ name: 'Shopkeeper' }],
         });
       } else {
         navigation.reset({
           index: 0,
-          routes: [{ name: 'AuthChoice' }],
+          routes: [{ name: 'Login' }],
         });
       }
-    }, 1000);
+    }, 800);
 
     return () => clearTimeout(timer);
   }, [navigation, session?.token, session?.role, initialized]);

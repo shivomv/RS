@@ -29,7 +29,7 @@ export default function RegisterScreen({ route, navigation }) {
   const [mobileError, setMobileError] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
-  const { login } = useAuthStore();
+  const { login, directLogin } = useAuthStore();
 
   const handleRegisterSuccess = () => {
     if (returnScreen) {
@@ -139,11 +139,7 @@ export default function RegisterScreen({ route, navigation }) {
 
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
-      login(cleanMobile, 'shopkeeper', 'mock-token-' + Date.now());
-      handleRegisterSuccess();
-    }, 800);
+    directLogin(cleanMobile, shopName, shopName).then(() => { setLoading(false); handleRegisterSuccess(); }).catch((err) => { setLoading(false); setMobileError(err.message || "Registration failed"); });
   };
 
   return (

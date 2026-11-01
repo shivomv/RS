@@ -37,6 +37,80 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  directLogin: async (mobile, name, shopName) => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await api.directLogin({ mobile, name, shopName });
+      if (res.success && res.token) {
+        const userObj = res.user;
+        const newSession = {
+          mobile: userObj?.mobile || mobile,
+          role: userObj?.role || 'buyer',
+          token: res.token,
+          user: userObj,
+        };
+        await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(newSession));
+        set({ session: newSession, isLoading: false, error: null });
+        return res;
+      } else {
+        throw new Error(res.error || 'Authentication failed');
+      }
+    } catch (err) {
+      set({ isLoading: false, error: err.message });
+      throw err;
+    }
+  },
+
+  googleLogin: async (googleData) => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await api.googleLogin(googleData);
+      if (res.success && res.token) {
+        const userObj = res.user;
+        const newSession = {
+          mobile: userObj?.mobile || googleData.mobile || '',
+          role: userObj?.role || 'buyer',
+          token: res.token,
+          user: userObj,
+        };
+        await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(newSession));
+        set({ session: newSession, isLoading: false, error: null });
+        return res;
+      }
+      set({ isLoading: false });
+      return res;
+    } catch (err) {
+      set({ isLoading: false, error: err.message });
+      throw err;
+    }
+  },
+
+  updateProfile: async (profileData) => {
+    set({ isLoading: true, error: null });
+    try {
+      const currentSession = get().session || {};
+      const userId = currentSession?.user?._id || currentSession?.user?.id;
+      const res = await api.updateProfile({ ...profileData, userId, id: userId });
+      if (res.success && res.user) {
+        const userObj = res.user;
+        const currentSession = get().session || {};
+        const updatedSession = {
+          ...currentSession,
+          mobile: userObj.mobile || currentSession.mobile || '',
+          user: { ...currentSession.user, ...userObj },
+        };
+        await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(updatedSession));
+        set({ session: updatedSession, isLoading: false, error: null });
+        return res;
+      }
+      set({ isLoading: false });
+      return res;
+    } catch (err) {
+      set({ isLoading: false, error: err.message });
+      throw err;
+    }
+  },
+
   verifyOtpBackend: async (mobile, otp) => {
     set({ isLoading: true, error: null });
     try {

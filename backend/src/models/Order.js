@@ -83,6 +83,15 @@ const Order = sequelize.define('Order', {
     type: DataTypes.STRING,
     defaultValue: 'pending',
   },
+  statusHistory: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  cancellationReason: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
 }, {
   tableName: 'orders',
   timestamps: true,

@@ -36,6 +36,11 @@ const SupportTicket = sequelize.define('SupportTicket', {
     type: DataTypes.TEXT,
     allowNull: false,
   },
+  replies: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
 }, {
   tableName: 'support_tickets',
   timestamps: true,

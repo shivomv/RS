@@ -1,13 +1,16 @@
-import React from 'react';
-import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, Pressable, Alert, Linking, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
+import { api } from '../../services/api';
 
 export default function OrderDetailScreen({ route, navigation }) {
   const { order } = route.params || {};
+  const [currentOrder, setCurrentOrder] = useState(order);
+  const [cancelling, setCancelling] = useState(false);
 
-  if (!order) {
+  if (!currentOrder) {
     return (
       <SafeAreaView className="flex-1 bg-[#faf8ff] justify-center items-center px-6">
         <Icon name="receipt-long" size={64} color="#6d7a72" />
@@ -25,25 +28,58 @@ export default function OrderDetailScreen({ route, navigation }) {
     );
   }
 
-  const orderData = order;
+  const orderData = currentOrder;
   const orderId = orderData.orderId || orderData._id || orderData.id || 'N/A';
   const orderDate = orderData.date || (orderData.createdAt ? new Date(orderData.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '');
 
   const handleDownloadInvoice = () => {
+    const url = api.getOrderInvoiceUrl(orderId);
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Invoice', `Viewing official GST Tax Invoice for Order #${orderId}`);
+    });
+  };
+
+  const handleCancelOrder = () => {
     Alert.alert(
-      'Tax Invoice Downloaded',
-      `Official GST Tax Invoice for Order #${orderId} has been saved to your downloads folder.`,
-      [{ text: 'OK' }]
+      'Cancel Order',
+      `Are you sure you want to cancel Order #${orderId}? Stock will be released back to factory inventory.`,
+      [
+        { text: 'Keep Order', style: 'cancel' },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            setCancelling(true);
+            try {
+              const res = await api.cancelOrder(orderId, 'Cancelled by customer');
+              if (res.success) {
+                Alert.alert('Order Cancelled', 'Your order was successfully cancelled.');
+                setCurrentOrder((prev) => ({ ...prev, status: 'cancelled' }));
+              }
+            } catch (err) {
+              Alert.alert('Cancellation Failed', err.message || 'Unable to cancel order.');
+            } finally {
+              setCancelling(false);
+            }
+          },
+        },
+      ]
     );
   };
 
-  const trackingSteps = [
-    { title: 'Order Placed', time: '10:30 AM', completed: true },
-    { title: 'Payment Verified', time: '10:32 AM', completed: true },
-    { title: 'Packed at Warehouse', time: '10:45 AM', completed: true },
-    { title: 'Dispatched & En Route', time: 'Expected 11:15 AM', completed: orderData.status === 'Dispatched' || orderData.status === 'Dispatching' || orderData.status === 'Delivered' },
-    { title: 'Delivered', time: 'Expected 11:25 AM', completed: orderData.status === 'Delivered' },
-  ];
+  // Build real dynamic status events
+  const historyEvents = Array.isArray(orderData.statusHistory) && orderData.statusHistory.length > 0
+    ? orderData.statusHistory
+    : [
+        {
+          status: 'pending',
+          timestamp: orderData.createdAt,
+          note: 'Order placed via Cash on Delivery (COD)',
+        },
+      ];
+
+  const st = String(orderData.status || 'pending').toLowerCase();
+  const isCancellable = st === 'pending' || st === 'confirmed';
 
   return (
     <SafeAreaView className="flex-1 bg-[#faf8ff]">
@@ -70,43 +106,45 @@ export default function OrderDetailScreen({ route, navigation }) {
           <View className="flex-row items-center justify-between mb-3 pb-2 border-b border-[#f2f3ff]">
             <View className="flex-row items-center gap-1.5">
               <Icon name="local-shipping" size={20} color="#006948" />
-              <Text className="text-sm font-bold text-[#131b2e]">Live Delivery Tracking</Text>
+              <Text className="text-sm font-bold text-[#131b2e]">Order Status Timeline</Text>
             </View>
-            <View className="bg-[#85f8c4] px-2 py-0.5 rounded-full">
-              <Text className="text-[10px] text-[#002114] font-bold uppercase">{orderData.status || 'Pending'}</Text>
+            <View className={`px-2.5 py-0.5 rounded-full ${st === 'cancelled' ? 'bg-red-100' : 'bg-[#85f8c4]'}`}>
+              <Text className={`text-[10px] font-bold uppercase ${st === 'cancelled' ? 'text-red-700' : 'text-[#002114]'}`}>
+                {orderData.status || 'Pending'}
+              </Text>
             </View>
           </View>
 
-          {/* Timeline */}
+          {/* Dynamic Event History */}
           <View className="pl-2">
-            {trackingSteps.map((step, idx) => (
-              <View key={step.title} className="flex-row items-start mb-3 relative">
-                {idx < trackingSteps.length - 1 && (
-                  <View
-                    className={`absolute left-2.5 top-5 bottom-0 w-0.5 ${
-                      step.completed ? 'bg-[#006948]' : 'bg-[#dae2fd]'
-                    }`}
-                  />
-                )}
-                <View
-                  className={`w-5 h-5 rounded-full justify-center items-center z-10 ${
-                    step.completed ? 'bg-[#006948]' : 'bg-[#e2e7ff]'
-                  }`}
-                >
-                  <Icon name={step.completed ? 'check' : 'schedule'} size={12} color={step.completed ? '#ffffff' : '#6d7a72'} />
+            {historyEvents.map((step, idx) => {
+              const stepTime = step.timestamp
+                ? new Date(step.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+                : '';
+              const isLast = idx === historyEvents.length - 1;
+
+              return (
+                <View key={idx} className="flex-row items-start mb-3 relative">
+                  {!isLast && (
+                    <View className="absolute left-2.5 top-5 bottom-0 w-0.5 bg-[#006948]" />
+                  )}
+                  <View className="w-5 h-5 rounded-full justify-center items-center z-10 bg-[#006948]">
+                    <Icon name="check" size={12} color="#ffffff" />
+                  </View>
+                  <View className="ml-3 flex-1">
+                    <Text className="text-xs font-bold text-[#131b2e] uppercase">
+                      {step.status}
+                    </Text>
+                    <Text className="text-[10px] text-[#3d4a42]">{step.note || 'Status updated'}</Text>
+                    {stepTime ? <Text className="text-[9px] text-[#6d7a72]">{stepTime}</Text> : null}
+                  </View>
                 </View>
-                <View className="ml-3 flex-1">
-                  <Text className={`text-xs font-bold ${step.completed ? 'text-[#131b2e]' : 'text-[#6d7a72]'}`}>
-                    {step.title}
-                  </Text>
-                  <Text className="text-[10px] text-[#6d7a72]">{step.time}</Text>
-                </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </View>
 
-        {/* Assigned Dispatch Executive */}
+        {/* Assigned Dispatch Partner */}
         <View className="bg-[#e2e7ff] rounded-2xl p-3.5 mb-4 flex-row items-center justify-between shadow-sm">
           <View className="flex-row items-center gap-3 flex-1 mr-2">
             <View className="w-10 h-10 rounded-full bg-[#006948] justify-center items-center">
@@ -117,7 +155,7 @@ export default function OrderDetailScreen({ route, navigation }) {
                 {orderData.driverName || 'Dispatch Partner Pending Assignment'}
               </Text>
               <Text className="text-[10px] text-[#3d4a42]">
-                {orderData.driverName ? 'Express Delivery Representative' : 'Will be assigned upon warehouse dispatch'}
+                {orderData.driverName ? 'Express Wholesale Delivery Representative' : 'Will be assigned upon warehouse dispatch'}
               </Text>
             </View>
           </View>
@@ -139,31 +177,31 @@ export default function OrderDetailScreen({ route, navigation }) {
             <Text className="text-xs font-bold text-[#131b2e]">Delivery Destination (Snapshot)</Text>
           </View>
           <Text className="text-xs text-[#3d4a42] leading-relaxed">
-            {orderData.deliveryAddressSnapshot?.fullAddress || orderData.deliveryAddress || 'Address not specified'}
+            {orderData.deliveryAddressSnapshot?.fullAddress || orderData.deliveryAddress || 'Factory Pickup / Local Delivery'}
           </Text>
         </View>
 
         {/* Itemized Product Snapshot Breakdown */}
         <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-[#eaedff]">
           <Text className="text-xs font-bold text-[#131b2e] mb-3">
-            Items Ordered ({orderData.items?.length || 0}) • Historical Snapshot
+            Items Ordered ({orderData.items?.length || 0}) • Verified Wholesale Snapshot
           </Text>
 
           {(orderData.items || []).map((item, idx) => {
             const itemQty = item.qty || item.quantity || 1;
-            const itemPrice = item.unitPrice || item.price || (item.product?.price) || 99;
+            const itemPrice = item.unitPrice || item.price || 99;
             const lineTotal = item.lineTotal || (itemPrice * itemQty);
-            const subTitleText = item.subtitle || item.size || item.product?.size || '';
+            const subTitleText = item.bundleLabel || item.subtitle || item.size || '';
 
             return (
               <View key={item.id || item._id || idx} className="flex-row items-center justify-between py-2 border-b border-[#f2f3ff]">
                 <View className="flex-1 pr-2">
-                  <Text className="text-xs font-bold text-[#131b2e]">{item.name || item.product?.name || 'Product'}</Text>
+                  <Text className="text-xs font-bold text-[#131b2e]">{item.name || 'Product'}</Text>
                   <Text className="text-[10px] text-[#6d7a72]">
-                    {subTitleText ? `${subTitleText} • ` : ''}Unit: ₹{itemPrice} • Qty: {itemQty}
+                    {subTitleText ? `${subTitleText} • ` : ''}Rate: ₹{itemPrice} • Qty: {itemQty}
                   </Text>
                 </View>
-                <Text className="text-xs font-extrabold text-[#131b2e]">₹{lineTotal}</Text>
+                <Text className="text-xs font-extrabold text-[#131b2e]">₹{lineTotal.toLocaleString('en-IN')}</Text>
               </View>
             );
           })}
@@ -173,36 +211,49 @@ export default function OrderDetailScreen({ route, navigation }) {
             <View className="flex-row justify-between">
               <Text className="text-xs text-[#6d7a72]">Items Subtotal</Text>
               <Text className="text-xs font-semibold text-[#131b2e]">
-                ₹{orderData.financialSnapshot?.subtotal || (orderData.total - orderData.gst)}
-              </Text>
-            </View>
-            <View className="flex-row justify-between">
-              <Text className="text-xs text-[#6d7a72]">GST Tax (18%)</Text>
-              <Text className="text-xs font-semibold text-[#131b2e]">
-                ₹{orderData.financialSnapshot?.gstAmount || orderData.gst}
+                ₹{(orderData.financialSnapshot?.subtotal || orderData.subtotal || 0).toLocaleString('en-IN')}
               </Text>
             </View>
             <View className="flex-row justify-between">
               <Text className="text-xs text-[#6d7a72]">Delivery Charges</Text>
-              <Text className="text-xs font-bold text-[#006948]">FREE</Text>
+              <Text className="text-xs font-bold text-[#006948]">FREE (Wholesale Delivery)</Text>
             </View>
             <View className="flex-row justify-between pt-2 border-t border-[#f2f3ff] mt-1">
-              <Text className="text-sm font-bold text-[#131b2e]">Total Amount Paid</Text>
+              <Text className="text-sm font-bold text-[#131b2e]">Total Amount (COD)</Text>
               <Text className="text-base font-extrabold text-[#006948]">
-                ₹{orderData.financialSnapshot?.totalAmount || orderData.total}
+                ₹{(orderData.financialSnapshot?.totalAmount || orderData.totalAmount || orderData.total || 0).toLocaleString('en-IN')}
               </Text>
             </View>
           </View>
         </View>
 
-        {/* Invoice Action Button */}
-        <Pressable
-          onPress={handleDownloadInvoice}
-          className="bg-[#006948] rounded-xl py-3.5 flex-row items-center justify-center gap-2 shadow-sm active:opacity-90"
-        >
-          <Icon name="receipt" size={18} color="#ffffff" />
-          <Text className="text-white font-bold text-xs">Download GST Tax Invoice (PDF)</Text>
-        </Pressable>
+        {/* Action Buttons: Download Invoice & Cancel Order */}
+        <View className="gap-2.5">
+          <Pressable
+            onPress={handleDownloadInvoice}
+            className="bg-[#006948] rounded-xl py-3.5 flex-row items-center justify-center gap-2 shadow-sm active:opacity-90"
+          >
+            <Icon name="receipt" size={18} color="#ffffff" />
+            <Text className="text-white font-bold text-xs uppercase tracking-wider">View / Download Invoice</Text>
+          </Pressable>
+
+          {isCancellable && (
+            <Pressable
+              onPress={handleCancelOrder}
+              disabled={cancelling}
+              className="bg-red-50 border border-red-200 rounded-xl py-3 flex-row items-center justify-center gap-2 active:opacity-90"
+            >
+              {cancelling ? (
+                <ActivityIndicator size="small" color="#ef4444" />
+              ) : (
+                <>
+                  <Icon name="cancel" size={18} color="#ef4444" />
+                  <Text className="text-red-600 font-bold text-xs uppercase tracking-wider">Cancel Order</Text>
+                </>
+              )}
+            </Pressable>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

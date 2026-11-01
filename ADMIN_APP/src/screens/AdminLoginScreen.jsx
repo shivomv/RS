@@ -1,34 +1,34 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, ActivityIndicator, Image } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { GoogleSigninButton } from '@react-native-google-signin/google-signin';
 import { useAdminAuth } from '../store/adminAuthStore';
+import { promptGoogleSignIn } from '../services/googleAuth';
 
 export default function AdminLoginScreen() {
-  const { login } = useAdminAuth();
-  const [mobile, setMobile] = useState('');
-  const [pin, setPin] = useState('');
+  const { loginGoogle } = useAdminAuth();
   const [errorMsg, setErrorMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const handleLogin = async () => {
+  const handleGoogleAdminLogin = async () => {
     setErrorMsg('');
-    if (!mobile || mobile.length < 10) {
-      setErrorMsg('Please enter a valid 10-digit mobile number.');
-      return;
-    }
-    if (!pin) {
-      setErrorMsg('Please enter the Admin Security PIN.');
-      return;
-    }
     setSubmitting(true);
     try {
-      const res = await login(mobile, pin);
+      // 1. Launch native Google Sign-In prompt
+      const realGoogleProfile = await promptGoogleSignIn();
+
+      // 2. Authenticate admin with backend
+      const res = await loginGoogle(realGoogleProfile);
       if (!res.success) {
-        setErrorMsg(res.error || 'Authentication failed');
+        setErrorMsg(res.error || 'Google admin authentication failed');
       }
     } catch (e) {
-      setErrorMsg(e.message || 'Login failed');
+      if (e.code === 'SIGN_IN_CANCELLED' || e.message?.includes('cancelled')) {
+        setErrorMsg('Sign-in cancelled');
+      } else {
+        setErrorMsg(e.message || 'Google login failed');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -51,8 +51,9 @@ export default function AdminLoginScreen() {
       </View>
 
       {/* Login Card */}
-      <View className="bg-surface rounded-3xl p-6 border border-border">
-        <Text className="text-sm font-extrabold text-ink mb-4">Secure Admin Authentication</Text>
+      <View className="bg-surface rounded-3xl p-6 border border-border shadow-sm">
+        <Text className="text-sm font-extrabold text-ink mb-1">Secure Admin Access</Text>
+        <Text className="text-[11px] text-muted mb-6">Authenticate exclusively via Google Sign-In</Text>
 
         {errorMsg ? (
           <View className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 flex-row items-center gap-2">
@@ -61,60 +62,24 @@ export default function AdminLoginScreen() {
           </View>
         ) : null}
 
-        {/* Mobile */}
-        <View className="mb-4">
-          <Text className="text-[11px] font-bold text-muted mb-1.5 uppercase tracking-wider">Mobile Number</Text>
-          <View className="flex-row items-center bg-input rounded-2xl px-3.5 py-3 border border-border">
-            <Icon name="phone" size={20} color="#006948" />
-            <TextInput
-              value={mobile}
-              onChangeText={setMobile}
-              placeholder="Enter 10-digit mobile number"
-              placeholderTextColor="#94a3b8"
-              keyboardType="phone-pad"
-              maxLength={10}
-              className="flex-1 text-sm font-bold text-ink p-0 ml-2"
-            />
-          </View>
-        </View>
-
-        {/* PIN */}
-        <View className="mb-6">
-          <Text className="text-[11px] font-bold text-muted mb-1.5 uppercase tracking-wider">Admin PIN</Text>
-          <View className="flex-row items-center bg-input rounded-2xl px-3.5 py-3 border border-border">
-            <Icon name="lock" size={20} color="#006948" />
-            <TextInput
-              value={pin}
-              onChangeText={setPin}
-              placeholder="Enter Admin PIN"
-              placeholderTextColor="#94a3b8"
-              secureTextEntry
-              keyboardType="number-pad"
-              maxLength={6}
-              className="flex-1 text-sm font-bold text-ink p-0 ml-2"
-            />
-          </View>
-        </View>
-
-        {/* Submit */}
-        <Pressable
-          onPress={handleLogin}
-          disabled={submitting}
-          className="bg-brand rounded-2xl py-4 items-center justify-center flex-row gap-2 active:opacity-90"
-        >
+        {/* Primary Action: Official Google Sign-In Button */}
+        <View className="items-center w-full mb-4">
+          <GoogleSigninButton
+            size={GoogleSigninButton.Size.Wide}
+            color={GoogleSigninButton.Color.Dark}
+            onPress={handleGoogleAdminLogin}
+            disabled={submitting}
+            style={{ width: '100%', height: 56, borderRadius: 16 }}
+          />
           {submitting ? (
-            <ActivityIndicator size="small" color="#ffffff" />
-          ) : (
-            <>
-              <Icon name="verified-user" size={20} color="#ffffff" />
-              <Text className="text-sm font-extrabold text-white uppercase tracking-wider">
-                Authenticate & Access Console
-              </Text>
-            </>
-          )}
-        </Pressable>
+            <View className="flex-row items-center gap-2 mt-3">
+              <ActivityIndicator color="#002d62" size="small" />
+              <Text className="text-xs font-bold text-[#002d62]">Verifying Admin Credentials...</Text>
+            </View>
+          ) : null}
+        </View>
 
-        <Text className="text-[10px] text-faint text-center mt-4">Authorized RS Director Access Only</Text>
+        <Text className="text-[10px] text-faint text-center mt-2">Authorized RS Industries Directors & Operations Only</Text>
       </View>
     </SafeAreaView>
   );

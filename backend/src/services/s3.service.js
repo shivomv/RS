@@ -1,6 +1,7 @@
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const crypto = require('crypto');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 const region = process.env.AWS_REGION || 'ap-south-1';
 const bucketName = process.env.S3_BUCKET_NAME || 's3.shivomverma.in';

@@ -53,7 +53,7 @@ export const useCompanyStore = create((set, get) => ({
 
   getOfficeAddress: () => {
     const company = get().company;
-    if (!company?.officeAddress) return 'Bengaluru, India';
+    if (!company?.officeAddress) return '';
     const addr = company.officeAddress;
     return `${addr.streetAddress || ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.postalCode || ''}`.replace(/^,\s*|,\s*$/g, '');
   },

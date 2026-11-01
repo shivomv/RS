@@ -192,46 +192,79 @@ export default function OrderDetailModal({
 
             {/* Status Change Action Buttons */}
             <Text className="text-[11px] font-black text-[#8c9ba5] uppercase tracking-wider mb-2">
-              Update Fulfillment Status
+              Step-Wise Fulfillment Progression
             </Text>
 
             {updating ? (
               <ActivityIndicator size="small" color="#006948" className="my-4" />
             ) : (
               <View className="gap-2 mb-6">
-                {currentStatus !== 'confirmed' && currentStatus !== 'delivered' && (
+                {/* STEP 1 -> STEP 2: Only show when status is pending */}
+                {currentStatus === 'pending' && (
                   <Pressable
                     onPress={() => handleUpdateStatus('confirmed')}
-                    className="bg-[#3b82f6] rounded-2xl py-3 items-center justify-center flex-row gap-2 active:opacity-90"
+                    className="bg-[#3b82f6] rounded-2xl py-3 items-center justify-center flex-row gap-2 active:opacity-90 shadow-sm"
                   >
-                    <Icon name="check" size={18} color="#ffffff" />
-                    <Text className="text-xs font-black text-white uppercase">Confirm & Accept Order</Text>
+                    <Icon name="check-circle" size={18} color="#ffffff" />
+                    <Text className="text-xs font-black text-white uppercase">Confirm & Accept Order (Step 2)</Text>
                   </Pressable>
                 )}
 
-                {currentStatus !== 'dispatching' && currentStatus !== 'delivered' && (
+                {/* STEP 2 -> STEP 3: Only show when status is confirmed */}
+                {currentStatus === 'confirmed' && (
                   <Pressable
                     onPress={() => handleUpdateStatus('dispatching')}
-                    className="bg-[#8b5cf6] rounded-2xl py-3 items-center justify-center flex-row gap-2 active:opacity-90"
+                    className="bg-[#8b5cf6] rounded-2xl py-3 items-center justify-center flex-row gap-2 active:opacity-90 shadow-sm"
                   >
                     <Icon name="local-shipping" size={18} color="#ffffff" />
-                    <Text className="text-xs font-black text-white uppercase">Mark Dispatching</Text>
+                    <Text className="text-xs font-black text-white uppercase">Mark Order Dispatching (Step 3)</Text>
                   </Pressable>
                 )}
 
-                {currentStatus !== 'delivered' && (
+                {/* STEP 3 -> STEP 4: Only show when status is dispatching */}
+                {currentStatus === 'dispatching' && (
                   <Pressable
                     onPress={() => handleUpdateStatus('delivered')}
-                    className="bg-[#10b981] rounded-2xl py-3 items-center justify-center flex-row gap-2 active:opacity-90"
+                    className="bg-[#10b981] rounded-2xl py-3 items-center justify-center flex-row gap-2 active:opacity-90 shadow-sm"
                   >
                     <Icon name="task-alt" size={18} color="#ffffff" />
-                    <Text className="text-xs font-black text-white uppercase">Mark Delivered & Completed</Text>
+                    <Text className="text-xs font-black text-white uppercase">Mark Delivered & Fulfilled (Step 4)</Text>
                   </Pressable>
                 )}
 
-                {currentStatus !== 'cancelled' && (
+                {/* Delivered: Terminal State */}
+                {currentStatus === 'delivered' && (
+                  <View className="bg-emerald-500/20 border border-emerald-500/40 rounded-2xl py-3 items-center justify-center flex-row gap-2">
+                    <Icon name="task-alt" size={18} color="#10b981" />
+                    <Text className="text-xs font-black text-[#10b981] uppercase">Order Fully Delivered & Fulfilled</Text>
+                  </View>
+                )}
+
+                {/* Cancelled: Terminal State */}
+                {currentStatus === 'cancelled' && (
+                  <View className="bg-red-500/20 border border-red-500/40 rounded-2xl py-3 items-center justify-center flex-row gap-2">
+                    <Icon name="cancel" size={18} color="#ef4444" />
+                    <Text className="text-xs font-black text-[#ef4444] uppercase">Order Cancelled</Text>
+                  </View>
+                )}
+
+                {/* Cancel Action: Available only before delivery or cancellation */}
+                {currentStatus !== 'delivered' && currentStatus !== 'cancelled' && (
                   <Pressable
-                    onPress={() => handleUpdateStatus('cancelled')}
+                    onPress={() => {
+                      Alert.alert(
+                        'Cancel Order',
+                        `Are you sure you want to cancel this order? Stock will be restored.`,
+                        [
+                          { text: 'Keep Order', style: 'cancel' },
+                          {
+                            text: 'Yes, Cancel Order',
+                            style: 'destructive',
+                            onPress: () => handleUpdateStatus('cancelled'),
+                          },
+                        ]
+                      );
+                    }}
                     className="bg-[#ef4444]/20 border border-[#ef4444]/40 rounded-2xl py-2.5 items-center justify-center flex-row gap-2 active:opacity-90 mt-1"
                   >
                     <Icon name="cancel" size={18} color="#ef4444" />
