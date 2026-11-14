@@ -13,6 +13,10 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { api } from '../../services/api';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
+import { useLocationStore } from '../../store/locationStore';
+import LocationHeaderPill from '../../components/LocationHeaderPill';
+import ServiceabilityBanner from '../../components/ServiceabilityBanner';
+import LocationSelectorModal from '../../components/LocationSelectorModal';
 import { CategoryItemSkeleton, ProductCardSkeleton } from '../../components/Skeleton';
 import { getDefaultProductPricing } from '../../utils/productHelper';
 
@@ -299,8 +303,13 @@ export default function CatalogScreen({ navigation, route }) {
               </Text>
             </View>
           </View>
+
+          <LocationHeaderPill />
         </View>
       </View>
+
+      {/* Serviceability Banner */}
+      <ServiceabilityBanner />
 
       {/* Main Body */}
       <View className="flex-1 flex-row">
@@ -425,6 +434,9 @@ export default function CatalogScreen({ navigation, route }) {
           )}
         </View>
       </View>
+
+      {/* Location Selector Bottom Modal */}
+      <LocationSelectorModal />
     </SafeAreaView>
   );
 }

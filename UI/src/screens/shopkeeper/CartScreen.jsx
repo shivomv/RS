@@ -11,13 +11,17 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
+import ServiceabilityBanner from '../../components/ServiceabilityBanner';
+import LocationSelectorModal from '../../components/LocationSelectorModal';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
+import { useLocationStore } from '../../store/locationStore';
 
 export default function CartScreen({ navigation }) {
   const { session } = useAuthStore();
   const cartStore = useCartStore();
   const { items, clearCart, removeItem, updateQuantity, totalAmount } = cartStore;
+  const { location, openModal } = useLocationStore();
 
 
 
@@ -52,6 +56,18 @@ export default function CartScreen({ navigation }) {
   const handleCheckout = () => {
     if (items.length === 0) {
       Alert.alert('Cart Empty', 'Please add products to your cart before proceeding to checkout.');
+      return;
+    }
+
+    if (location && location.isServiceable === false) {
+      Alert.alert(
+        'Delivery Unavailable',
+        `RS Industries does not service your selected location (${location.city || ''} ${location.pincode}). Please update your delivery pincode to proceed.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Change Pincode', onPress: openModal },
+        ]
+      );
       return;
     }
 
@@ -100,6 +116,9 @@ export default function CartScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Serviceability Banner */}
+      <ServiceabilityBanner />
 
       <ScrollView
         keyboardShouldPersistTaps="handled"
@@ -286,16 +305,32 @@ export default function CartScreen({ navigation }) {
             <Text className="text-lg font-black text-[#131b2e]">₹{grandTotal.toLocaleString('en-IN')}</Text>
           </View>
 
-          <TouchableOpacity
-            onPress={handleCheckout}
-            activeOpacity={0.85}
-            className="bg-[#006948] px-6 py-3 rounded-xl flex-row items-center gap-2 shadow-md active:bg-[#005238]"
-          >
-            <Text className="text-xs font-bold text-white uppercase tracking-wider">Proceed to Checkout</Text>
-            <Icon name="arrow-forward" size={18} color="#ffffff" />
-          </TouchableOpacity>
+          {location && location.isServiceable === false ? (
+            <TouchableOpacity
+              onPress={openModal}
+              activeOpacity={0.85}
+              className="bg-[#dc2626] px-5 py-3 rounded-xl flex-row items-center gap-2 shadow-md active:bg-[#b91c1c]"
+            >
+              <Icon name="location-off" size={18} color="#ffffff" />
+              <Text className="text-xs font-bold text-white uppercase tracking-wider">
+                Unavailable Here
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={handleCheckout}
+              activeOpacity={0.85}
+              className="bg-[#006948] px-6 py-3 rounded-xl flex-row items-center gap-2 shadow-md active:bg-[#005238]"
+            >
+              <Text className="text-xs font-bold text-white uppercase tracking-wider">Proceed to Checkout</Text>
+              <Icon name="arrow-forward" size={18} color="#ffffff" />
+            </TouchableOpacity>
+          )}
         </View>
       )}
+
+      {/* Location Selector Bottom Modal */}
+      <LocationSelectorModal />
     </SafeAreaView>
   );
 }

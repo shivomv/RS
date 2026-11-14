@@ -110,4 +110,10 @@ export const api = {
 
   // Company API
   getCompanyDetails: () => apiClient.get('/company'),
+
+  // Delivery Zones & Location Serviceability API
+  checkServiceability: (pincode) => apiClient.get('/zones/check', { params: { pincode } }),
+  getPincodeDetails: (pincode) => apiClient.get(`/zones/pincode/${pincode}`),
+  reverseGeocode: (lat, lng) => apiClient.get('/zones/reverse-geocode', { params: { lat, lng } }),
+  getAllZones: () => apiClient.get('/zones'),
 };

@@ -13,12 +13,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
 import { useCartStore } from '../../store/cartStore';
+import { useLocationStore } from '../../store/locationStore';
+import LocationSelectorModal from '../../components/LocationSelectorModal';
 
 const { width } = Dimensions.get('window');
 
 export default function ProductDetailScreen({ route, navigation }) {
   const { product } = route?.params || {};
   const { addItem } = useCartStore();
+  const { location, openModal } = useLocationStore();
 
   // Get cart data from store
   const cartItemCount = useCartStore((state) => state.items.length);
@@ -91,6 +94,12 @@ export default function ProductDetailScreen({ route, navigation }) {
 
   const handleAddToCart = useCallback(() => {
     if (!product || !selectedBundle) return;
+
+    if (location && location.isServiceable === false) {
+      triggerToast('Delivery unavailable in your area. Change location to order.');
+      openModal();
+      return;
+    }
 
     const bundleId = selectedBundle.bundleId || selectedBundle.label || 'pack-1';
     const cartItemId = `${product._id}_${bundleId}`;
@@ -279,6 +288,66 @@ export default function ProductDetailScreen({ route, navigation }) {
           </Text>
         </View>
 
+        {/* Delivery Location Check Card */}
+        <View className="px-4 pt-3">
+          <Pressable
+            onPress={openModal}
+            className={`p-3.5 rounded-2xl border flex-row items-center justify-between active:opacity-85 ${
+              !location
+                ? 'bg-[#f8fafc] border-[#e2e8f0]'
+                : location.isServiceable
+                ? 'bg-[#f0fdf4] border-[#bbf7d0]'
+                : 'bg-[#fef2f2] border-[#fecaca]'
+            }`}
+          >
+            <View className="flex-row items-center gap-3 flex-1 mr-2">
+              <View
+                className={`w-9 h-9 rounded-xl justify-center items-center ${
+                  !location
+                    ? 'bg-[#e2e8f0]'
+                    : location.isServiceable
+                    ? 'bg-[#22c55e]/20'
+                    : 'bg-[#ef4444]/20'
+                }`}
+              >
+                <Icon
+                  name={!location ? 'place' : location.isServiceable ? 'local-shipping' : 'location-off'}
+                  size={20}
+                  color={!location ? '#475569' : location.isServiceable ? '#15803d' : '#b91c1c'}
+                />
+              </View>
+              <View className="flex-1">
+                <View className="flex-row items-center gap-2">
+                  <Text className="text-xs font-bold text-[#131b2e]">
+                    {location
+                      ? `Deliver to: ${location.city || ''} (${location.pincode})`
+                      : 'Check Delivery Serviceability'}
+                  </Text>
+                </View>
+                <Text
+                  className={`text-[10px] font-semibold mt-0.5 ${
+                    !location
+                      ? 'text-[#64748b]'
+                      : location.isServiceable
+                      ? 'text-[#15803d]'
+                      : 'text-[#b91c1c]'
+                  }`}
+                >
+                  {!location
+                    ? 'Tap to enter PIN code or use GPS'
+                    : location.isServiceable
+                    ? `Delivery available (${location.estimatedDays || '1-2 Days'})`
+                    : 'RS Industries delivery is not available at this pincode'}
+                </Text>
+              </View>
+            </View>
+
+            <View className="bg-white/80 px-2.5 py-1 rounded-lg border border-[#e2e8f0]">
+              <Text className="text-[10px] font-bold text-[#131b2e] uppercase">Change</Text>
+            </View>
+          </Pressable>
+        </View>
+
         {/* Bundle Options Selection */}
         <View className="px-4 pt-5 gap-3">
           <View className="flex-row items-center justify-between">
@@ -398,15 +467,30 @@ export default function ProductDetailScreen({ route, navigation }) {
             </View>
           </View>
 
-          <Pressable
-            onPress={handleAddToCart}
-            className="bg-[#006948] px-6 py-3.5 rounded-xl flex-row items-center gap-2 shadow-md active:opacity-90"
-          >
-            <Icon name="add-shopping-cart" size={18} color="#ffffff" />
-            <Text className="text-xs font-bold text-white uppercase tracking-wider">Add to Cart</Text>
-          </Pressable>
+          {location && location.isServiceable === false ? (
+            <Pressable
+              onPress={openModal}
+              className="bg-[#dc2626] px-5 py-3.5 rounded-xl flex-row items-center gap-2 shadow-md active:opacity-90"
+            >
+              <Icon name="location-off" size={18} color="#ffffff" />
+              <Text className="text-xs font-bold text-white uppercase tracking-wider">
+                Unavailable Here
+              </Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={handleAddToCart}
+              className="bg-[#006948] px-6 py-3.5 rounded-xl flex-row items-center gap-2 shadow-md active:opacity-90"
+            >
+              <Icon name="add-shopping-cart" size={18} color="#ffffff" />
+              <Text className="text-xs font-bold text-white uppercase tracking-wider">Add to Cart</Text>
+            </Pressable>
+          )}
         </View>
       </View>
+
+      {/* Location Selector Bottom Modal */}
+      <LocationSelectorModal />
     </SafeAreaView>
   );
 }

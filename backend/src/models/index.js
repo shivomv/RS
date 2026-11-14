@@ -16,6 +16,7 @@ const Notification = require('./Notification');
 const AuditLog = require('./AuditLog');
 const AdminDevice = require('./AdminDevice');
 const AdminUser = require('./AdminUser');
+const DeliveryZone = require('./DeliveryZone');
 
 // ── Define Associations ──────────────────────────────────────────────
 Category.hasMany(Product, { foreignKey: 'categoryId', as: 'products' });
@@ -163,5 +164,6 @@ module.exports = {
   AuditLog,
   AdminDevice,
   AdminUser,
+  DeliveryZone,
   syncDatabase,
 };

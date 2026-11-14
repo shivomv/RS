@@ -79,6 +79,7 @@ $RemoteCommands = @(
     "mkdir -p $RemoteDir/data",
     "cd $RemoteDir",
     "npm install --omit=dev --no-audit",
+    "node src/scripts/seed-delivery-zones.js",
     "pm2 stop rs-backend 2>/dev/null || true",
     "sleep 1",
     "pm2 start src/server.js --name rs-backend || pm2 restart rs-backend",

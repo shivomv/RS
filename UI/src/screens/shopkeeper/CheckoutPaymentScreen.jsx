@@ -26,6 +26,31 @@ export default function CheckoutPaymentScreen({ navigation, route }) {
   const [addresses, setAddresses] = useState([]);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [addressServiceStatus, setAddressServiceStatus] = useState(null);
+
+  // Check serviceability of currently selected address
+  useEffect(() => {
+    const checkSelectedAddrService = async () => {
+      const selectedAddr = addresses.find((a) => a._id === selectedAddressId);
+      if (!selectedAddr || !selectedAddr.pincode) {
+        setAddressServiceStatus(null);
+        return;
+      }
+
+      try {
+        const res = await api.checkServiceability(selectedAddr.pincode);
+        setAddressServiceStatus({
+          isServiceable: Boolean(res.isServiceable),
+          message: res.message || (res.isServiceable ? 'Service Available' : 'Service Unavailable'),
+          estimatedDays: res.estimatedDays || '',
+        });
+      } catch (err) {
+        console.warn('[Checkout] Service check error:', err.message);
+      }
+    };
+
+    checkSelectedAddrService();
+  }, [selectedAddressId, addresses]);
 
   // Reload and auto-select addresses on focus
   useFocusEffect(
@@ -102,7 +127,14 @@ export default function CheckoutPaymentScreen({ navigation, route }) {
       return;
     }
 
-    
+    if (addressServiceStatus && addressServiceStatus.isServiceable === false) {
+      alertService.error(
+        'Delivery Unavailable',
+        `RS Industries does not service pincode ${selectedAddr.pincode} (${selectedAddr.city || ''}). Please select or add an address in a serviceable area.`
+      );
+      return;
+    }
+
     const cleanedMobile = String(buyerMobile || '').replace(/\D/g, '').slice(-10);
     if (!cleanedMobile || cleanedMobile.length !== 10) {
       alertService.error('Mobile Number Required', 'A compulsory 10-digit mobile number is mandatory to place wholesale orders.');
@@ -284,8 +316,31 @@ export default function CheckoutPaymentScreen({ navigation, route }) {
                 {addresses.find(addr => addr._id === selectedAddressId)?.streetAddress}
               </Text>
               <Text className="text-[10px] text-[#6d7a72]">
-                {addresses.find(addr => addr._id === selectedAddressId)?.facilityName} • {addresses.find(addr => addr._id === selectedAddressId)?.city}
+                {addresses.find(addr => addr._id === selectedAddressId)?.facilityName} • {addresses.find(addr => addr._id === selectedAddressId)?.city} ({addresses.find(addr => addr._id === selectedAddressId)?.pincode})
               </Text>
+
+              {addressServiceStatus && (
+                <View
+                  className={`mt-2.5 p-2.5 rounded-xl flex-row items-center gap-2 ${
+                    addressServiceStatus.isServiceable
+                      ? 'bg-[#dcfce7] border border-[#86efac]'
+                      : 'bg-[#fee2e2] border border-[#fca5a5]'
+                  }`}
+                >
+                  <Icon
+                    name={addressServiceStatus.isServiceable ? 'check-circle' : 'error'}
+                    size={16}
+                    color={addressServiceStatus.isServiceable ? '#15803d' : '#b91c1c'}
+                  />
+                  <Text
+                    className={`text-[10px] font-bold flex-1 ${
+                      addressServiceStatus.isServiceable ? 'text-[#15803d]' : 'text-[#b91c1c]'
+                    }`}
+                  >
+                    {addressServiceStatus.message}
+                  </Text>
+                </View>
+              )}
             </>
           ) : (
             <Pressable
@@ -381,13 +436,24 @@ export default function CheckoutPaymentScreen({ navigation, route }) {
         </View>
         <Pressable
           onPress={handleConfirmOrder}
-          disabled={!selectedAddressId || loadingAddresses || isSubmitting}
+          disabled={!selectedAddressId || loadingAddresses || isSubmitting || (addressServiceStatus && !addressServiceStatus.isServiceable)}
           className={`px-6 py-3.5 rounded-xl flex-row items-center gap-2 shadow-md active:opacity-90 ${
-            (!selectedAddressId || loadingAddresses || isSubmitting) ? 'bg-[#006948]/40' : 'bg-[#006948]'
+            addressServiceStatus && !addressServiceStatus.isServiceable
+              ? 'bg-[#dc2626]'
+              : (!selectedAddressId || loadingAddresses || isSubmitting)
+              ? 'bg-[#006948]/40'
+              : 'bg-[#006948]'
           }`}
         >
           {isSubmitting ? (
             <ActivityIndicator size="small" color="#ffffff" />
+          ) : addressServiceStatus && !addressServiceStatus.isServiceable ? (
+            <>
+              <Icon name="location-off" size={16} color="#ffffff" />
+              <Text className="font-bold text-xs uppercase tracking-wider text-white">
+                Delivery Unavailable
+              </Text>
+            </>
           ) : (
             <>
               <Text className={`font-bold text-xs uppercase tracking-wider ${

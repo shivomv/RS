@@ -13,10 +13,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import FeatherIcon from 'react-native-vector-icons/Feather';
 import RSLogo from '../../components/RSLogo';
+import LocationHeaderPill from '../../components/LocationHeaderPill';
+import ServiceabilityBanner from '../../components/ServiceabilityBanner';
+import LocationSelectorModal from '../../components/LocationSelectorModal';
 import { ProductCardSkeleton, CategorySkeleton } from '../../components/Skeleton';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import { useCompanyStore } from '../../store/companyStore';
+import { useLocationStore } from '../../store/locationStore';
 import { api } from '../../services/api';
 import { getDefaultProductPricing } from '../../utils/productHelper';
 
@@ -24,11 +28,16 @@ export default function ShopkeeperHomeScreen({ navigation }) {
   const { items, addItem, removeItem, updateQuantity, totalAmount, itemCount } = useCartStore();
   const { session } = useAuthStore();
   const { ensureLoaded: loadCompanyDetails } = useCompanyStore();
+  const { initLocation } = useLocationStore();
   const [dbProducts, setDbProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    initLocation();
+  }, [initLocation]);
 
   const loadData = useCallback(async () => {
     try {
@@ -129,6 +138,15 @@ export default function ShopkeeperHomeScreen({ navigation }) {
           </View>
         </View>
       </View>
+
+      {/* Location Sub-Header Bar */}
+      <View className="bg-white px-4 py-2 flex-row items-center justify-between border-b border-[#dae2fd]/60">
+        <LocationHeaderPill />
+        <Text className="text-[10px] text-[#64748b] font-medium">B2B Wholesale Hub</Text>
+      </View>
+
+      {/* Out-of-Stock / Service Unavailable Banner */}
+      <ServiceabilityBanner />
 
       <ScrollView
         keyboardShouldPersistTaps="handled"
@@ -473,6 +491,9 @@ export default function ShopkeeperHomeScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Location Selector Bottom Modal */}
+      <LocationSelectorModal />
     </SafeAreaView>
   );
 }
