@@ -14,6 +14,7 @@ import BannerManagementScreen from './BannerManagementScreen';
 import AboutManagementScreen from './AboutManagementScreen';
 import AdminManagementScreen from './AdminManagementScreen';
 import NotificationSettingsScreen from './NotificationSettingsScreen';
+import ZoneManagementScreen from './ZoneManagementScreen';
 
 import { adminApi } from '../services/api';
 import { registerDeviceToken } from '../services/notificationService';
@@ -90,6 +91,8 @@ export default function MainApp() {
         return <OrderManagementScreen route={{ params: { selectedOrder: selectedOrderData } }} onRefresh={loadStats} />;
       case 'categories':
         return <CategoryManagementScreen />;
+      case 'zones':
+        return <ZoneManagementScreen />;
       case 'buyers':
         return <BuyerManagementScreen />;
       case 'tickets':

@@ -95,6 +95,23 @@ export default function DashboardScreen({ navigation, onSelectTab }) {
         )}
       </View>
 
+      {/* Quick Pincode Zone Access Banner */}
+      <Pressable
+        onPress={() => onSelectTab && onSelectTab('zones')}
+        className="bg-[#eef2ff] border border-[#c7d2fe] p-3.5 rounded-2xl flex-row items-center justify-between mb-5 active:opacity-80 shadow-sm"
+      >
+        <View className="flex-row items-center gap-3">
+          <View className="w-10 h-10 rounded-xl bg-[#3730a3] justify-center items-center shadow-sm">
+            <Icon name="local-shipping" size={20} color="#ffffff" />
+          </View>
+          <View>
+            <Text className="text-xs font-bold text-[#1e1b4b]">Delivery Pincodes & Zones</Text>
+            <Text className="text-[10px] text-[#4338ca]">Manage serviceable delivery pincodes, hubs & delivery timelines</Text>
+          </View>
+        </View>
+        <Icon name="chevron-right" size={20} color="#3730a3" />
+      </Pressable>
+
       {/* Recent Orders Feed */}
       <View className="flex-row items-center justify-between mb-3">
         <Text className="text-[11px] font-black text-faint uppercase tracking-wider">Recent Orders Feed</Text>

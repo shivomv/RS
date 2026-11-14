@@ -274,3 +274,23 @@ exports.addOrUpdateZone = async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 };
+
+/**
+ * Delete delivery zone (Admin)
+ * DELETE /api/zones/:pincode
+ */
+exports.deleteZone = async (req, res) => {
+  try {
+    const rawPincode = req.params.pincode || req.query.pincode || '';
+    const cleanPincode = String(rawPincode).replace(/\D/g, '').slice(0, 6);
+
+    const deleted = await DeliveryZone.destroy({ where: { pincode: cleanPincode } });
+    if (!deleted) {
+      return res.status(404).json({ success: false, error: 'Pincode not found' });
+    }
+    return res.json({ success: true, message: `Pincode ${cleanPincode} deleted successfully.` });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+

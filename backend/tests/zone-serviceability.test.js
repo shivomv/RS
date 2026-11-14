@@ -204,5 +204,43 @@ describe('Delivery Zones & Serviceability Test Suite', () => {
       // Clean up
       await DeliveryZone.destroy({ where: { pincode: testPin } });
     });
+
+    test('Edge Case 15: Deleting nonexistent pincode returns 404', async () => {
+      const { req, res } = createMockReqRes({}, { pincode: '000000' });
+      await zoneController.deleteZone(req, res);
+      assert.equal(res.getStatusCode(), 404);
+      assert.equal(res.getData().success, false);
+    });
+
+    test('Edge Case 16: Creating and then deleting a zone succeeds', async () => {
+      const tempPin = '209998';
+      // Create
+      const { req: req1, res: res1 } = createMockReqRes({}, {}, {
+        pincode: tempPin,
+        city: 'Temp Zone',
+        state: 'Uttar Pradesh',
+      });
+      await zoneController.addOrUpdateZone(req1, res1);
+      assert.equal(res1.getStatusCode(), 200);
+
+      // Delete
+      const { req: req2, res: res2 } = createMockReqRes({}, { pincode: tempPin });
+      await zoneController.deleteZone(req2, res2);
+      assert.equal(res2.getStatusCode(), 200);
+      assert.equal(res2.getData().success, true);
+
+      // Verify gone
+      const found = await DeliveryZone.findOne({ where: { pincode: tempPin } });
+      assert.equal(found, null);
+    });
+
+    test('Edge Case 17: getAllZones returns active zones array', async () => {
+      const { req, res } = createMockReqRes();
+      await zoneController.getAllZones(req, res);
+      assert.equal(res.getStatusCode(), 200);
+      assert.equal(res.getData().success, true);
+      assert.ok(Array.isArray(res.getData().zones));
+      assert.ok(res.getData().zones.length > 0);
+    });
   });
 });

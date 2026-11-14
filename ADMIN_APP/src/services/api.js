@@ -101,5 +101,12 @@ export const adminApi = {
   createAdminUser: (payload) => request('/admin/users', { method: 'POST', body: JSON.stringify(payload) }),
   updateAdminUser: (id, payload) => request(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteAdminUser: (id) => request(`/admin/users/${id}`, { method: 'DELETE' }),
+
+  // Delivery Zones & Pincode Management
+  getDeliveryZones: () => request('/zones'),
+  addOrUpdateZone: (data) => request('/zones', { method: 'POST', body: JSON.stringify(data) }),
+  deleteZone: (pincode) => request(`/zones/${pincode}`, { method: 'DELETE' }),
+  checkPincodeServiceability: (pincode) => request(`/zones/check?pincode=${pincode}`),
+  getPincodeInfo: (pincode) => request(`/zones/pincode/${pincode}`),
 };
 

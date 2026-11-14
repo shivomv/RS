@@ -140,6 +140,7 @@ export default function SideDrawer({
     { key: 'products', label: 'Products Catalog', icon: 'inventory-2', badge: prodCount > 0 ? `${prodCount}` : null },
     { key: 'orders', label: 'Orders Center', icon: 'shopping-bag', badge: pendingOrd > 0 ? `${pendingOrd} Pending` : null, badgeColor: '#ef4444' },
     { key: 'categories', label: 'Categories & Brands', icon: 'category', badge: null },
+    { key: 'zones', label: 'Delivery Pincodes', icon: 'local-shipping', badge: null },
     { key: 'buyers', label: 'Registered Buyers', icon: 'storefront', badge: buyerCount > 0 ? `${buyerCount}` : null },
     { key: 'tickets', label: 'Support Desk', icon: 'headset-mic', badge: null },
     { key: 'banners', label: 'Hero Banners', icon: 'view-carousel', badge: null },

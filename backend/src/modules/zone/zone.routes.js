@@ -10,5 +10,6 @@ router.get('/', zoneController.getAllZones);
 
 // Admin Configuration Endpoints
 router.post('/', zoneController.addOrUpdateZone);
+router.delete('/:pincode', zoneController.deleteZone);
 
 module.exports = router;
