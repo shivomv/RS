@@ -3,10 +3,20 @@ import { View, Text, Pressable } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { navigate } from '../navigation/navigationRef';
 
-export default function AppHeader({ activeTab, onOpenDrawer, onRefresh }) {
+export default function AppHeader({ activeTab, onOpenDrawer, onBack, onRefresh }) {
+  const isDashboard = activeTab === 'dashboard';
+
   return (
     <View className="bg-surface border-b border-border px-4 py-3 flex-row items-center justify-between shadow-sm">
-      <View className="flex-row items-center gap-3">
+      <View className="flex-row items-center gap-2.5">
+        {!isDashboard && onBack ? (
+          <Pressable
+            onPress={onBack}
+            className="w-10 h-10 rounded-2xl bg-input justify-center items-center border border-border active:opacity-70"
+          >
+            <Icon name="arrow-back" size={22} color="#006948" />
+          </Pressable>
+        ) : null}
         <Pressable
           onPress={onOpenDrawer}
           className="w-10 h-10 rounded-2xl bg-input justify-center items-center border border-border active:opacity-70"

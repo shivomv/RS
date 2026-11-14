@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, BackHandler, ToastAndroid, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SideDrawer from '../components/SideDrawer';
 import AppHeader from '../components/AppHeader';
@@ -26,6 +26,8 @@ export default function MainApp() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedOrderData, setSelectedOrderData] = useState(null);
+  const tabHistoryRef = useRef(['dashboard']);
+  const lastBackPressRef = useRef(0);
   const [stats, setStats] = useState({
     totalRevenue: 0,
     totalOrders: 0,
@@ -77,9 +79,49 @@ export default function MainApp() {
   }, []);
 
   const handleSelectTab = (tabKey) => {
-    setActiveTab(tabKey);
+    if (tabKey !== activeTab) {
+      tabHistoryRef.current.push(tabKey);
+      setActiveTab(tabKey);
+    }
     setDrawerOpen(false);
   };
+
+  const handleGoBack = () => {
+    if (drawerOpen) {
+      setDrawerOpen(false);
+      return true;
+    }
+
+    if (tabHistoryRef.current.length > 1) {
+      tabHistoryRef.current.pop(); // remove current tab
+      const previousTab = tabHistoryRef.current[tabHistoryRef.current.length - 1];
+      setActiveTab(previousTab);
+      return true;
+    }
+
+    if (activeTab !== 'dashboard') {
+      tabHistoryRef.current = ['dashboard'];
+      setActiveTab('dashboard');
+      return true;
+    }
+
+    // On Dashboard root: double-press back within 2s to exit
+    const now = Date.now();
+    if (now - lastBackPressRef.current < 2000) {
+      BackHandler.exitApp();
+      return true;
+    }
+    lastBackPressRef.current = now;
+    if (Platform.OS === 'android') {
+      ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+    }
+    return true;
+  };
+
+  useEffect(() => {
+    const backSubscription = BackHandler.addEventListener('hardwareBackPress', handleGoBack);
+    return () => backSubscription.remove();
+  }, [drawerOpen, activeTab]);
 
   const renderActiveScreen = () => {
     switch (activeTab) {
@@ -116,6 +158,7 @@ export default function MainApp() {
         <AppHeader
           activeTab={activeTab}
           onOpenDrawer={() => setDrawerOpen(true)}
+          onBack={handleGoBack}
         />
 
         <View className="flex-1">

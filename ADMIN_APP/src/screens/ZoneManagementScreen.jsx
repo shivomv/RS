@@ -256,26 +256,26 @@ export default function ZoneManagementScreen() {
       {/* Top Action & Metric Header */}
       <View className="bg-white px-4 py-3 border-b border-[#e2e8f0] shadow-sm">
         <View className="flex-row items-center justify-between mb-3">
-          <View>
+          <View className="flex-1 mr-2">
             <Text className="text-base font-black text-[#0f172a]">Delivery Pincodes & Zones</Text>
-            <Text className="text-[11px] text-[#64748b]">
-              Configure serviceable wholesale territories & dispatch hubs
+            <Text className="text-[11px] text-[#64748b]" numberOfLines={1}>
+              Configure serviceable wholesale territories
             </Text>
           </View>
-          <View className="flex-row gap-2">
+          <View className="flex-row items-center gap-1.5">
             <Pressable
               onPress={() => setBulkModalVisible(true)}
-              className="bg-[#eef2ff] border border-[#c7d2fe] px-3 py-2 rounded-xl flex-row items-center gap-1 active:opacity-75"
+              className="bg-[#eef2ff] border border-[#c7d2fe] px-2.5 py-1.5 rounded-xl flex-row items-center gap-1 active:opacity-75"
             >
-              <Icon name="playlist-add" size={16} color="#3730a3" />
-              <Text className="text-[11px] font-bold text-[#3730a3]">Bulk Add</Text>
+              <Icon name="playlist-add" size={15} color="#3730a3" />
+              <Text className="text-[11px] font-bold text-[#3730a3]">Bulk</Text>
             </Pressable>
             <Pressable
               onPress={openAddModal}
-              className="bg-[#006948] px-3.5 py-2 rounded-xl flex-row items-center gap-1 active:opacity-85 shadow-sm"
+              className="bg-[#006948] px-3 py-1.5 rounded-xl flex-row items-center gap-1 active:opacity-85 shadow-sm"
             >
-              <Icon name="add" size={18} color="#ffffff" />
-              <Text className="text-[11px] font-bold text-white uppercase">Add Pincode</Text>
+              <Icon name="add" size={16} color="#ffffff" />
+              <Text className="text-[11px] font-bold text-white uppercase">Add</Text>
             </Pressable>
           </View>
         </View>

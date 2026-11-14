@@ -8,6 +8,9 @@ import {
   Image,
   StatusBar,
   RefreshControl,
+  BackHandler,
+  ToastAndroid,
+  Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -35,6 +38,26 @@ export default function ShopkeeperHomeScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const lastBackPressRef = React.useRef(0);
+
+  // Handle hardware back press on root Home screen (prevent accidental app closure)
+  useEffect(() => {
+    const onBackPress = () => {
+      const now = Date.now();
+      if (now - lastBackPressRef.current < 2000) {
+        BackHandler.exitApp();
+        return true;
+      }
+      lastBackPressRef.current = now;
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+      }
+      return true;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     initLocation();
