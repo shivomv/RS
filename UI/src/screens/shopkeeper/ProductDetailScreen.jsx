@@ -176,7 +176,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
+        contentContainerStyle={{ paddingBottom: 85 }}
       >
         {/* Product Image Showcase - Swipeable Carousel */}
         <View className="bg-[#f2f3ff] px-4 pt-4 pb-6 items-center">
@@ -450,13 +450,10 @@ export default function ProductDetailScreen({ route, navigation }) {
         </View>
       </ScrollView>
 
-      {/* Bottom Sticky Action Bar */}
-      <View
-        className="absolute left-0 right-0 bg-white border-t border-[#dae2fd] shadow-lg"
-        style={{ bottom: 0, paddingBottom: Math.max(16, insets.bottom + 8) }}
-      >
+      {/* Bottom Sticky Action Bar (Directly connected to Bottom Nav with no space) */}
+      <View className="absolute left-0 right-0 bottom-0 bg-white border-t border-[#dae2fd] shadow-lg">
         {/* Price and Add to Cart Row */}
-        <View className="flex-row items-center justify-between px-4 py-4">
+        <View className="flex-row items-center justify-between px-4 py-2.5">
           <View>
             <Text className="text-[10px] uppercase font-bold text-[#6d7a72]">
               Total ({packQuantity} {packQuantity === 1 ? 'Pack' : 'Packs'})

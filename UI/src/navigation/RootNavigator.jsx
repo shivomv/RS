@@ -128,6 +128,64 @@ function BuyerTabs() {
           tabBarIcon: ({ color, size }) => <Icon name="user" size={size} color={color} />,
         }}
       />
+
+      {/* Internal Screens rendered within Tabs to keep Bottom Nav visible */}
+      <Tab.Screen
+        name="ProductDetail"
+        component={ProductDetailScreen}
+        options={{
+          tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
+        }}
+      />
+      <Tab.Screen
+        name="CheckoutPayment"
+        component={CheckoutPaymentScreen}
+        options={{
+          tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
+        }}
+      />
+      <Tab.Screen
+        name="OrderDetail"
+        component={OrderDetailScreen}
+        options={{
+          tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
+        }}
+      />
+      <Tab.Screen
+        name="AddressList"
+        component={AddressListScreen}
+        options={{
+          tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
+        }}
+      />
+      <Tab.Screen
+        name="AddAddress"
+        component={AddAddressScreen}
+        options={{
+          tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
+        }}
+      />
+      <Tab.Screen
+        name="Support"
+        component={SupportScreen}
+        options={{
+          tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
+        }}
+      />
+      <Tab.Screen
+        name="AboutUs"
+        component={AboutUsScreen}
+        options={{
+          tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
+        }}
+      />
     </Tab.Navigator>
   );
 }

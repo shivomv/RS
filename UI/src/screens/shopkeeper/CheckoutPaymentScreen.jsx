@@ -276,7 +276,7 @@ export default function CheckoutPaymentScreen({ navigation, route }) {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#faf8ff]">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#faf8ff]">
       {/* Header */}
       <View className="bg-white border-b border-[#dae2fd] px-4 py-3 flex-row items-center justify-between shadow-sm">
         <View className="flex-row items-center gap-2">
@@ -291,7 +291,7 @@ export default function CheckoutPaymentScreen({ navigation, route }) {
         <RSLogo size="sm" showText={false} />
       </View>
 
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 110 + insets.bottom }}>
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 80 }}>
         {/* Delivery Address Section */}
         <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-[#eaedff]">
           <View className="flex-row items-center justify-between mb-2">
@@ -429,11 +429,8 @@ export default function CheckoutPaymentScreen({ navigation, route }) {
         </View>
       </ScrollView>
 
-      {/* Bottom Sticky Action Bar */}
-      <View
-        className="absolute bottom-0 left-0 right-0 bg-white border-t border-[#dae2fd] p-4 flex-row items-center justify-between shadow-lg"
-        style={{ paddingBottom: Math.max(16, insets.bottom + 12) }}
-      >
+      {/* Bottom Sticky Action Bar (Directly connected to Bottom Nav with no space) */}
+      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-[#dae2fd] px-4 py-2.5 flex-row items-center justify-between shadow-lg">
         <View>
           <Text className="text-[10px] text-[#6d7a72]">Total Amount</Text>
           <Text className="text-lg font-extrabold text-[#006948]">₹{total}</Text>

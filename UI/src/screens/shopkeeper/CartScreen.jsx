@@ -125,7 +125,7 @@ export default function CartScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: items.length > 0 ? 120 + insets.bottom : 80 }}
+        contentContainerStyle={{ paddingBottom: items.length > 0 ? 80 : 20 }}
       >
         {/* Fast Delivery & Dispatch Notice Bar */}
         <View className="px-4 pt-4">
@@ -298,12 +298,9 @@ export default function CartScreen({ navigation }) {
         )}
       </ScrollView>
 
-      {/* Checkout Bottom Bar */}
+      {/* Checkout Bottom Bar (Directly connected to Bottom Nav with no space) */}
       {items.length > 0 && (
-        <View
-          className="absolute bottom-0 left-0 right-0 bg-white border-t border-[#dae2fd] p-4 flex-row items-center justify-between shadow-xl z-30"
-          style={{ paddingBottom: Math.max(16, insets.bottom + 12) }}
-        >
+        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-[#dae2fd] px-4 py-2.5 flex-row items-center justify-between shadow-xl z-30">
           <View>
             <Text className="text-[10px] text-[#3d4a42] font-semibold uppercase">Net Payable</Text>
             <Text className="text-lg font-black text-[#131b2e]">₹{grandTotal.toLocaleString('en-IN')}</Text>
