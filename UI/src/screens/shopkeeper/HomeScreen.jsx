@@ -153,7 +153,7 @@ export default function ShopkeeperHomeScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 110 + insets.bottom }}
+        contentContainerStyle={{ paddingBottom: itemCount() > 0 ? 75 : 25 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -466,17 +466,17 @@ export default function ShopkeeperHomeScreen({ navigation }) {
         </View>
       </ScrollView>
 
-      {/* Floating Cart Dock */}
+      {/* Docked Cart Ribbon (Directly connected to Bottom Nav with no space) */}
       {itemCount() > 0 && (
-        <View className="absolute left-4 right-4 z-40" style={{ bottom: 12 + insets.bottom }}>
+        <View className="absolute left-0 right-0 bottom-0 z-40 bg-[#006948] px-4 py-2.5 border-t border-[#005a3e] shadow-xl">
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => navigation.navigate('Cart')}
-            className="bg-[#006948] rounded-2xl p-3 shadow-xl flex-row items-center justify-between"
+            className="flex-row items-center justify-between"
           >
             <View className="flex-row items-center gap-3">
-              <View className="w-9 h-9 rounded-xl bg-white/15 justify-center items-center">
-                <FeatherIcon name="shopping-bag" size={18} color="#ffffff" />
+              <View className="w-8 h-8 rounded-lg bg-white/15 justify-center items-center">
+                <FeatherIcon name="shopping-bag" size={16} color="#ffffff" />
               </View>
               <View>
                 <Text className="text-xs font-bold text-white">
