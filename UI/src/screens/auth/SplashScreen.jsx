@@ -15,10 +15,18 @@ export default function SplashScreen({ navigation }) {
 
     const timer = setTimeout(() => {
       if (session?.token) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Shopkeeper' }],
-        });
+        const cleanMob = String(session?.user?.mobile || session?.mobile || '').replace(/\D/g, '').slice(-10);
+        if (cleanMob.length !== 10) {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'CompleteProfile' }],
+          });
+        } else {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Shopkeeper' }],
+          });
+        }
       } else {
         navigation.reset({
           index: 0,

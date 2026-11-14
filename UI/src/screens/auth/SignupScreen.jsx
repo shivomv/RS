@@ -33,8 +33,19 @@ export default function SignupScreen({ navigation, route }) {
       setLocalLoading(false);
 
       if (res && res.success) {
-        if (returnScreen) navigation.navigate(returnScreen);
-        else navigation.reset({ index: 0, routes: [{ name: 'Shopkeeper' }] });
+        const cleanMob = String(res.user?.mobile || '').replace(/\D/g, '').slice(-10);
+        const shouldPromptMobile = res.isNewUser || cleanMob.length !== 10;
+
+        if (shouldPromptMobile) {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'CompleteProfile', params: { returnScreen } }],
+          });
+        } else if (returnScreen) {
+          navigation.navigate(returnScreen);
+        } else {
+          navigation.reset({ index: 0, routes: [{ name: 'Shopkeeper' }] });
+        }
       } else {
         setErrorMsg(res?.error || 'Google signup failed');
       }

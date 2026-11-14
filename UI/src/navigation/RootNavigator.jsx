@@ -7,6 +7,7 @@ import Icon from 'react-native-vector-icons/Feather';
 // Auth Screens
 import SplashScreen from '../screens/auth/SplashScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
+import CompleteProfileScreen from '../screens/auth/CompleteProfileScreen';
 
 // Buyer Screens
 import ShopkeeperHomeScreen from '../screens/shopkeeper/HomeScreen';
@@ -133,6 +134,7 @@ export const RootNavigator = () => {
     <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Splash" component={SplashScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
       <Stack.Screen name="Shopkeeper" component={BuyerTabs} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
       <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />

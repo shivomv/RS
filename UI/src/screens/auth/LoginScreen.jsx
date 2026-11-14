@@ -34,8 +34,19 @@ export default function LoginScreen({ navigation, route }) {
       setLocalLoading(false);
 
       if (res && res.success) {
-        if (returnScreen) navigation.navigate(returnScreen);
-        else navigation.reset({ index: 0, routes: [{ name: 'Shopkeeper' }] });
+        const cleanMob = String(res.user?.mobile || '').replace(/\D/g, '').slice(-10);
+        const shouldPromptMobile = res.isNewUser || cleanMob.length !== 10;
+
+        if (shouldPromptMobile) {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'CompleteProfile', params: { returnScreen } }],
+          });
+        } else if (returnScreen) {
+          navigation.navigate(returnScreen);
+        } else {
+          navigation.reset({ index: 0, routes: [{ name: 'Shopkeeper' }] });
+        }
       } else {
         setErrorMsg(res?.error || 'Google sign-in failed');
       }
@@ -97,7 +108,7 @@ export default function LoginScreen({ navigation, route }) {
         <View className="bg-white rounded-3xl p-6 shadow-sm mb-6 border border-[#eaedff]">
           <Text className="text-sm font-extrabold text-[#131b2e] mb-1">Buyer Authentication</Text>
           <Text className="text-xs text-[#6d7a72] mb-5 leading-relaxed">
-            Sign up or log in securely with your Google account. A mobile number is only required when placing wholesale orders.
+            Sign up or log in securely with your Google account. A valid 10-digit mobile number is mandatory to activate your wholesale account.
           </Text>
 
           {errorMsg ? (

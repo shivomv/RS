@@ -86,6 +86,7 @@ exports.googleAuth = async (req, res) => {
 
     const cleanMobile = mobile ? String(mobile).replace(/\D/g, '').slice(-10) : '';
 
+    let isNewUser = false;
     if (user) {
       // Update existing user with any newly available Google info
       const updates = {};
@@ -100,6 +101,7 @@ exports.googleAuth = async (req, res) => {
         await user.update(updates);
       }
     } else {
+      isNewUser = true;
       // Create new buyer account directly from Google authentication
       const generatedName = (name || cleanEmail.split('@')[0] || 'Wholesale Buyer').trim();
       user = await Shopkeeper.create({
@@ -125,6 +127,7 @@ exports.googleAuth = async (req, res) => {
     return res.json({
       success: true,
       message: 'Google login successful',
+      isNewUser,
       token,
       user: formatUser(user),
     });
