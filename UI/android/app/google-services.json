@@ -59,6 +59,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "501792961564-43puq4h3tdg5p62vfdmn021i2gp4u606.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rsindustries.admin",
+            "certificate_hash": "fe17a23d2c5e5e63a1e487ae91ec61f99a7c6b91"
+          }
+        },
+        {
+          "client_id": "501792961564-ajcsmjbbomm8ia11i209o992kcti9v5p.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rsindustries.admin",
+            "certificate_hash": "a787042ef5e5881335c9ae07e94db5445fdc6eb2"
+          }
+        },
+        {
           "client_id": "501792961564-lnf5blsteg7n2u19m85cc9bnnbqshbb2.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
