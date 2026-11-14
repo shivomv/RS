@@ -11,12 +11,13 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
 import { useAuthStore } from '../../store/authStore';
 
 export default function CompleteProfileScreen({ navigation, route }) {
+  const insets = useSafeAreaInsets();
   const { session, updateProfile, logout } = useAuthStore();
   const user = session?.user || {};
 
@@ -108,7 +109,7 @@ export default function CompleteProfileScreen({ navigation, route }) {
       >
         <ScrollView
           className="flex-1 px-4"
-          contentContainerStyle={{ paddingVertical: 24 }}
+          contentContainerStyle={{ paddingTop: 24, paddingBottom: 40 + insets.bottom }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >

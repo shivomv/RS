@@ -28,33 +28,33 @@ export default function LocationHeaderPill() {
       className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border active:opacity-75 ${
         isServiceable
           ? 'bg-[#f0fdf4] border-[#bbf7d0]'
-          : 'bg-[#fef2f2] border-[#fecaca]'
+          : 'bg-[#fff1f2] border-[#fecdd3]'
       }`}
     >
       <Icon
         name={isServiceable ? 'place' : 'location-off'}
         size={14}
-        color={isServiceable ? '#16a34a' : '#dc2626'}
+        color={isServiceable ? '#16a34a' : '#e11d48'}
       />
-      <View className="flex-row items-center gap-1">
+      <View className="flex-row items-center gap-1.5">
         <Text
           className={`text-[11px] font-bold ${
-            isServiceable ? 'text-[#166534]' : 'text-[#991b1b]'
+            isServiceable ? 'text-[#166534]' : 'text-[#9f1239]'
           }`}
           numberOfLines={1}
         >
           {label}
         </Text>
         {!isServiceable && (
-          <View className="bg-[#dc2626] px-1 py-0.2 rounded">
-            <Text className="text-[9px] font-black text-white uppercase">Unavailable</Text>
+          <View className="bg-[#ffe4e6] px-1.5 py-0.5 rounded border border-[#fecdd3]">
+            <Text className="text-[9px] font-bold text-[#e11d48] uppercase">Unavailable</Text>
           </View>
         )}
       </View>
       <Icon
         name="keyboard-arrow-down"
         size={16}
-        color={isServiceable ? '#166534' : '#991b1b'}
+        color={isServiceable ? '#166534' : '#e11d48'}
       />
     </Pressable>
   );

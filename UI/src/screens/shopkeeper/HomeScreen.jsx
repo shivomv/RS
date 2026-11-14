@@ -9,7 +9,7 @@ import {
   StatusBar,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import FeatherIcon from 'react-native-vector-icons/Feather';
 import RSLogo from '../../components/RSLogo';
@@ -25,6 +25,7 @@ import { api } from '../../services/api';
 import { getDefaultProductPricing } from '../../utils/productHelper';
 
 export default function ShopkeeperHomeScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { items, addItem, removeItem, updateQuantity, totalAmount, itemCount } = useCartStore();
   const { session } = useAuthStore();
   const { ensureLoaded: loadCompanyDetails } = useCompanyStore();
@@ -152,7 +153,7 @@ export default function ShopkeeperHomeScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 110 }}
+        contentContainerStyle={{ paddingBottom: 110 + insets.bottom }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -467,7 +468,7 @@ export default function ShopkeeperHomeScreen({ navigation }) {
 
       {/* Floating Cart Dock */}
       {itemCount() > 0 && (
-        <View className="absolute bottom-4 left-4 right-4 z-40">
+        <View className="absolute left-4 right-4 z-40" style={{ bottom: 12 + insets.bottom }}>
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => navigation.navigate('Cart')}

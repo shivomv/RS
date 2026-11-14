@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, TextInput } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
 import { useCartStore } from '../../store/cartStore';
@@ -11,6 +11,7 @@ import { api } from '../../services/api';
 import { alertService } from '../../services/alertService';
 
 export default function CheckoutPaymentScreen({ navigation, route }) {
+  const insets = useSafeAreaInsets();
   const { items, totalAmount, clearCart } = useCartStore();
   const { addOrder } = useOrderStore();
   const { session, updateProfile } = useAuthStore();
@@ -290,7 +291,7 @@ export default function CheckoutPaymentScreen({ navigation, route }) {
         <RSLogo size="sm" showText={false} />
       </View>
 
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 110 }}>
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 110 + insets.bottom }}>
         {/* Delivery Address Section */}
         <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-[#eaedff]">
           <View className="flex-row items-center justify-between mb-2">
@@ -324,17 +325,17 @@ export default function CheckoutPaymentScreen({ navigation, route }) {
                   className={`mt-2.5 p-2.5 rounded-xl flex-row items-center gap-2 ${
                     addressServiceStatus.isServiceable
                       ? 'bg-[#dcfce7] border border-[#86efac]'
-                      : 'bg-[#fee2e2] border border-[#fca5a5]'
+                      : 'bg-[#fff1f2] border border-[#fecdd3]'
                   }`}
                 >
                   <Icon
-                    name={addressServiceStatus.isServiceable ? 'check-circle' : 'error'}
+                    name={addressServiceStatus.isServiceable ? 'check-circle' : 'location-off'}
                     size={16}
-                    color={addressServiceStatus.isServiceable ? '#15803d' : '#b91c1c'}
+                    color={addressServiceStatus.isServiceable ? '#15803d' : '#e11d48'}
                   />
                   <Text
                     className={`text-[10px] font-bold flex-1 ${
-                      addressServiceStatus.isServiceable ? 'text-[#15803d]' : 'text-[#b91c1c]'
+                      addressServiceStatus.isServiceable ? 'text-[#15803d]' : 'text-[#9f1239]'
                     }`}
                   >
                     {addressServiceStatus.message}
@@ -429,7 +430,10 @@ export default function CheckoutPaymentScreen({ navigation, route }) {
       </ScrollView>
 
       {/* Bottom Sticky Action Bar */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-[#dae2fd] p-4 flex-row items-center justify-between shadow-lg">
+      <View
+        className="absolute bottom-0 left-0 right-0 bg-white border-t border-[#dae2fd] p-4 flex-row items-center justify-between shadow-lg"
+        style={{ paddingBottom: Math.max(16, insets.bottom + 12) }}
+      >
         <View>
           <Text className="text-[10px] text-[#6d7a72]">Total Amount</Text>
           <Text className="text-lg font-extrabold text-[#006948]">₹{total}</Text>
@@ -439,7 +443,7 @@ export default function CheckoutPaymentScreen({ navigation, route }) {
           disabled={!selectedAddressId || loadingAddresses || isSubmitting || (addressServiceStatus && !addressServiceStatus.isServiceable)}
           className={`px-6 py-3.5 rounded-xl flex-row items-center gap-2 shadow-md active:opacity-90 ${
             addressServiceStatus && !addressServiceStatus.isServiceable
-              ? 'bg-[#dc2626]'
+              ? 'bg-[#e11d48]'
               : (!selectedAddressId || loadingAddresses || isSubmitting)
               ? 'bg-[#006948]/40'
               : 'bg-[#006948]'

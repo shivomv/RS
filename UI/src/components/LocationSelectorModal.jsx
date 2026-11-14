@@ -10,12 +10,14 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useLocationStore } from '../store/locationStore';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../services/api';
 
 export default function LocationSelectorModal() {
+  const insets = useSafeAreaInsets();
   const {
     location,
     isModalOpen,
@@ -81,7 +83,10 @@ export default function LocationSelectorModal() {
       >
         <Pressable className="flex-1" onPress={closeModal} />
 
-        <View className="bg-white rounded-t-3xl p-5 max-h-[85%] border-t border-[#dae2fd] shadow-2xl">
+        <View
+          className="bg-white rounded-t-3xl p-5 max-h-[85%] border-t border-[#dae2fd] shadow-2xl"
+          style={{ paddingBottom: Math.max(20, insets.bottom + 12) }}
+        >
           {/* Header */}
           <View className="flex-row items-center justify-between pb-3 border-b border-[#f0f2f5]">
             <View className="flex-row items-center gap-2">
@@ -126,7 +131,7 @@ export default function LocationSelectorModal() {
             {/* Manual PIN Code Entry */}
             <View className="mt-4">
               <Text className="text-xs font-bold text-[#131b2e] mb-2">Or Enter 6-digit Pincode</Text>
-              <View className="flex-row items-center gap-2">
+              <View className="flex-row items-center gap-2.5">
                 <View className="flex-1 flex-row items-center bg-[#f2f3ff] rounded-xl px-3 h-11 border border-[#e2e8f0]">
                   <Icon name="search" size={18} color="#64748b" />
                   <TextInput
@@ -145,17 +150,18 @@ export default function LocationSelectorModal() {
                   )}
                 </View>
 
+                {/* Apply Button with robust min-width to avoid any text cutoff */}
                 <Pressable
                   onPress={handleApplyPincode}
                   disabled={isLoading || pinInput.length !== 6}
-                  className={`h-11 px-5 rounded-xl justify-center items-center ${
-                    pinInput.length === 6 && !isLoading ? 'bg-[#006948]' : 'bg-[#006948]/40'
+                  className={`h-11 w-20 rounded-xl justify-center items-center ${
+                    pinInput.length === 6 && !isLoading ? 'bg-[#006948] active:opacity-90' : 'bg-[#006948]/40'
                   }`}
                 >
                   {isLoading ? (
                     <ActivityIndicator size="small" color="#ffffff" />
                   ) : (
-                    <Text className="text-xs font-bold text-white uppercase tracking-wider">Apply</Text>
+                    <Text className="text-xs font-bold text-white text-center">Apply</Text>
                   )}
                 </Pressable>
               </View>
@@ -163,9 +169,9 @@ export default function LocationSelectorModal() {
 
             {/* Error Message */}
             {error && (
-              <View className="mt-3 p-3 rounded-xl bg-[#fee2e2] border border-[#fca5a5] flex-row items-center gap-2">
-                <Icon name="error" size={16} color="#b91c1c" />
-                <Text className="text-[11px] font-semibold text-[#b91c1c] flex-1">{error}</Text>
+              <View className="mt-3 p-3 rounded-xl bg-[#fff1f2] border border-[#fecdd3] flex-row items-center gap-2">
+                <Icon name="error" size={16} color="#e11d48" />
+                <Text className="text-[11px] font-semibold text-[#9f1239] flex-1">{error}</Text>
               </View>
             )}
 
@@ -175,22 +181,22 @@ export default function LocationSelectorModal() {
                 <View className="flex-row items-center justify-between">
                   <View className="flex-row items-center gap-2">
                     <Icon
-                      name={location.isServiceable ? 'check-circle' : 'do-not-disturb'}
+                      name={location.isServiceable ? 'check-circle' : 'location-off'}
                       size={18}
-                      color={location.isServiceable ? '#15803d' : '#dc2626'}
+                      color={location.isServiceable ? '#15803d' : '#e11d48'}
                     />
                     <Text className="text-xs font-bold text-[#131b2e]">
-                      {location.city} ({location.pincode})
+                      {location.city || ''} ({location.pincode})
                     </Text>
                   </View>
                   <View
                     className={`px-2 py-0.5 rounded-full ${
-                      location.isServiceable ? 'bg-[#dcfce7]' : 'bg-[#fee2e2]'
+                      location.isServiceable ? 'bg-[#dcfce7]' : 'bg-[#ffe4e6] border border-[#fecdd3]'
                     }`}
                   >
                     <Text
                       className={`text-[10px] font-bold uppercase tracking-wider ${
-                        location.isServiceable ? 'text-[#15803d]' : 'text-[#dc2626]'
+                        location.isServiceable ? 'text-[#15803d]' : 'text-[#e11d48]'
                       }`}
                     >
                       {location.isServiceable ? 'Serviceable' : 'Unavailable'}
@@ -204,12 +210,16 @@ export default function LocationSelectorModal() {
 
                 {location.isServiceable && (
                   <View className="flex-row items-center gap-4 mt-2 pt-2 border-t border-[#f1f5f9]">
-                    <Text className="text-[10px] text-[#475569]">
-                      <Text className="font-bold">Hub:</Text> {location.hubName}
-                    </Text>
-                    <Text className="text-[10px] text-[#475569]">
-                      <Text className="font-bold">Estimated:</Text> {location.estimatedDays}
-                    </Text>
+                    {location.hubName ? (
+                      <Text className="text-[10px] text-[#475569]">
+                        <Text className="font-bold">Hub:</Text> {location.hubName}
+                      </Text>
+                    ) : null}
+                    {location.estimatedDays ? (
+                      <Text className="text-[10px] text-[#475569]">
+                        <Text className="font-bold">Estimated:</Text> {location.estimatedDays}
+                      </Text>
+                    ) : null}
                   </View>
                 )}
               </View>

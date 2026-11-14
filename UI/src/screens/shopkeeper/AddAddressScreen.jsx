@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator, PermissionsAndroid, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Geolocation from '@react-native-community/geolocation';
 import RSLogo from '../../components/RSLogo';
@@ -9,6 +9,7 @@ import { alertService } from '../../services/alertService';
 import { useAuthStore } from '../../store/authStore';
 
 export default function AddAddressScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { session } = useAuthStore();
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
@@ -168,7 +169,7 @@ export default function AddAddressScreen({ navigation }) {
         <RSLogo size="sm" showText={false} />
       </View>
 
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 40 + insets.bottom }}>
         {/* GPS Auto-Detect Banner */}
         <Pressable
           onPress={handleDetectGPS}
@@ -247,17 +248,17 @@ export default function AddAddressScreen({ navigation }) {
           {serviceStatus && (
             <View
               className={`p-3 rounded-xl flex-row items-center gap-2.5 ${
-                serviceStatus.isServiceable ? 'bg-[#dcfce7] border border-[#86efac]' : 'bg-[#fee2e2] border border-[#fca5a5]'
+                serviceStatus.isServiceable ? 'bg-[#dcfce7] border border-[#86efac]' : 'bg-[#fff1f2] border border-[#fecdd3]'
               }`}
             >
               <Icon
-                name={serviceStatus.isServiceable ? 'check-circle' : 'error'}
+                name={serviceStatus.isServiceable ? 'check-circle' : 'location-off'}
                 size={18}
-                color={serviceStatus.isServiceable ? '#15803d' : '#b91c1c'}
+                color={serviceStatus.isServiceable ? '#15803d' : '#e11d48'}
               />
               <Text
                 className={`text-[11px] font-semibold flex-1 ${
-                  serviceStatus.isServiceable ? 'text-[#15803d]' : 'text-[#b91c1c]'
+                  serviceStatus.isServiceable ? 'text-[#15803d]' : 'text-[#9f1239]'
                 }`}
               >
                 {serviceStatus.message}

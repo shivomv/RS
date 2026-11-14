@@ -2,6 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 
 // Auth Screens
@@ -64,6 +65,8 @@ function CartTabIcon({ color, size }) {
 }
 
 function BuyerTabs() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       backBehavior="history"
@@ -74,8 +77,8 @@ function BuyerTabs() {
         tabBarStyle: {
           backgroundColor: '#ffffff',
           borderTopColor: '#dae2fd',
-          height: 60,
-          paddingBottom: 8,
+          height: 60 + insets.bottom,
+          paddingBottom: Math.max(8, insets.bottom),
           paddingTop: 8,
         },
       }}

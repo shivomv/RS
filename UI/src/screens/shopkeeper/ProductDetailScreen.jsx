@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RSLogo from '../../components/RSLogo';
 import { useCartStore } from '../../store/cartStore';
@@ -19,6 +19,7 @@ import LocationSelectorModal from '../../components/LocationSelectorModal';
 const { width } = Dimensions.get('window');
 
 export default function ProductDetailScreen({ route, navigation }) {
+  const insets = useSafeAreaInsets();
   const { product } = route?.params || {};
   const { addItem } = useCartStore();
   const { location, openModal } = useLocationStore();
@@ -175,7 +176,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 160 }}
+        contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
       >
         {/* Product Image Showcase - Swipeable Carousel */}
         <View className="bg-[#f2f3ff] px-4 pt-4 pb-6 items-center">
@@ -297,7 +298,7 @@ export default function ProductDetailScreen({ route, navigation }) {
                 ? 'bg-[#f8fafc] border-[#e2e8f0]'
                 : location.isServiceable
                 ? 'bg-[#f0fdf4] border-[#bbf7d0]'
-                : 'bg-[#fef2f2] border-[#fecaca]'
+                : 'bg-[#fff1f2] border-[#fecdd3]'
             }`}
           >
             <View className="flex-row items-center gap-3 flex-1 mr-2">
@@ -307,13 +308,13 @@ export default function ProductDetailScreen({ route, navigation }) {
                     ? 'bg-[#e2e8f0]'
                     : location.isServiceable
                     ? 'bg-[#22c55e]/20'
-                    : 'bg-[#ef4444]/20'
+                    : 'bg-[#ffe4e6]'
                 }`}
               >
                 <Icon
                   name={!location ? 'place' : location.isServiceable ? 'local-shipping' : 'location-off'}
                   size={20}
-                  color={!location ? '#475569' : location.isServiceable ? '#15803d' : '#b91c1c'}
+                  color={!location ? '#475569' : location.isServiceable ? '#15803d' : '#e11d48'}
                 />
               </View>
               <View className="flex-1">
@@ -330,7 +331,7 @@ export default function ProductDetailScreen({ route, navigation }) {
                       ? 'text-[#64748b]'
                       : location.isServiceable
                       ? 'text-[#15803d]'
-                      : 'text-[#b91c1c]'
+                      : 'text-[#be123c]'
                   }`}
                 >
                   {!location
@@ -450,7 +451,10 @@ export default function ProductDetailScreen({ route, navigation }) {
       </ScrollView>
 
       {/* Bottom Sticky Action Bar */}
-      <View className="absolute left-0 right-0 bg-white border-t border-[#dae2fd] shadow-lg" style={{ bottom: 0 }}>
+      <View
+        className="absolute left-0 right-0 bg-white border-t border-[#dae2fd] shadow-lg"
+        style={{ bottom: 0, paddingBottom: Math.max(16, insets.bottom + 8) }}
+      >
         {/* Price and Add to Cart Row */}
         <View className="flex-row items-center justify-between px-4 py-4">
           <View>
@@ -470,7 +474,7 @@ export default function ProductDetailScreen({ route, navigation }) {
           {location && location.isServiceable === false ? (
             <Pressable
               onPress={openModal}
-              className="bg-[#dc2626] px-5 py-3.5 rounded-xl flex-row items-center gap-2 shadow-md active:opacity-90"
+              className="bg-[#e11d48] px-5 py-3.5 rounded-xl flex-row items-center gap-2 shadow-md active:bg-[#be123c]"
             >
               <Icon name="location-off" size={18} color="#ffffff" />
               <Text className="text-xs font-bold text-white uppercase tracking-wider">
