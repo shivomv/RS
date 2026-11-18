@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   Image,
   StatusBar,
   RefreshControl,
@@ -12,12 +11,11 @@ import {
   ToastAndroid,
   Platform,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import BlinkitHeader from '../../components/BlinkitHeader';
-import BlinkitProductCard from '../../components/BlinkitProductCard';
-import BlinkitCartStrip from '../../components/BlinkitCartStrip';
-import ServiceabilityBanner from '../../components/ServiceabilityBanner';
+import HyperlocalHeader from '../../components/HyperlocalHeader';
+import HyperlocalProductCard from '../../components/HyperlocalProductCard';
+import FloatingCartBar from '../../components/FloatingCartBar';
 import LocationSelectorModal from '../../components/LocationSelectorModal';
 import { ProductCardSkeleton, CategorySkeleton } from '../../components/Skeleton';
 import { useCartStore } from '../../store/cartStore';
@@ -26,7 +24,6 @@ import { useLocationStore } from '../../store/locationStore';
 import { api } from '../../services/api';
 
 export default function ShopkeeperHomeScreen({ navigation }) {
-  const insets = useSafeAreaInsets();
   const { items, addItem, removeItem, updateQuantity, itemCount } = useCartStore();
   const { ensureLoaded: loadCompanyDetails } = useCompanyStore();
   const { initLocation } = useLocationStore();
@@ -36,7 +33,7 @@ export default function ShopkeeperHomeScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedCatId, setSelectedCatId] = useState('ALL');
+  const [selectedCatName, setSelectedCatName] = useState('ALL');
   const lastBackPressRef = React.useRef(0);
 
   // Android Double Back to Exit
@@ -114,7 +111,6 @@ export default function ShopkeeperHomeScreen({ navigation }) {
     }
   };
 
-  // Filtered products by search & selected category
   const filteredProducts = useMemo(() => {
     return dbProducts.filter((p) => {
       const matchesSearch =
@@ -123,51 +119,25 @@ export default function ShopkeeperHomeScreen({ navigation }) {
         (p.category || '').toLowerCase().includes(search.toLowerCase());
 
       const matchesCat =
-        selectedCatId === 'ALL' ||
-        String(p.category || '').toLowerCase() === String(selectedCatId).toLowerCase() ||
-        String(p.categoryId || '') === String(selectedCatId);
+        selectedCatName === 'ALL' ||
+        String(p.category || '').toLowerCase() === String(selectedCatName).toLowerCase() ||
+        String(p.categoryId || '') === String(selectedCatName);
 
       return matchesSearch && matchesCat;
     });
-  }, [dbProducts, search, selectedCatId]);
+  }, [dbProducts, search, selectedCatName]);
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#f8fafc]">
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#F4F6FB]">
+      <StatusBar barStyle="dark-content" backgroundColor="#F7D435" />
 
-      {/* Signature Blinkit Header */}
-      <BlinkitHeader navigation={navigation} />
-
-      {/* Out-of-Stock / Service Unavailable Banner */}
-      <ServiceabilityBanner />
-
-      {/* Blinkit Floating Search Bar (Pinned) */}
-      <View className="px-3.5 pt-2 pb-2 bg-white border-b border-[#e2e8f0]/80">
-        <View className="flex-row items-center bg-[#f1f5f9] rounded-2xl border border-[#cbd5e1]/60 px-3.5 h-11 shadow-xs">
-          <Icon name="search" size={20} color="#006948" />
-          <TextInput
-            placeholder='Search "floor cleaner", "phenyl 5L", "detergent"...'
-            placeholderTextColor="#94a3b8"
-            value={search}
-            onChangeText={setSearch}
-            className="flex-1 h-full ml-2 text-xs font-semibold text-[#0f172a]"
-          />
-          {search ? (
-            <TouchableOpacity onPress={() => setSearch('')} activeOpacity={0.7} className="p-1">
-              <Icon name="close" size={18} color="#64748b" />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Catalog')}
-              activeOpacity={0.7}
-              className="flex-row items-center gap-1 bg-[#006948]/10 px-2.5 py-1 rounded-xl"
-            >
-              <Icon name="grid-view" size={14} color="#006948" />
-              <Text className="text-[10px] font-black text-[#006948] uppercase">Aisles</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+      {/* Signature Yellow Top Header */}
+      <HyperlocalHeader
+        navigation={navigation}
+        search={search}
+        onSearchChange={setSearch}
+        onClearSearch={() => setSearch('')}
+      />
 
       <View className="flex-1 relative">
         <ScrollView
@@ -179,135 +149,135 @@ export default function ShopkeeperHomeScreen({ navigation }) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#006948"
-              colors={['#006948']}
+              tintColor="#0C831F"
+              colors={['#0C831F']}
             />
           }
         >
-          {/* Blinkit Horizontal Categories / Aisles Bar */}
-          <View className="bg-white py-2.5 border-b border-[#e2e8f0]">
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="pl-3.5"
-              contentContainerStyle={{ paddingRight: 20 }}
-            >
-              {/* 'ALL' Chip */}
-              <TouchableOpacity
-                onPress={() => setSelectedCatId('ALL')}
-                activeOpacity={0.8}
-                className={`px-3.5 py-1.5 rounded-full mr-2 border flex-row items-center gap-1.5 ${
-                  selectedCatId === 'ALL'
-                    ? 'bg-[#006948] border-[#006948]'
-                    : 'bg-[#f8fafc] border-[#e2e8f0]'
-                }`}
-              >
-                <Icon
-                  name="dashboard"
-                  size={14}
-                  color={selectedCatId === 'ALL' ? '#ffffff' : '#64748b'}
-                />
-                <Text
-                  className={`text-xs font-black ${
-                    selectedCatId === 'ALL' ? 'text-white' : 'text-[#475569]'
-                  }`}
-                >
-                  All Products
-                </Text>
-              </TouchableOpacity>
-
-              {/* Dynamic Categories */}
-              {categories.map((cat, idx) => {
-                const catName = cat.name || cat.title || 'Category';
-                const isSelected =
-                  String(selectedCatId).toLowerCase() === String(catName).toLowerCase() ||
-                  String(selectedCatId) === String(cat._id);
-
-                return (
-                  <TouchableOpacity
-                    key={cat._id || idx}
-                    onPress={() => setSelectedCatId(isSelected ? 'ALL' : cat.name || cat._id)}
-                    activeOpacity={0.8}
-                    className={`px-3.5 py-1.5 rounded-full mr-2 border flex-row items-center gap-1.5 ${
-                      isSelected
-                        ? 'bg-[#006948] border-[#006948]'
-                        : 'bg-[#f8fafc] border-[#e2e8f0]'
-                    }`}
-                  >
-                    <Icon
-                      name="cleaning-services"
-                      size={14}
-                      color={isSelected ? '#ffffff' : '#64748b'}
-                    />
-                    <Text
-                      className={`text-xs font-black ${
-                        isSelected ? 'text-white' : 'text-[#475569]'
-                      }`}
-                    >
-                      {catName}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {/* Blinkit Quick Highlights / Value Props Banner */}
-          <View className="px-3.5 py-2.5">
-            <View className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-2xl p-3 flex-row items-center justify-between">
+          {/* Promo Offer Strip */}
+          <View className="px-3.5 pt-3">
+            <View className="bg-[#0C831F] rounded-xl p-3 flex-row items-center justify-between shadow-xs">
               <View className="flex-row items-center gap-2.5">
-                <View className="w-9 h-9 rounded-xl bg-[#006948] justify-center items-center shadow-xs">
-                  <Icon name="verified" size={20} color="#ffffff" />
+                <View className="w-9 h-9 rounded-lg bg-white/20 justify-center items-center">
+                  <Icon name="bolt" size={20} color="#ffffff" />
                 </View>
                 <View>
-                  <Text className="text-xs font-black text-[#0f172a]">
-                    Factory-Direct Wholesale
+                  <Text className="text-xs font-black tracking-wide uppercase text-white">
+                    Superfast 10 Min Delivery
                   </Text>
-                  <Text className="text-[10px] text-[#006948] font-bold">
-                    100% Genuine Lab-Tested Formulations
+                  <Text className="text-[10px] text-white/90 font-medium">
+                    Free factory direct delivery on orders above ₹149
                   </Text>
                 </View>
               </View>
-              <View className="bg-white px-2.5 py-1 rounded-xl border border-[#bbf7d0]">
-                <Text className="text-[10px] font-black text-[#006948]">COD Available</Text>
+              <View className="bg-white px-2.5 py-1 rounded-md shadow-xs">
+                <Text className="text-[#0C831F] text-[10px] font-black uppercase">CLAIM</Text>
               </View>
             </View>
           </View>
 
-          {/* Blinkit 2-Column Product Grid */}
-          <View className="px-3.5 pt-1">
-            <View className="flex-row items-center justify-between mb-2.5">
-              <View>
-                <Text className="text-sm font-black text-[#0f172a]">
-                  {selectedCatId === 'ALL' ? 'Explore RS Catalog' : selectedCatId}
+          {/* Explore By Category: Pure Dynamic DB Data (No Hardcoded Emojis) */}
+          {categories.length > 0 && (
+            <View className="mt-3.5 px-3.5">
+              <View className="flex-row justify-between items-center mb-2 px-0.5">
+                <Text className="text-xs font-black text-[#1C1C1C] uppercase tracking-wider">
+                  Explore By Category
                 </Text>
-                <Text className="text-[10px] font-bold text-[#64748b]">
-                  Showing {filteredProducts.length} wholesale options
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('Catalog')}
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-[11px] font-bold text-[#0C831F]">See all</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View className="flex-row flex-wrap gap-2 justify-between">
+                {categories.map((cat, idx) => {
+                  const catName = cat.name || cat.title || 'Category';
+                  const isSelected =
+                    String(selectedCatName).toLowerCase() === String(catName).toLowerCase() ||
+                    String(selectedCatName) === String(cat._id);
+
+                  return (
+                    <TouchableOpacity
+                      key={cat._id || idx}
+                      onPress={() => setSelectedCatName(isSelected ? 'ALL' : catName)}
+                      activeOpacity={0.8}
+                      className={`w-[23%] rounded-xl p-2 items-center text-center border ${
+                        isSelected
+                          ? 'bg-[#EBF7EE] border-[#0C831F]'
+                          : 'bg-white border-[#E8E8E8]'
+                      }`}
+                    >
+                      <View className="w-11 h-11 rounded-lg bg-[#F8FAFC] items-center justify-center shadow-xs mb-1 overflow-hidden">
+                        {cat.image ? (
+                          <Image
+                            source={{ uri: cat.image }}
+                            className="w-full h-full"
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <Icon
+                            name="cleaning-services"
+                            size={22}
+                            color={isSelected ? '#0C831F' : '#666666'}
+                          />
+                        )}
+                      </View>
+                      <Text
+                        className={`text-[10px] font-bold text-center leading-tight ${
+                          isSelected ? 'text-[#0C831F]' : 'text-[#1C1C1C]'
+                        }`}
+                        numberOfLines={2}
+                      >
+                        {catName}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* Bestsellers Section */}
+          <View className="mt-4 px-3.5">
+            <View className="flex-row justify-between items-end mb-2.5 px-0.5">
+              <View>
+                <View className="flex-row items-center gap-1.5">
+                  <Text className="text-sm font-black text-[#1C1C1C]">
+                    {selectedCatName === 'ALL' ? 'Bestsellers' : selectedCatName}
+                  </Text>
+                  <View className="bg-[#EBF7EE] px-1.5 py-0.5 rounded">
+                    <Text className="text-[#0C831F] text-[9px] font-black uppercase">
+                      10 MINS
+                    </Text>
+                  </View>
+                </View>
+                <Text className="text-[11px] text-[#666666]">
+                  Showing {filteredProducts.length} items
                 </Text>
               </View>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Catalog')}
-                activeOpacity={0.7}
-                className="flex-row items-center gap-0.5"
-              >
-                <Text className="text-xs font-black text-[#006948]">See All Aisles</Text>
-                <Icon name="chevron-right" size={16} color="#006948" />
-              </TouchableOpacity>
+              {selectedCatName !== 'ALL' && (
+                <TouchableOpacity
+                  onPress={() => setSelectedCatName('ALL')}
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-[11px] font-bold text-[#0C831F]">View All</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {loading ? (
               <View className="flex-row flex-wrap justify-between">
                 <ProductCardSkeleton />
                 <ProductCardSkeleton />
-                <ProductCardSkeleton />
-                <ProductCardSkeleton />
               </View>
             ) : filteredProducts.length === 0 ? (
-              <View className="py-12 items-center justify-center bg-white rounded-2xl border border-[#e2e8f0]">
-                <Icon name="search-off" size={44} color="#94a3b8" />
-                <Text className="text-sm font-black text-[#0f172a] mt-2">No Products Found</Text>
-                <Text className="text-xs text-[#64748b] mt-1 text-center px-4">
-                  Try searching for another cleaning item or switch category
+              <View className="py-12 items-center justify-center bg-white rounded-2xl border border-[#E8E8E8]">
+                <Icon name="search-off" size={40} color="#94a3b8" />
+                <Text className="text-sm font-black text-[#1C1C1C] mt-2">No Products Found</Text>
+                <Text className="text-xs text-[#666666] mt-1 text-center px-4">
+                  Try switching categories or clear your search query.
                 </Text>
               </View>
             ) : (
@@ -317,7 +287,7 @@ export default function ShopkeeperHomeScreen({ navigation }) {
                   const qty = getItemQuantity(pId);
 
                   return (
-                    <BlinkitProductCard
+                    <HyperlocalProductCard
                       key={pId}
                       product={product}
                       quantity={qty}
@@ -331,10 +301,37 @@ export default function ShopkeeperHomeScreen({ navigation }) {
               </View>
             )}
           </View>
+
+          {/* Partnered Local Dark Stores Strip */}
+          <View className="mt-4 px-3.5 mb-2">
+            <View className="bg-white rounded-2xl p-3 border border-[#E8E8E8] shadow-2xs">
+              <View className="flex-row items-center justify-between mb-2">
+                <View className="flex-row items-center gap-1.5">
+                  <Icon name="storefront" size={16} color="#0C831F" />
+                  <Text className="text-xs font-black text-[#1C1C1C]">
+                    Partnered Local Dark Stores
+                  </Text>
+                </View>
+                <View className="bg-emerald-50 px-1.5 py-0.5 rounded">
+                  <Text className="text-[10px] text-emerald-700 font-bold">Live GPS</Text>
+                </View>
+              </View>
+
+              <View className="border-t border-gray-100 pt-2 flex-row items-center justify-between">
+                <View>
+                  <Text className="text-xs font-bold text-[#1C1C1C]">RS Central Wholesale Hub</Text>
+                  <Text className="text-[10px] text-[#888888]">Kanpur Factory Plant (0.8 km)</Text>
+                </View>
+                <View className="bg-[#EBF7EE] px-2 py-0.5 rounded-full">
+                  <Text className="text-[10px] font-black text-[#0C831F]">8-10 MIN</Text>
+                </View>
+              </View>
+            </View>
+          </View>
         </ScrollView>
 
-        {/* Docked Blinkit Sticky Cart Bar */}
-        <BlinkitCartStrip navigation={navigation} />
+        {/* Docked Sticky Bottom Cart Bar */}
+        <FloatingCartBar navigation={navigation} />
       </View>
 
       <LocationSelectorModal />

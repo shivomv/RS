@@ -3,17 +3,17 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 /**
- * BlinkitAddButton
- * Signature Blinkit-style compact ADD button with steppers:
- * - When qty === 0: Crisp white button with border and bold green 'ADD +'
- * - When qty > 0: Solid brand green pill with '-' [Qty] '+'
+ * QuickAddButton
+ * Clean compact ADD button with quantity steppers:
+ * - 0 quantity: Clean button with green border & bold green 'ADD +'
+ * - >0 quantity: Solid brand green pill with '-' [Qty] '+'
  */
-export default function BlinkitAddButton({
+export default function QuickAddButton({
   quantity = 0,
   onAdd,
   onIncrement,
   onDecrement,
-  size = 'md', // 'sm' | 'md' | 'lg'
+  size = 'md',
 }) {
   const isSmall = size === 'sm';
   const isLarge = size === 'lg';
@@ -28,17 +28,17 @@ export default function BlinkitAddButton({
       <TouchableOpacity
         onPress={onAdd}
         activeOpacity={0.8}
-        className={`${containerHeight} ${buttonPadding} bg-white border border-[#006948] rounded-lg flex-row items-center justify-center gap-1 shadow-xs active:bg-[#f0fdf4]`}
+        className={`${containerHeight} ${buttonPadding} bg-white border border-[#0C831F] rounded-lg flex-row items-center justify-center gap-1 shadow-xs active:bg-[#f0fdf4]`}
       >
-        <Text className={`${fontSize} font-black text-[#006948] tracking-wider`}>ADD</Text>
-        <Icon name="add" size={iconSize} color="#006948" />
+        <Text className={`${fontSize} font-black text-[#0C831F] tracking-wider`}>ADD</Text>
+        <Icon name="add" size={iconSize} color="#0C831F" />
       </TouchableOpacity>
     );
   }
 
   return (
     <View
-      className={`${containerHeight} bg-[#006948] rounded-lg flex-row items-center px-1 shadow-xs`}
+      className={`${containerHeight} bg-[#0C831F] rounded-lg flex-row items-center px-1 shadow-xs`}
     >
       <TouchableOpacity
         onPress={onDecrement}

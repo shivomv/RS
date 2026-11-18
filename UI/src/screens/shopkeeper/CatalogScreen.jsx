@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,17 +14,11 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { api } from '../../services/api';
 import { useCartStore } from '../../store/cartStore';
 import LocationHeaderPill from '../../components/LocationHeaderPill';
-import ServiceabilityBanner from '../../components/ServiceabilityBanner';
 import LocationSelectorModal from '../../components/LocationSelectorModal';
-import BlinkitCartStrip from '../../components/BlinkitCartStrip';
-import BlinkitProductCard from '../../components/BlinkitProductCard';
+import FloatingCartBar from '../../components/FloatingCartBar';
+import HyperlocalProductCard from '../../components/HyperlocalProductCard';
 import { CategoryItemSkeleton, ProductCardSkeleton } from '../../components/Skeleton';
 
-/**
- * Blinkit-Style 2-Panel Category & Aisle Screen
- * Left Panel: Vertical category list with active emerald pill
- * Right Panel: 2-column product grid with instant category switching
- */
 export default function CatalogScreen({ navigation, route }) {
   const initialCategory = route?.params?.categoryId;
   const { addItem, updateQuantity, removeItem, items, itemCount } = useCartStore();
@@ -150,29 +144,26 @@ export default function CatalogScreen({ navigation, route }) {
     <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
-      {/* Blinkit Top Bar for Aisles */}
-      <View className="px-4 py-2.5 bg-white border-b border-[#e2e8f0] flex-row items-center justify-between shadow-xs">
+      {/* Top Bar for Aisles */}
+      <View className="px-4 py-2.5 bg-white border-b border-[#E8E8E8] flex-row items-center justify-between shadow-xs">
         <View className="flex-row items-center gap-2">
-          <View className="w-8 h-8 rounded-lg bg-[#006948] justify-center items-center">
+          <View className="w-8 h-8 rounded-lg bg-[#0C831F] justify-center items-center">
             <Icon name="grid-view" size={18} color="#ffffff" />
           </View>
           <View>
-            <Text className="text-sm font-black text-[#0f172a]">All Aisles & Categories</Text>
-            <Text className="text-[10px] text-[#64748b] font-medium">Blinkit-style Fast Browse</Text>
+            <Text className="text-sm font-black text-[#1C1C1C]">All Categories</Text>
+            <Text className="text-[10px] text-[#666666] font-medium">Fast Aisle Navigation</Text>
           </View>
         </View>
         <LocationHeaderPill />
       </View>
 
-      <ServiceabilityBanner />
-
-      {/* Main 2-Panel Blinkit View */}
+      {/* 2-Panel View */}
       <View className="flex-1 flex-row relative">
-        {/* Left Category Sidebar (26% width) */}
-        <View className="w-[28%] bg-[#f8fafc] border-r border-[#e2e8f0]">
+        {/* Left Category Sidebar (28% width) */}
+        <View className="w-[28%] bg-[#F4F6FB] border-r border-[#E8E8E8]">
           {loadingCategories ? (
             <View className="p-2">
-              <CategoryItemSkeleton />
               <CategoryItemSkeleton />
               <CategoryItemSkeleton />
               <CategoryItemSkeleton />
@@ -189,20 +180,20 @@ export default function CatalogScreen({ navigation, route }) {
                   <TouchableOpacity
                     activeOpacity={0.8}
                     onPress={() => setSelectedCat(item)}
-                    className={`py-3.5 px-2 items-center border-b border-[#e2e8f0]/60 relative ${
+                    className={`py-3.5 px-2 items-center border-b border-[#E8E8E8]/60 relative ${
                       isSelected ? 'bg-white' : 'bg-transparent'
                     }`}
                   >
                     {/* Active Left Indicator Bar */}
                     {isSelected && (
-                      <View className="absolute left-0 top-0 bottom-0 w-1 bg-[#006948] rounded-r" />
+                      <View className="absolute left-0 top-0 bottom-0 w-1 bg-[#0C831F] rounded-r" />
                     )}
 
                     <View
                       className={`w-11 h-11 rounded-2xl justify-center items-center mb-1 overflow-hidden ${
                         isSelected
-                          ? 'bg-[#f0fdf4] border border-[#bbf7d0]'
-                          : 'bg-white border border-[#e2e8f0]'
+                          ? 'bg-[#EBF7EE] border border-[#0C831F]/30'
+                          : 'bg-white border border-[#E8E8E8]'
                       }`}
                     >
                       {item.image ? (
@@ -215,14 +206,14 @@ export default function CatalogScreen({ navigation, route }) {
                         <Icon
                           name="cleaning-services"
                           size={20}
-                          color={isSelected ? '#006948' : '#64748b'}
+                          color={isSelected ? '#0C831F' : '#666666'}
                         />
                       )}
                     </View>
 
                     <Text
-                      className={`text-[10.5px] text-center font-black leading-3.5 ${
-                        isSelected ? 'text-[#006948]' : 'text-[#475569]'
+                      className={`text-[10.5px] text-center font-bold leading-3.5 ${
+                        isSelected ? 'text-[#0C831F]' : 'text-[#475569]'
                       }`}
                       numberOfLines={2}
                     >
@@ -236,19 +227,19 @@ export default function CatalogScreen({ navigation, route }) {
         </View>
 
         {/* Right Products Panel (72% width) */}
-        <View className="flex-1 bg-[#f8fafc]">
+        <View className="flex-1 bg-[#F4F6FB]">
           {/* Active Category Header */}
-          <View className="px-3 py-2 bg-white border-b border-[#e2e8f0] flex-row items-center justify-between">
+          <View className="px-3 py-2 bg-white border-b border-[#E8E8E8] flex-row items-center justify-between">
             <View>
-              <Text className="text-xs font-black text-[#0f172a]" numberOfLines={1}>
-                {selectedCat?.name || 'Selected Aisle'}
+              <Text className="text-xs font-black text-[#1C1C1C]" numberOfLines={1}>
+                {selectedCat?.name || 'Selected Category'}
               </Text>
-              <Text className="text-[10px] text-[#64748b]">
+              <Text className="text-[10px] text-[#666666]">
                 {products.length} {products.length === 1 ? 'item' : 'items'} available
               </Text>
             </View>
-            <View className="bg-[#f0fdf4] px-2 py-0.5 rounded border border-[#bbf7d0]">
-              <Text className="text-[9px] font-black text-[#006948]">⚡ 24h Express</Text>
+            <View className="bg-[#EBF7EE] px-2 py-0.5 rounded">
+              <Text className="text-[9px] font-black text-[#0C831F]">⚡ 10-15 MINS</Text>
             </View>
           </View>
 
@@ -260,9 +251,9 @@ export default function CatalogScreen({ navigation, route }) {
           ) : products.length === 0 ? (
             <View className="flex-1 justify-center items-center p-6">
               <Icon name="inventory-2" size={40} color="#94a3b8" />
-              <Text className="text-xs font-black text-[#0f172a] mt-2">No Items in this Aisle</Text>
-              <Text className="text-[10px] text-[#64748b] text-center mt-1">
-                Please select another category from the left menu.
+              <Text className="text-xs font-black text-[#1C1C1C] mt-2">No Items in this Category</Text>
+              <Text className="text-[10px] text-[#666666] text-center mt-1">
+                Please select another category from the left.
               </Text>
             </View>
           ) : (
@@ -278,7 +269,7 @@ export default function CatalogScreen({ navigation, route }) {
                 <RefreshControl
                   refreshing={refreshing}
                   onRefresh={handleRefresh}
-                  tintColor="#006948"
+                  tintColor="#0C831F"
                 />
               }
               renderItem={({ item }) => {
@@ -286,7 +277,7 @@ export default function CatalogScreen({ navigation, route }) {
                 const qty = getItemQuantity(pId);
 
                 return (
-                  <BlinkitProductCard
+                  <HyperlocalProductCard
                     product={item}
                     quantity={qty}
                     fullWidth={true}
@@ -302,7 +293,7 @@ export default function CatalogScreen({ navigation, route }) {
         </View>
 
         {/* Floating Cart Strip */}
-        <BlinkitCartStrip navigation={navigation} />
+        <FloatingCartBar navigation={navigation} />
       </View>
 
       <LocationSelectorModal />
