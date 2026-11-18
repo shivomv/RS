@@ -17,7 +17,7 @@ import HyperlocalHeader from '../../components/HyperlocalHeader';
 import HyperlocalProductCard from '../../components/HyperlocalProductCard';
 import FloatingCartBar from '../../components/FloatingCartBar';
 import LocationSelectorModal from '../../components/LocationSelectorModal';
-import { ProductCardSkeleton, CategorySkeleton } from '../../components/Skeleton';
+import { ProductCardSkeleton } from '../../components/Skeleton';
 import { useCartStore } from '../../store/cartStore';
 import { useCompanyStore } from '../../store/companyStore';
 import { useLocationStore } from '../../store/locationStore';
@@ -128,10 +128,10 @@ export default function ShopkeeperHomeScreen({ navigation }) {
   }, [dbProducts, search, selectedCatName]);
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#F4F6FB]">
-      <StatusBar barStyle="dark-content" backgroundColor="#F7D435" />
+    <View className="flex-1 bg-[#F4F6FB]">
+      <StatusBar barStyle="light-content" backgroundColor="#006948" translucent={false} />
 
-      {/* Signature Yellow Top Header */}
+      {/* Brand Green Top Header (flows smoothly from status bar) */}
       <HyperlocalHeader
         navigation={navigation}
         search={search}
@@ -149,34 +149,12 @@ export default function ShopkeeperHomeScreen({ navigation }) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#0C831F"
-              colors={['#0C831F']}
+              tintColor="#006948"
+              colors={['#006948']}
             />
           }
         >
-          {/* Promo Offer Strip */}
-          <View className="px-3.5 pt-3">
-            <View className="bg-[#0C831F] rounded-xl p-3 flex-row items-center justify-between shadow-xs">
-              <View className="flex-row items-center gap-2.5">
-                <View className="w-9 h-9 rounded-lg bg-white/20 justify-center items-center">
-                  <Icon name="bolt" size={20} color="#ffffff" />
-                </View>
-                <View>
-                  <Text className="text-xs font-black tracking-wide uppercase text-white">
-                    Superfast 10 Min Delivery
-                  </Text>
-                  <Text className="text-[10px] text-white/90 font-medium">
-                    Free factory direct delivery on orders above ₹149
-                  </Text>
-                </View>
-              </View>
-              <View className="bg-white px-2.5 py-1 rounded-md shadow-xs">
-                <Text className="text-[#0C831F] text-[10px] font-black uppercase">CLAIM</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Explore By Category: Pure Dynamic DB Data (No Hardcoded Emojis) */}
+          {/* Explore By Category: Left-Aligned Grid (4-columns with gap-2, no odd spacing) */}
           {categories.length > 0 && (
             <View className="mt-3.5 px-3.5">
               <View className="flex-row justify-between items-center mb-2 px-0.5">
@@ -187,25 +165,34 @@ export default function ShopkeeperHomeScreen({ navigation }) {
                   onPress={() => navigation.navigate('Catalog')}
                   activeOpacity={0.7}
                 >
-                  <Text className="text-[11px] font-bold text-[#0C831F]">See all</Text>
+                  <Text className="text-[11px] font-bold text-[#006948]">See all</Text>
                 </TouchableOpacity>
               </View>
 
-              <View className="flex-row flex-wrap gap-2 justify-between">
+              {/* Left-aligned Flex-wrap Grid with fixed item widths and margin-right */}
+              <View className="flex-row flex-wrap">
                 {categories.map((cat, idx) => {
                   const catName = cat.name || cat.title || 'Category';
                   const isSelected =
                     String(selectedCatName).toLowerCase() === String(catName).toLowerCase() ||
                     String(selectedCatName) === String(cat._id);
 
+                  // 4 items per row: 23% width, remainder 8% / 3 ~= 2.6% right margin for first 3 items in a row
+                  const isRowEnd = (idx + 1) % 4 === 0;
+
                   return (
                     <TouchableOpacity
                       key={cat._id || idx}
                       onPress={() => setSelectedCatName(isSelected ? 'ALL' : catName)}
                       activeOpacity={0.8}
-                      className={`w-[23%] rounded-xl p-2 items-center text-center border ${
+                      style={{
+                        width: '23%',
+                        marginRight: isRowEnd ? 0 : '2.66%',
+                        marginBottom: 10,
+                      }}
+                      className={`rounded-xl p-2 items-center text-center border ${
                         isSelected
-                          ? 'bg-[#EBF7EE] border-[#0C831F]'
+                          ? 'bg-[#EBF7EE] border-[#006948]'
                           : 'bg-white border-[#E8E8E8]'
                       }`}
                     >
@@ -220,13 +207,13 @@ export default function ShopkeeperHomeScreen({ navigation }) {
                           <Icon
                             name="cleaning-services"
                             size={22}
-                            color={isSelected ? '#0C831F' : '#666666'}
+                            color={isSelected ? '#006948' : '#666666'}
                           />
                         )}
                       </View>
                       <Text
                         className={`text-[10px] font-bold text-center leading-tight ${
-                          isSelected ? 'text-[#0C831F]' : 'text-[#1C1C1C]'
+                          isSelected ? 'text-[#006948]' : 'text-[#1C1C1C]'
                         }`}
                         numberOfLines={2}
                       >
@@ -240,7 +227,7 @@ export default function ShopkeeperHomeScreen({ navigation }) {
           )}
 
           {/* Bestsellers Section */}
-          <View className="mt-4 px-3.5">
+          <View className="mt-3 px-3.5">
             <View className="flex-row justify-between items-end mb-2.5 px-0.5">
               <View>
                 <View className="flex-row items-center gap-1.5">
@@ -248,8 +235,8 @@ export default function ShopkeeperHomeScreen({ navigation }) {
                     {selectedCatName === 'ALL' ? 'Bestsellers' : selectedCatName}
                   </Text>
                   <View className="bg-[#EBF7EE] px-1.5 py-0.5 rounded">
-                    <Text className="text-[#0C831F] text-[9px] font-black uppercase">
-                      10 MINS
+                    <Text className="text-[#006948] text-[9px] font-black uppercase">
+                      Factory Direct
                     </Text>
                   </View>
                 </View>
@@ -262,7 +249,7 @@ export default function ShopkeeperHomeScreen({ navigation }) {
                   onPress={() => setSelectedCatName('ALL')}
                   activeOpacity={0.7}
                 >
-                  <Text className="text-[11px] font-bold text-[#0C831F]">View All</Text>
+                  <Text className="text-[11px] font-bold text-[#006948]">View All</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -307,13 +294,13 @@ export default function ShopkeeperHomeScreen({ navigation }) {
             <View className="bg-white rounded-2xl p-3 border border-[#E8E8E8] shadow-2xs">
               <View className="flex-row items-center justify-between mb-2">
                 <View className="flex-row items-center gap-1.5">
-                  <Icon name="storefront" size={16} color="#0C831F" />
+                  <Icon name="storefront" size={16} color="#006948" />
                   <Text className="text-xs font-black text-[#1C1C1C]">
-                    Partnered Local Dark Stores
+                    Partnered Wholesale Hubs
                   </Text>
                 </View>
                 <View className="bg-emerald-50 px-1.5 py-0.5 rounded">
-                  <Text className="text-[10px] text-emerald-700 font-bold">Live GPS</Text>
+                  <Text className="text-[10px] text-emerald-700 font-bold">Verified Plant</Text>
                 </View>
               </View>
 
@@ -323,7 +310,7 @@ export default function ShopkeeperHomeScreen({ navigation }) {
                   <Text className="text-[10px] text-[#888888]">Kanpur Factory Plant (0.8 km)</Text>
                 </View>
                 <View className="bg-[#EBF7EE] px-2 py-0.5 rounded-full">
-                  <Text className="text-[10px] font-black text-[#0C831F]">8-10 MIN</Text>
+                  <Text className="text-[10px] font-black text-[#006948]">24-48H</Text>
                 </View>
               </View>
             </View>
@@ -335,6 +322,6 @@ export default function ShopkeeperHomeScreen({ navigation }) {
       </View>
 
       <LocationSelectorModal />
-    </SafeAreaView>
+    </View>
   );
 }

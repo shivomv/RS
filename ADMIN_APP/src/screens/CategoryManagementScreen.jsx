@@ -40,6 +40,41 @@ export default function CategoryManagementScreen({ categories: initialCategories
   const [image, setImage] = useState('');
   const [displayOrder, setDisplayOrder] = useState('1');
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const handleDeleteCategory = (id, catName) => {
+    if (!id) {
+      Alert.alert('Error', 'Invalid category identifier');
+      return;
+    }
+    Alert.alert(
+      'Delete Category',
+      `Are you sure you want to delete "${catName || 'this category'}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeletingId(id);
+              await adminApi.deleteCategory(id);
+              Alert.alert('Deleted', `Category "${catName}" has been deleted.`);
+              if (activeView === 'editor') {
+                setActiveView('list');
+              }
+              fetchCategoriesData();
+              if (typeof onRefresh === 'function') onRefresh();
+            } catch (err) {
+              Alert.alert('Delete Failed', err.message || 'Could not delete category');
+            } finally {
+              setDeletingId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const openEditor = (cat = null) => {
     if (cat) {
@@ -202,6 +237,25 @@ export default function CategoryManagementScreen({ categories: initialCategories
               </>
             )}
           </Pressable>
+
+          {editingCategory && (
+            <Pressable
+              onPress={() => handleDeleteCategory(editingCategory._id || editingCategory.id, editingCategory.name)}
+              disabled={deletingId === (editingCategory._id || editingCategory.id)}
+              className="bg-red-500/10 border border-red-500/30 rounded-2xl py-3.5 items-center justify-center flex-row gap-2 active:opacity-80 mt-3"
+            >
+              {deletingId === (editingCategory._id || editingCategory.id) ? (
+                <ActivityIndicator size="small" color="#ef4444" />
+              ) : (
+                <>
+                  <Icon name="delete-forever" size={20} color="#ef4444" />
+                  <Text className="text-xs font-black text-red-500 uppercase tracking-wider">
+                    Delete Category
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          )}
         </ScrollView>
       </View>
     );
@@ -235,28 +289,55 @@ export default function CategoryManagementScreen({ categories: initialCategories
             <Text className="text-sm font-bold text-faint mt-3">No categories found</Text>
           </View>
         ) : (
-          categoryList.map(cat => (
-            <Pressable key={cat._id || cat.name} onPress={() => openEditor(cat)}
-              className="bg-surface rounded-2xl p-4 mb-3 border border-border flex-row items-center justify-between active:opacity-90">
-              <View className="flex-row items-center gap-3">
-                <View className="w-12 h-12 rounded-2xl bg-[#006948]/10 justify-center items-center border border-border overflow-hidden">
-                  {cat.image && (cat.image.startsWith('http') || cat.image.startsWith('data:')) ? (
-                    <Image source={{ uri: cat.image }} className="w-full h-full" resizeMode="cover" />
-                  ) : (
-                    <Icon name={cat.icon || cat.image || 'cleaning-services'} size={24} color="#006948" />
-                  )}
-                </View>
-                <View>
-                  <Text className="text-sm font-black text-ink">{cat.name}</Text>
-                  <Text className="text-xs text-muted">Slug: /{cat.slug || 'cat'}</Text>
+          categoryList.map(cat => {
+            const catId = cat._id || cat.id;
+            const isDeleting = deletingId === catId;
+            return (
+              <View
+                key={catId || cat.name}
+                className="bg-surface rounded-2xl p-4 mb-3 border border-border flex-row items-center justify-between"
+              >
+                <Pressable
+                  onPress={() => openEditor(cat)}
+                  className="flex-1 flex-row items-center gap-3 mr-3 active:opacity-80"
+                >
+                  <View className="w-12 h-12 rounded-2xl bg-[#006948]/10 justify-center items-center border border-border overflow-hidden">
+                    {cat.image && (cat.image.startsWith('http') || cat.image.startsWith('data:')) ? (
+                      <Image source={{ uri: cat.image }} className="w-full h-full" resizeMode="cover" />
+                    ) : (
+                      <Icon name={cat.icon || cat.image || 'cleaning-services'} size={24} color="#006948" />
+                    )}
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-black text-ink" numberOfLines={1}>{cat.name}</Text>
+                    <Text className="text-xs text-muted">Order #{cat.displayOrder || 1} • /{cat.slug || 'cat'}</Text>
+                  </View>
+                </Pressable>
+
+                <View className="flex-row items-center gap-2">
+                  <Pressable
+                    onPress={() => openEditor(cat)}
+                    className="w-9 h-9 rounded-xl bg-input items-center justify-center border border-border active:opacity-70"
+                    hitSlop={6}
+                  >
+                    <Icon name="edit" size={17} color="#006948" />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handleDeleteCategory(catId, cat.name)}
+                    disabled={isDeleting}
+                    className="w-9 h-9 rounded-xl bg-red-500/10 items-center justify-center border border-red-500/20 active:opacity-70"
+                    hitSlop={6}
+                  >
+                    {isDeleting ? (
+                      <ActivityIndicator size="small" color="#ef4444" />
+                    ) : (
+                      <Icon name="delete-outline" size={18} color="#ef4444" />
+                    )}
+                  </Pressable>
                 </View>
               </View>
-              <View className="flex-row items-center gap-2">
-                <Text className="text-xs font-bold text-faint">Order #{cat.displayOrder || 1}</Text>
-                <Icon name="chevron-right" size={20} color="#94a3b8" />
-              </View>
-            </Pressable>
-          ))
+            );
+          })
         )}
       </ScrollView>
     </View>

@@ -71,3 +71,18 @@ exports.updateCategory = async (req, res) => {
     return res.status(400).json({ error: err.message || 'Failed to update category' });
   }
 };
+
+exports.deleteCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const category = await Category.findByPk(id);
+    if (!category) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+    await category.destroy();
+    await redisService.invalidateProductCache();
+    return res.json({ success: true, message: 'Category deleted successfully' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || 'Failed to delete category' });
+  }
+};

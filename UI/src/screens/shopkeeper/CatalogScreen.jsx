@@ -147,7 +147,7 @@ export default function CatalogScreen({ navigation, route }) {
       {/* Top Bar for Aisles */}
       <View className="px-4 py-2.5 bg-white border-b border-[#E8E8E8] flex-row items-center justify-between shadow-xs">
         <View className="flex-row items-center gap-2">
-          <View className="w-8 h-8 rounded-lg bg-[#0C831F] justify-center items-center">
+          <View className="w-8 h-8 rounded-lg bg-[#006948] justify-center items-center">
             <Icon name="grid-view" size={18} color="#ffffff" />
           </View>
           <View>
@@ -160,8 +160,8 @@ export default function CatalogScreen({ navigation, route }) {
 
       {/* 2-Panel View */}
       <View className="flex-1 flex-row relative">
-        {/* Left Category Sidebar (28% width) */}
-        <View className="w-[28%] bg-[#F4F6FB] border-r border-[#E8E8E8]">
+        {/* Left Category Sidebar (26% width) */}
+        <View className="w-[26%] bg-[#F4F6FB] border-r border-[#E8E8E8]">
           {loadingCategories ? (
             <View className="p-2">
               <CategoryItemSkeleton />
@@ -180,19 +180,19 @@ export default function CatalogScreen({ navigation, route }) {
                   <TouchableOpacity
                     activeOpacity={0.8}
                     onPress={() => setSelectedCat(item)}
-                    className={`py-3.5 px-2 items-center border-b border-[#E8E8E8]/60 relative ${
+                    className={`py-3.5 px-1.5 items-center border-b border-[#E8E8E8]/60 relative ${
                       isSelected ? 'bg-white' : 'bg-transparent'
                     }`}
                   >
                     {/* Active Left Indicator Bar */}
                     {isSelected && (
-                      <View className="absolute left-0 top-0 bottom-0 w-1 bg-[#0C831F] rounded-r" />
+                      <View className="absolute left-0 top-0 bottom-0 w-1 bg-[#006948] rounded-r" />
                     )}
 
                     <View
                       className={`w-11 h-11 rounded-2xl justify-center items-center mb-1 overflow-hidden ${
                         isSelected
-                          ? 'bg-[#EBF7EE] border border-[#0C831F]/30'
+                          ? 'bg-[#EBF7EE] border border-[#006948]/30'
                           : 'bg-white border border-[#E8E8E8]'
                       }`}
                     >
@@ -206,14 +206,14 @@ export default function CatalogScreen({ navigation, route }) {
                         <Icon
                           name="cleaning-services"
                           size={20}
-                          color={isSelected ? '#0C831F' : '#666666'}
+                          color={isSelected ? '#006948' : '#666666'}
                         />
                       )}
                     </View>
 
                     <Text
-                      className={`text-[10.5px] text-center font-bold leading-3.5 ${
-                        isSelected ? 'text-[#0C831F]' : 'text-[#475569]'
+                      className={`text-[10px] text-center font-bold leading-3.5 ${
+                        isSelected ? 'text-[#006948]' : 'text-[#475569]'
                       }`}
                       numberOfLines={2}
                     >
@@ -226,7 +226,7 @@ export default function CatalogScreen({ navigation, route }) {
           )}
         </View>
 
-        {/* Right Products Panel (72% width) */}
+        {/* Right Products Panel (74% width) with 2 Products per Grid Row */}
         <View className="flex-1 bg-[#F4F6FB]">
           {/* Active Category Header */}
           <View className="px-3 py-2 bg-white border-b border-[#E8E8E8] flex-row items-center justify-between">
@@ -239,7 +239,7 @@ export default function CatalogScreen({ navigation, route }) {
               </Text>
             </View>
             <View className="bg-[#EBF7EE] px-2 py-0.5 rounded">
-              <Text className="text-[9px] font-black text-[#0C831F]">⚡ 10-15 MINS</Text>
+              <Text className="text-[9px] font-black text-[#006948]">⚡ 24h Express</Text>
             </View>
           </View>
 
@@ -260,16 +260,18 @@ export default function CatalogScreen({ navigation, route }) {
             <FlatList
               data={products}
               keyExtractor={(item, index) => String(item._id || index)}
+              numColumns={2}
+              columnWrapperStyle={{ justifyContent: 'space-between', marginBottom: 6 }}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{
-                padding: 10,
+                padding: 8,
                 paddingBottom: itemCount() > 0 ? 80 : 30,
               }}
               refreshControl={
                 <RefreshControl
                   refreshing={refreshing}
                   onRefresh={handleRefresh}
-                  tintColor="#0C831F"
+                  tintColor="#006948"
                 />
               }
               renderItem={({ item }) => {
@@ -280,7 +282,7 @@ export default function CatalogScreen({ navigation, route }) {
                   <HyperlocalProductCard
                     product={item}
                     quantity={qty}
-                    fullWidth={true}
+                    fullWidth={false}
                     onPress={() => navigation.navigate('ProductDetail', { product: item })}
                     onAdd={() => handleUpdateQty(item, 1)}
                     onIncrement={() => handleUpdateQty(item, 1)}

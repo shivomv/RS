@@ -1,16 +1,17 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, TextInput } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useLocationStore } from '../store/locationStore';
 
 /**
  * HyperlocalHeader
- * Exact header matched to customer_home_preview.html:
- * - Yellow background: #F7D435
- * - Top Left: Brand name + '10-15 MINS' badge
- * - Address row with dropdown arrow and instant 'Out of Area' pill if not serviceable
- * - Top Right: Profile circle icon
- * - Bottom: White floating search bar with search icon & scanner/category icon
+ * - Uses RS Brand Colors: Primary `#006948` (Forest/Emerald Green)
+ * - Safe area padding built-in so header flows edge-to-edge under status bar seamlessly
+ * - Brand Name & B2B Badge
+ * - Address row with dropdown arrow and non-serviceable indicator
+ * - Profile button
+ * - Clean white search bar with search and catalog icons
  */
 export default function HyperlocalHeader({
   navigation,
@@ -18,6 +19,7 @@ export default function HyperlocalHeader({
   onSearchChange,
   onClearSearch,
 }) {
+  const insets = useSafeAreaInsets();
   const { location, openModal } = useLocationStore();
 
   const isServiceable = location?.isServiceable !== false;
@@ -26,18 +28,21 @@ export default function HyperlocalHeader({
     : 'Select Delivery Location';
 
   return (
-    <View className="bg-[#F7D435] px-4 pt-2.5 pb-3.5 shadow-xs">
-      {/* Top Row: Brand & Time + Address + Profile */}
+    <View
+      style={{ paddingTop: Math.max(insets.top, 10) }}
+      className="bg-[#006948] px-4 pb-3.5 shadow-sm"
+    >
+      {/* Top Row: Brand + Address + Profile */}
       <View className="flex-row justify-between items-center">
         <View className="flex-1 mr-2">
-          {/* Brand & ETA Pill */}
+          {/* Brand & Factory Direct Tag */}
           <View className="flex-row items-center gap-1.5">
-            <Text className="text-xl font-black text-[#1C1C1C] tracking-tight uppercase">
-              RS<Text className="text-[#0C831F]"> Enterprise</Text>
+            <Text className="text-xl font-black text-white tracking-tight uppercase">
+              RS<Text className="text-[#85f8c4]"> Industries</Text>
             </Text>
-            <View className="bg-[#1C1C1C] px-1.5 py-0.5 rounded">
-              <Text className="text-white text-[9.5px] font-black tracking-wide">
-                10-15 MINS
+            <View className="bg-white/20 px-1.5 py-0.5 rounded border border-white/25">
+              <Text className="text-white text-[9.5px] font-black tracking-wide uppercase">
+                B2B Wholesale
               </Text>
             </View>
           </View>
@@ -51,10 +56,10 @@ export default function HyperlocalHeader({
             <Icon
               name={isServiceable ? 'place' : 'location-off'}
               size={13}
-              color={isServiceable ? '#1C1C1C' : '#ba1a1a'}
+              color={isServiceable ? '#85f8c4' : '#fecdd3'}
             />
             <Text
-              className="text-xs font-bold text-[#1C1C1C] max-w-[230px]"
+              className="text-xs font-bold text-white max-w-[230px]"
               numberOfLines={1}
             >
               {addressLabel}
@@ -64,7 +69,7 @@ export default function HyperlocalHeader({
                 <Text className="text-[8.5px] font-black text-white uppercase">Out of Area</Text>
               </View>
             )}
-            <Icon name="keyboard-arrow-down" size={15} color="#1C1C1C" />
+            <Icon name="keyboard-arrow-down" size={15} color="#ffffff" />
           </TouchableOpacity>
         </View>
 
@@ -72,9 +77,9 @@ export default function HyperlocalHeader({
         <TouchableOpacity
           onPress={() => navigation.navigate('Profile')}
           activeOpacity={0.8}
-          className="w-9 h-9 rounded-full bg-white/95 border border-black/10 justify-center items-center shadow-xs"
+          className="w-9 h-9 rounded-full bg-white/15 border border-white/30 justify-center items-center shadow-xs"
         >
-          <Icon name="person" size={20} color="#1C1C1C" />
+          <Icon name="person" size={20} color="#ffffff" />
         </TouchableOpacity>
       </View>
 
@@ -98,7 +103,7 @@ export default function HyperlocalHeader({
           onPress={() => navigation.navigate('Catalog')}
           activeOpacity={0.7}
         >
-          <Icon name="grid-view" size={18} color="#0C831F" />
+          <Icon name="grid-view" size={18} color="#006948" />
         </TouchableOpacity>
       </View>
     </View>
