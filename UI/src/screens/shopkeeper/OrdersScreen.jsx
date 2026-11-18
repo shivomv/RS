@@ -1,26 +1,39 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ScrollView, BackHandler, RefreshControl } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, ScrollView, BackHandler, RefreshControl, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import RSLogo from '../../components/RSLogo';
 import { OrderCardSkeleton } from '../../components/Skeleton';
 import { useOrderStore } from '../../store/orderStore';
 import { useAuthStore } from '../../store/authStore';
 
 const StatusBadge = ({ status }) => {
-  const isDelivered = status === 'delivered';
+  const norm = String(status || '').toLowerCase();
+  const isDelivered = norm === 'delivered';
+  const isCancelled = norm === 'cancelled';
+
+  if (isDelivered) {
+    return (
+      <View className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-full px-2.5 py-0.5 flex-row items-center gap-1">
+        <View className="w-1.5 h-1.5 rounded-full bg-[#006948]" />
+        <Text className="text-[10px] font-black uppercase text-[#006948]">Delivered</Text>
+      </View>
+    );
+  }
+
+  if (isCancelled) {
+    return (
+      <View className="bg-[#fff1f2] border border-[#fecdd3] rounded-full px-2.5 py-0.5 flex-row items-center gap-1">
+        <View className="w-1.5 h-1.5 rounded-full bg-[#e11d48]" />
+        <Text className="text-[10px] font-black uppercase text-[#e11d48]">Cancelled</Text>
+      </View>
+    );
+  }
+
   return (
-    <View
-      className={`rounded-full px-2.5 py-0.5 ${
-        isDelivered ? 'bg-[#85f8c4]' : 'bg-[#99efe5]'
-      }`}
-    >
-      <Text
-        className={`text-[10px] font-bold uppercase tracking-wider ${
-          isDelivered ? 'text-[#002114]' : 'text-[#006f67]'
-        }`}
-      >
-        {status || 'Dispatching'}
+    <View className="bg-[#fef9c3] border border-[#fef08a] rounded-full px-2.5 py-0.5 flex-row items-center gap-1">
+      <View className="w-1.5 h-1.5 rounded-full bg-[#ca8a04]" />
+      <Text className="text-[10px] font-black uppercase text-[#854d0e]">
+        {status || 'Dispatched'}
       </Text>
     </View>
   );
@@ -32,7 +45,7 @@ export default function OrdersScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Hardware Android Back Button Handler
+  // Hardware Back Handler
   useEffect(() => {
     const onBackPress = () => {
       if (navigation.canGoBack()) {
@@ -69,51 +82,34 @@ export default function OrdersScreen({ navigation }) {
     try {
       await fetchOrders();
     } catch (err) {
-      console.error('[Orders] Refresh error:', err.message);
+      console.warn('[Orders] Refresh error:', err.message);
     } finally {
       setRefreshing(false);
     }
   };
 
-  // Render Guest View if User is Not Logged In
   if (!session) {
     return (
-      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#faf8ff]">
-        {/* Top Header */}
-        <View className="bg-white border-b border-[#dae2fd] px-4 py-3 flex-row items-center justify-between shadow-sm z-10">
-          <RSLogo size="md" />
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Login', { returnScreen: 'Orders' })}
-            activeOpacity={0.7}
-            className="bg-[#006948] px-3.5 py-1.5 rounded-full flex-row items-center gap-1 shadow-sm"
-          >
-            <Icon name="login" size={16} color="#ffffff" />
-            <Text className="text-xs text-white font-bold">Log In</Text>
-          </TouchableOpacity>
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#f8fafc]">
+        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+        <View className="bg-white border-b border-[#e2e8f0] px-4 py-3 flex-row items-center justify-between shadow-xs">
+          <Text className="text-base font-black text-[#0f172a]">Your Orders</Text>
         </View>
 
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: 24, paddingBottom: 60, alignItems: 'center' }}
-          className="flex-1"
-        >
-          <View className="w-20 h-20 rounded-full bg-[#006948]/10 justify-center items-center mb-4 mt-8">
-            <Icon name="receipt-long" size={44} color="#006948" />
+        <ScrollView contentContainerStyle={{ padding: 24, alignItems: 'center' }} className="flex-1">
+          <View className="w-16 h-16 rounded-full bg-[#f1f5f9] justify-center items-center mb-3 mt-12 border border-[#e2e8f0]">
+            <Icon name="receipt-long" size={32} color="#94a3b8" />
           </View>
-          <Text className="text-lg font-black text-[#131b2e] text-center">
-            Log In to View Your Orders
+          <Text className="text-base font-black text-[#0f172a] text-center">Login to View Orders</Text>
+          <Text className="text-xs text-[#64748b] text-center mt-1 px-4 leading-relaxed">
+            Sign in with your registered account to track your orders, dispatch status, and download invoices.
           </Text>
-          <Text className="text-xs text-[#3d4a42] text-center mt-2 px-2 leading-relaxed">
-            Please log in with your registered mobile number to track dispatches, inspect shipment progress, and download GST tax invoices.
-          </Text>
-
           <TouchableOpacity
-            onPress={() => navigation.navigate('Login', { returnScreen: 'Orders' })}
-            activeOpacity={0.85}
-            className="bg-[#006948] w-full rounded-2xl py-3.5 items-center justify-center flex-row gap-2 mt-8 shadow-md"
+            onPress={() => navigation.navigate('Login')}
+            activeOpacity={0.8}
+            className="mt-6 bg-[#006948] px-6 py-2.5 rounded-xl shadow-xs"
           >
-            <Icon name="login" size={20} color="#ffffff" />
-            <Text className="text-sm text-white font-extrabold">Log In / Register</Text>
+            <Text className="text-xs font-black text-white uppercase tracking-wider">Login Now</Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -121,13 +117,22 @@ export default function OrdersScreen({ navigation }) {
   }
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#faf8ff]">
-      {/* Top Header */}
-      <View className="bg-white border-b border-[#dae2fd] px-4 py-3 flex-row items-center justify-between shadow-sm z-10">
-        <RSLogo size="md" />
-        <View className="bg-[#006948]/10 px-2.5 py-1 rounded-full flex-row items-center gap-1">
-          <Icon name="receipt-long" size={14} color="#006948" />
-          <Text className="text-xs text-[#006948] font-bold">{orders.length} Orders</Text>
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#f8fafc]">
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+
+      {/* Blinkit Top Bar for Orders */}
+      <View className="bg-white border-b border-[#e2e8f0] px-4 py-2.5 flex-row items-center justify-between shadow-xs">
+        <View className="flex-row items-center gap-2">
+          <View className="w-8 h-8 rounded-lg bg-[#006948] justify-center items-center">
+            <Icon name="local-shipping" size={18} color="#ffffff" />
+          </View>
+          <View>
+            <Text className="text-sm font-black text-[#0f172a]">Order History</Text>
+            <Text className="text-[10px] text-[#64748b]">Realtime dispatch updates</Text>
+          </View>
+        </View>
+        <View className="bg-[#f0fdf4] border border-[#bbf7d0] px-2.5 py-0.5 rounded-full">
+          <Text className="text-xs font-black text-[#006948]">{orders.length} Orders</Text>
         </View>
       </View>
 
@@ -137,12 +142,29 @@ export default function OrdersScreen({ navigation }) {
           <OrderCardSkeleton />
           <OrderCardSkeleton />
         </View>
+      ) : orders.length === 0 ? (
+        <View className="flex-1 justify-center items-center p-6">
+          <View className="w-16 h-16 rounded-full bg-[#f1f5f9] justify-center items-center mb-3 border border-[#e2e8f0]">
+            <Icon name="receipt" size={32} color="#94a3b8" />
+          </View>
+          <Text className="text-sm font-black text-[#0f172a]">No Orders Placed Yet</Text>
+          <Text className="text-xs text-[#64748b] text-center mt-1">
+            Browse our factory catalog and stock up on best-selling chemicals.
+          </Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('ShopHome')}
+            activeOpacity={0.8}
+            className="mt-5 bg-[#006948] px-5 py-2.5 rounded-xl shadow-xs"
+          >
+            <Text className="text-xs font-black text-white uppercase tracking-wider">Browse Catalog</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <FlatList
           data={orders}
           keyExtractor={(item, idx) => item._id || item.id || String(idx)}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ padding: 12, paddingBottom: 40 }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -154,43 +176,52 @@ export default function OrdersScreen({ navigation }) {
           renderItem={({ item }) => {
             const rawId = item._id || item.id || 'RS-ORD';
             const orderNum = String(rawId).slice(-6);
+            const total = item.totalAmount || item.finalAmount || item.total || 0;
+            const itemsCount = item.items?.length || 1;
+
             return (
               <TouchableOpacity
                 onPress={() => navigation.navigate('OrderDetail', { order: { ...item, id: rawId } })}
-                activeOpacity={0.7}
-                className="bg-white rounded-2xl p-4 mb-3 shadow-sm border border-[#eaedff]"
+                activeOpacity={0.85}
+                className="bg-white rounded-2xl p-3.5 mb-2.5 border border-[#e2e8f0] shadow-xs"
               >
                 <View className="flex-row justify-between items-start mb-2">
                   <View>
-                    <View className="flex-row items-center gap-2">
-                      <Text className="text-xs font-extrabold text-[#131b2e]">
+                    <View className="flex-row items-center gap-1.5">
+                      <Text className="text-xs font-black text-[#0f172a]">
                         Order #{orderNum}
                       </Text>
-                      {item.gstInvoice && (
-                        <View className="bg-[#e2e7ff] px-1.5 py-0.5 rounded">
-                          <Text className="text-[9px] text-[#131b2e] font-semibold">GST Claimed</Text>
-                        </View>
-                      )}
+                      <View className="bg-[#f0fdf4] px-1.5 py-0.2 rounded border border-[#bbf7d0]">
+                        <Text className="text-[8.5px] font-bold text-[#006948]">COD</Text>
+                      </View>
                     </View>
-                    <Text className="text-[10px] text-[#3d4a42] mt-0.5">
-                      Placed on {item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN') : 'Recent'}
+                    <Text className="text-[10px] text-[#64748b] mt-0.5">
+                      {item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN') : 'Recent Order'}
                     </Text>
                   </View>
                   <StatusBadge status={item.status || item.orderStatus} />
                 </View>
 
-                <View className="py-2 border-y border-[#f2f3ff] my-1 flex-row justify-between items-center">
-                  <Text className="text-xs text-[#3d4a42]">
-                    {item.items?.length || 1} SKUs Wholesale Dispatch
-                  </Text>
-                  <Text className="text-sm font-extrabold text-[#131b2e]">
-                    ₹{(item.totalAmount || item.finalAmount || 1825).toLocaleString('en-IN')}
+                <View className="py-2 border-y border-[#f1f5f9] my-1 flex-row justify-between items-center">
+                  <View className="flex-row items-center gap-1">
+                    <Icon name="inventory-2" size={14} color="#64748b" />
+                    <Text className="text-xs text-[#475569] font-medium">
+                      {itemsCount} {itemsCount === 1 ? 'item' : 'items'} in dispatch
+                    </Text>
+                  </View>
+                  <Text className="text-sm font-black text-[#0f172a]">
+                    ₹{total.toLocaleString('en-IN')}
                   </Text>
                 </View>
 
-                <View className="flex-row justify-between items-center pt-1">
-                  <Text className="text-[10px] text-[#006948] font-bold">Track Shipment & Invoice</Text>
-                  <Icon name="chevron-right" size={18} color="#006948" />
+                <View className="flex-row justify-between items-center pt-1.5">
+                  <Text className="text-[10px] text-[#006948] font-bold">
+                    ⚡ 24-48h Factory Dispatch
+                  </Text>
+                  <View className="flex-row items-center gap-0.5">
+                    <Text className="text-xs font-black text-[#006948]">View Order</Text>
+                    <Icon name="chevron-right" size={16} color="#006948" />
+                  </View>
                 </View>
               </TouchableOpacity>
             );

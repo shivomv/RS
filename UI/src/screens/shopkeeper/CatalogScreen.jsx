@@ -7,23 +7,27 @@ import {
   Image,
   BackHandler,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { api } from '../../services/api';
 import { useCartStore } from '../../store/cartStore';
-import { useAuthStore } from '../../store/authStore';
-import { useLocationStore } from '../../store/locationStore';
 import LocationHeaderPill from '../../components/LocationHeaderPill';
 import ServiceabilityBanner from '../../components/ServiceabilityBanner';
 import LocationSelectorModal from '../../components/LocationSelectorModal';
+import BlinkitCartStrip from '../../components/BlinkitCartStrip';
+import BlinkitProductCard from '../../components/BlinkitProductCard';
 import { CategoryItemSkeleton, ProductCardSkeleton } from '../../components/Skeleton';
-import { getDefaultProductPricing } from '../../utils/productHelper';
 
+/**
+ * Blinkit-Style 2-Panel Category & Aisle Screen
+ * Left Panel: Vertical category list with active emerald pill
+ * Right Panel: 2-column product grid with instant category switching
+ */
 export default function CatalogScreen({ navigation, route }) {
   const initialCategory = route?.params?.categoryId;
-  const { addItem, updateQuantity, items } = useCartStore();
-  const { session } = useAuthStore();
+  const { addItem, updateQuantity, removeItem, items, itemCount } = useCartStore();
 
   const [categories, setCategories] = useState([]);
   const [selectedCat, setSelectedCat] = useState(null);
@@ -35,12 +39,10 @@ export default function CatalogScreen({ navigation, route }) {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      // Reload categories
       const catRes = await api.getCategories();
       const catList = Array.isArray(catRes) ? catRes : [];
       setCategories(catList);
 
-      // Reload products for current category
       if (selectedCat) {
         const catId = selectedCat._id || selectedCat.slug || selectedCat.name;
         const prodRes = await api.getProductsByCategory(catId);
@@ -53,7 +55,7 @@ export default function CatalogScreen({ navigation, route }) {
     }
   }, [selectedCat]);
 
-  // Hardware Back Press
+  // Back Navigation
   useEffect(() => {
     const onBackPress = () => {
       if (navigation.canGoBack()) {
@@ -63,25 +65,20 @@ export default function CatalogScreen({ navigation, route }) {
       navigation.navigate('ShopHome');
       return true;
     };
-
     const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => sub.remove();
   }, [navigation]);
 
-  // Load Categories
+  // Load Categories on mount
   useEffect(() => {
     let mounted = true;
-
-    const loadCategories = async () => {
+    const fetchCats = async () => {
       try {
         setLoadingCategories(true);
         const res = await api.getCategories();
         const list = Array.isArray(res) ? res : [];
-
-        if (!mounted) return;
-        setCategories(list);
-
-        if (list.length > 0) {
+        if (mounted) {
+          setCategories(list);
           if (initialCategory) {
             const found = list.find(
               (cat) =>
@@ -90,21 +87,17 @@ export default function CatalogScreen({ navigation, route }) {
                 String(cat.name).toLowerCase() === String(initialCategory).toLowerCase()
             );
             setSelectedCat(found || list[0]);
-          } else {
+          } else if (list.length > 0) {
             setSelectedCat(list[0]);
           }
         }
       } catch (error) {
-        console.warn('[Catalog] Category error:', error?.message);
+        console.warn('[Catalog] Category load error:', error?.message);
       } finally {
-        if (mounted) {
-          setLoadingCategories(false);
-        }
+        if (mounted) setLoadingCategories(false);
       }
     };
-
-    loadCategories();
-
+    fetchCats();
     return () => {
       mounted = false;
     };
@@ -112,212 +105,73 @@ export default function CatalogScreen({ navigation, route }) {
 
   // Load Products for selected category
   useEffect(() => {
-    if (!selectedCat) {
-      setProducts([]);
-      return;
-    }
-
+    if (!selectedCat) return;
     let mounted = true;
-
-    const loadProducts = async () => {
+    const fetchProds = async () => {
       try {
         setLoadingProducts(true);
         const catId = selectedCat._id || selectedCat.slug || selectedCat.name;
         const res = await api.getProductsByCategory(catId);
-
-        if (!mounted) return;
-        setProducts(Array.isArray(res) ? res : []);
-      } catch (error) {
-        console.warn('[Catalog] Product error:', error?.message);
-        if (mounted) setProducts([]);
+        if (mounted) setProducts(Array.isArray(res) ? res : []);
+      } catch (err) {
+        console.warn('[Catalog] Products load error:', err.message);
       } finally {
-        if (mounted) {
-          setLoadingProducts(false);
-        }
+        if (mounted) setLoadingProducts(false);
       }
     };
-
-    loadProducts();
-
+    fetchProds();
     return () => {
       mounted = false;
     };
   }, [selectedCat]);
 
-  const handleCategoryPress = useCallback((category) => {
-    setSelectedCat(category);
-  }, []);
+  const getItemQuantity = (productId) => {
+    const match = items.find((i) => (i.product?._id || i._id) === productId);
+    return match ? match.quantity : 0;
+  };
 
-  const handleProductPress = useCallback((product) => {
-    navigation.navigate('ProductDetail', { product });
-  }, [navigation]);
+  const handleUpdateQty = (product, delta) => {
+    const pId = product._id || product.id;
+    const currentQty = getItemQuantity(pId);
+    const nextQty = Math.max(0, currentQty + delta);
 
-  // Ensure grid of 2 even when odd number of products (e.g. 1 product)
-  const gridProductsData = useMemo(() => {
-    if (!Array.isArray(products) || products.length === 0) return [];
-    if (products.length % 2 !== 0) {
-      return [...products, { _id: '__spacer__', isSpacer: true }];
+    if (nextQty > 0) {
+      if (currentQty === 0) {
+        addItem({ ...product, _id: pId, quantity: nextQty });
+      } else {
+        updateQuantity(pId, nextQty);
+      }
+    } else {
+      removeItem(pId);
     }
-    return products;
-  }, [products]);
-
-  // Helper to check quantity in cart
-  const getItemQuantityInCart = useCallback(
-    (product) => {
-      const defaultInfo = getDefaultProductPricing(product);
-      const defaultBundle = defaultInfo.bundle || product.defaultBundle || {};
-      const bundleId = defaultBundle.bundleId || 'pack-1';
-      const cartItemId = `${product._id}_${bundleId}`;
-
-      const existing = items.find((i) => i.cartItemId === cartItemId || i._id === product._id);
-      return existing ? existing.quantity : 0;
-    },
-    [items]
-  );
-
-  const renderProductCard = ({ item }) => {
-    // If spacer item for odd row alignment, render invisible 50% width box
-    if (item.isSpacer) {
-      return <View className="flex-1 mx-1 mb-2.5" />;
-    }
-
-    const defaultInfo = getDefaultProductPricing(item);
-    const displayPrice = defaultInfo.price || item.price || 0;
-    const displayMrp = defaultInfo.mrp || item.mrp || 0;
-    const variantSubtitle = defaultInfo.variantLabel || item.subtitle || item.category;
-    const bundleTag = defaultInfo.bundleLabel;
-    const imageUri = defaultInfo.image || item.image || item.img;
-    const inCartQty = getItemQuantityInCart(item);
-
-    return (
-      <View
-        className="flex-1 bg-white rounded-2xl border border-[#e2e7e3] overflow-hidden justify-between mx-1 mb-2.5 shadow-sm"
-      >
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={() => handleProductPress(item)}
-          className="flex-1"
-        >
-          {/* Product Image Box */}
-          <View className="relative h-32 bg-[#f5f7f6] items-center justify-center overflow-hidden">
-            {imageUri ? (
-              <Image
-                source={{ uri: imageUri }}
-                className="w-full h-full"
-                resizeMode="cover"
-              />
-            ) : (
-              <Icon name="inventory-2" size={36} color="#9aa59f" />
-            )}
-
-            {item.badge && (
-              <View className="absolute top-1.5 left-1.5 z-10 bg-[#006948] px-1.5 py-0.5 rounded shadow-sm">
-                <Text className="text-[8px] font-bold text-white uppercase">{item.badge}</Text>
-              </View>
-            )}
-
-            {bundleTag ? (
-              <View className="absolute bottom-1.5 right-1.5 z-10 bg-[#006948]/10 px-1.5 py-0.5 rounded border border-[#006948]/30">
-                <Text className="text-[8px] font-bold text-[#006948]">{bundleTag}</Text>
-              </View>
-            ) : null}
-          </View>
-
-          {/* Product Details */}
-          <View className="p-2.5 flex-1 justify-between">
-            <View>
-              <Text className="text-[11px] font-black text-[#131b2e] leading-snug" numberOfLines={2}>
-                {item.name || item.title || 'Product'}
-              </Text>
-              <Text className="text-[9px] font-semibold text-[#006948] mt-0.5" numberOfLines={1}>
-                {variantSubtitle}
-              </Text>
-            </View>
-
-            {/* Price & Add to Cart */}
-            <View className="flex-row items-center justify-between mt-2 pt-2 border-t border-[#f2f3ff]">
-              <View>
-                <Text className="text-xs font-black text-[#131b2e]">₹{displayPrice}</Text>
-                {displayMrp > displayPrice && (
-                  <Text className="text-[8px] text-[#6d7a72] line-through">₹{displayMrp}</Text>
-                )}
-              </View>
-
-              {inCartQty > 0 ? (
-                <View className="h-7 bg-[#006948] rounded-lg flex-row items-center px-1">
-                  <TouchableOpacity
-                    onPress={() => updateQuantity(item._id, inCartQty - 1)}
-                    activeOpacity={0.7}
-                    className="w-5 h-full justify-center items-center"
-                  >
-                    <Icon name="remove" size={12} color="#ffffff" />
-                  </TouchableOpacity>
-                  <Text className="px-1 text-[10px] font-bold text-white">{inCartQty}</Text>
-                  <TouchableOpacity
-                    onPress={() => addItem(item)}
-                    activeOpacity={0.7}
-                    className="w-5 h-full justify-center items-center"
-                  >
-                    <Icon name="add" size={12} color="#ffffff" />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  onPress={() => addItem(item)}
-                  activeOpacity={0.7}
-                  className="h-7 px-2.5 bg-[#006948] rounded-lg justify-center items-center shadow-sm"
-                >
-                  <Text className="text-[9.5px] text-white font-bold">ADD</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        </TouchableOpacity>
-      </View>
-    );
   };
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#faf8ff]">
-      {/* Header */}
-      <View className="bg-white px-4 py-3 border-b border-[#e2e7e3] shadow-sm z-10">
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-2">
-            <TouchableOpacity
-              onPress={() => {
-                if (navigation.canGoBack()) {
-                  navigation.goBack();
-                } else {
-                  navigation.navigate('ShopHome');
-                }
-              }}
-              className="w-9 h-9 rounded-full bg-[#f3f5f4] items-center justify-center border border-[#e2e7e3]"
-            >
-              <Icon name="arrow-back" size={20} color="#131b2e" />
-            </TouchableOpacity>
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-white">
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
-            <View className="ml-1">
-              <Text className="text-base font-black text-[#131b2e]">Product Catalog</Text>
-              <Text className="text-[9.5px] text-[#6d7a72] font-semibold">
-                Shop by category & variants
-              </Text>
-            </View>
+      {/* Blinkit Top Bar for Aisles */}
+      <View className="px-4 py-2.5 bg-white border-b border-[#e2e8f0] flex-row items-center justify-between shadow-xs">
+        <View className="flex-row items-center gap-2">
+          <View className="w-8 h-8 rounded-lg bg-[#006948] justify-center items-center">
+            <Icon name="grid-view" size={18} color="#ffffff" />
           </View>
-
-          <LocationHeaderPill />
+          <View>
+            <Text className="text-sm font-black text-[#0f172a]">All Aisles & Categories</Text>
+            <Text className="text-[10px] text-[#64748b] font-medium">Blinkit-style Fast Browse</Text>
+          </View>
         </View>
+        <LocationHeaderPill />
       </View>
 
-      {/* Serviceability Banner */}
       <ServiceabilityBanner />
 
-      {/* Main Body */}
-      <View className="flex-1 flex-row">
-        {/* Left Category Sidebar (Sidenav) */}
-        <View className="w-[24%] bg-white border-r border-[#e2e7e3]">
+      {/* Main 2-Panel Blinkit View */}
+      <View className="flex-1 flex-row relative">
+        {/* Left Category Sidebar (26% width) */}
+        <View className="w-[28%] bg-[#f8fafc] border-r border-[#e2e8f0]">
           {loadingCategories ? (
-            <View className="py-2">
-              <CategoryItemSkeleton />
+            <View className="p-2">
               <CategoryItemSkeleton />
               <CategoryItemSkeleton />
               <CategoryItemSkeleton />
@@ -326,54 +180,53 @@ export default function CatalogScreen({ navigation, route }) {
           ) : (
             <FlatList
               data={categories}
-              keyExtractor={(item, index) => String(item._id || item.slug || `category-${index}`)}
+              keyExtractor={(item, index) => String(item._id || index)}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingVertical: 4 }}
               renderItem={({ item }) => {
-                const isSelected =
-                  selectedCat &&
-                  (String(selectedCat._id) === String(item._id) ||
-                    String(selectedCat.slug) === String(item.slug));
+                const isSelected = selectedCat && (selectedCat._id === item._id || selectedCat.name === item.name);
 
                 return (
                   <TouchableOpacity
                     activeOpacity={0.8}
-                    onPress={() => handleCategoryPress(item)}
-                    className={`relative py-3 px-1.5 items-center border-b border-[#f0f3f1] ${
-                      isSelected ? 'bg-[#006948]/10' : 'bg-white'
+                    onPress={() => setSelectedCat(item)}
+                    className={`py-3.5 px-2 items-center border-b border-[#e2e8f0]/60 relative ${
+                      isSelected ? 'bg-white' : 'bg-transparent'
                     }`}
                   >
+                    {/* Active Left Indicator Bar */}
                     {isSelected && (
                       <View className="absolute left-0 top-0 bottom-0 w-1 bg-[#006948] rounded-r" />
                     )}
 
                     <View
-                      className={`w-11 h-11 rounded-xl items-center justify-center overflow-hidden ${
-                        isSelected ? 'bg-[#006948]/15 border-2 border-[#006948]' : 'bg-[#f3f5f4] border border-[#e2e7e3]/60'
+                      className={`w-11 h-11 rounded-2xl justify-center items-center mb-1 overflow-hidden ${
+                        isSelected
+                          ? 'bg-[#f0fdf4] border border-[#bbf7d0]'
+                          : 'bg-white border border-[#e2e8f0]'
                       }`}
                     >
-                      {item.image || item.img ? (
+                      {item.image ? (
                         <Image
-                          source={{ uri: item.image || item.img }}
+                          source={{ uri: item.image }}
                           className="w-full h-full"
                           resizeMode="cover"
                         />
                       ) : (
                         <Icon
-                          name={item.icon || 'cleaning-services'}
-                          size={22}
-                          color={isSelected ? '#006948' : '#3d4a42'}
+                          name="cleaning-services"
+                          size={20}
+                          color={isSelected ? '#006948' : '#64748b'}
                         />
                       )}
                     </View>
 
                     <Text
-                      className={`text-[9px] text-center mt-1 font-bold leading-tight ${
-                        isSelected ? 'text-[#006948]' : 'text-[#4f5b55]'
+                      className={`text-[10.5px] text-center font-black leading-3.5 ${
+                        isSelected ? 'text-[#006948]' : 'text-[#475569]'
                       }`}
                       numberOfLines={2}
                     >
-                      {item.name || item.title || 'Category'}
+                      {item.name || item.title}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -382,60 +235,76 @@ export default function CatalogScreen({ navigation, route }) {
           )}
         </View>
 
-        {/* Right Product Grid Area */}
-        <View className="flex-1 p-2">
+        {/* Right Products Panel (72% width) */}
+        <View className="flex-1 bg-[#f8fafc]">
           {/* Active Category Header */}
-          <View className="px-2 pt-1 pb-2 flex-row items-center justify-between">
+          <View className="px-3 py-2 bg-white border-b border-[#e2e8f0] flex-row items-center justify-between">
             <View>
-              <Text className="text-sm font-black text-[#131b2e]" numberOfLines={1}>
-                {selectedCat?.name || selectedCat?.title || 'Products'}
+              <Text className="text-xs font-black text-[#0f172a]" numberOfLines={1}>
+                {selectedCat?.name || 'Selected Aisle'}
               </Text>
-              <Text className="text-[9.5px] text-[#6d7a72] font-semibold mt-0.5">
-                {products.length} {products.length === 1 ? 'Item' : 'Items'} Available
+              <Text className="text-[10px] text-[#64748b]">
+                {products.length} {products.length === 1 ? 'item' : 'items'} available
               </Text>
+            </View>
+            <View className="bg-[#f0fdf4] px-2 py-0.5 rounded border border-[#bbf7d0]">
+              <Text className="text-[9px] font-black text-[#006948]">⚡ 24h Express</Text>
             </View>
           </View>
 
-          {/* Product Cards Loading (Skeletons instead of Spinners) */}
           {loadingProducts ? (
-            <View className="flex-row flex-wrap justify-between p-1">
-              <ProductCardSkeleton />
-              <ProductCardSkeleton />
+            <View className="p-3">
               <ProductCardSkeleton />
               <ProductCardSkeleton />
             </View>
+          ) : products.length === 0 ? (
+            <View className="flex-1 justify-center items-center p-6">
+              <Icon name="inventory-2" size={40} color="#94a3b8" />
+              <Text className="text-xs font-black text-[#0f172a] mt-2">No Items in this Aisle</Text>
+              <Text className="text-[10px] text-[#64748b] text-center mt-1">
+                Please select another category from the left menu.
+              </Text>
+            </View>
           ) : (
             <FlatList
-              data={gridProductsData}
-              numColumns={2}
-              keyExtractor={(item, index) => String(item._id || item.slug || `product-${index}`)}
-              renderItem={renderProductCard}
+              data={products}
+              keyExtractor={(item, index) => String(item._id || index)}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 40 }}
-              columnWrapperStyle={{ justifyContent: 'space-between' }}
+              contentContainerStyle={{
+                padding: 10,
+                paddingBottom: itemCount() > 0 ? 80 : 30,
+              }}
               refreshControl={
                 <RefreshControl
                   refreshing={refreshing}
                   onRefresh={handleRefresh}
                   tintColor="#006948"
-                  colors={['#006948']}
                 />
               }
-              ListEmptyComponent={
-                <View className="items-center justify-center py-16 px-4 bg-[#f8fafc] rounded-2xl border border-dashed border-[#bccac0] mt-3">
-                  <Icon name="inventory-2" size={36} color="#9aa59f" />
-                  <Text className="text-xs font-bold text-[#131b2e] mt-2">No products found</Text>
-                  <Text className="text-[10px] text-[#6d7a72] text-center mt-0.5">
-                    There are no products available in this category.
-                  </Text>
-                </View>
-              }
+              renderItem={({ item }) => {
+                const pId = item._id || item.id;
+                const qty = getItemQuantity(pId);
+
+                return (
+                  <BlinkitProductCard
+                    product={item}
+                    quantity={qty}
+                    fullWidth={true}
+                    onPress={() => navigation.navigate('ProductDetail', { product: item })}
+                    onAdd={() => handleUpdateQty(item, 1)}
+                    onIncrement={() => handleUpdateQty(item, 1)}
+                    onDecrement={() => handleUpdateQty(item, -1)}
+                  />
+                );
+              }}
             />
           )}
         </View>
+
+        {/* Floating Cart Strip */}
+        <BlinkitCartStrip navigation={navigation} />
       </View>
 
-      {/* Location Selector Bottom Modal */}
       <LocationSelectorModal />
     </SafeAreaView>
   );

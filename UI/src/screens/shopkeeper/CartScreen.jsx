@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,26 +7,32 @@ import {
   Image,
   Alert,
   BackHandler,
+  StatusBar,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import RSLogo from '../../components/RSLogo';
+import BlinkitAddButton from '../../components/BlinkitAddButton';
+import LocationHeaderPill from '../../components/LocationHeaderPill';
 import ServiceabilityBanner from '../../components/ServiceabilityBanner';
 import LocationSelectorModal from '../../components/LocationSelectorModal';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import { useLocationStore } from '../../store/locationStore';
 
+/**
+ * Blinkit-Style Cart & Bill Screen
+ * - Clean white card items with unit pricing & stepper
+ * - Delivery promise pill (⚡ Delivery in 24-48 Hours)
+ * - Bill Details breakdown with savings highlight
+ * - Cancellation policy / Trust note
+ * - Docked bottom checkout bar
+ */
 export default function CartScreen({ navigation }) {
-  const insets = useSafeAreaInsets();
   const { session } = useAuthStore();
   const cartStore = useCartStore();
-  const { items, clearCart, removeItem, updateQuantity, totalAmount } = cartStore;
+  const { items, clearCart, removeItem, updateQuantity, totalAmount, itemCount } = cartStore;
   const { location, openModal } = useLocationStore();
 
-
-
-  // Load cart from backend on mount
   useEffect(() => {
     const loadCartData = async () => {
       if (session?.user?._id) {
@@ -36,7 +42,7 @@ export default function CartScreen({ navigation }) {
     loadCartData();
   }, []);
 
-  // Hardware Android Back Button Handler
+  // Hardware Back Handler
   useEffect(() => {
     const onBackPress = () => {
       if (navigation.canGoBack()) {
@@ -46,13 +52,13 @@ export default function CartScreen({ navigation }) {
       navigation.navigate('ShopHome');
       return true;
     };
-
-    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-    return () => subscription.remove();
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
   }, [navigation]);
 
   const subtotal = totalAmount();
   const grandTotal = subtotal;
+  const count = itemCount();
 
   const handleCheckout = () => {
     if (items.length === 0) {
@@ -72,225 +78,199 @@ export default function CartScreen({ navigation }) {
       return;
     }
 
-    if (!session) {
-      Alert.alert(
-        'Login Required',
-        'Please log in or create an account to proceed to checkout.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Log In / Register',
-            onPress: () => navigation.navigate('Login', { returnScreen: 'CheckoutPayment' }),
-          },
-        ]
-      );
-      return;
-    }
-    navigation.navigate('CheckoutPayment');
+    navigation.navigate('CheckoutPayment', {
+      cartItems: items,
+      totalAmount: grandTotal,
+    });
   };
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#faf8ff]">
-      {/* Top Header */}
-      <View className="bg-white border-b border-[#dae2fd] px-4 py-3 flex-row items-center justify-between shadow-sm z-10">
-        <View className="flex-row items-center gap-2">
-          <TouchableOpacity
-            onPress={() => {
-              if (navigation.canGoBack()) {
-                navigation.goBack();
-              } else {
-                navigation.navigate('ShopHome');
-              }
-            }}
-            activeOpacity={0.7}
-            className="w-9 h-9 rounded-full bg-[#f2f3ff] justify-center items-center border border-[#dae2fd]"
-          >
-            <Icon name="arrow-back" size={20} color="#131b2e" />
-          </TouchableOpacity>
-          <RSLogo size="sm" showText={false} />
-          <Text className="text-base font-bold text-[#131b2e] ml-1">View Cart</Text>
-        </View>
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#f8fafc]">
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
-        <View className="flex-row items-center gap-2">
-          <TouchableOpacity activeOpacity={0.7} className="w-9 h-9 rounded-full bg-[#f2f3ff] justify-center items-center border border-[#dae2fd]">
-            <Icon name="help-outline" size={20} color="#3d4a42" />
+      {/* Blinkit Top Header */}
+      <View className="bg-white border-b border-[#e2e8f0] px-4 py-2.5 flex-row items-center justify-between shadow-xs">
+        <View className="flex-row items-center gap-2.5">
+          <TouchableOpacity
+            onPress={() => navigation.navigate('ShopHome')}
+            activeOpacity={0.7}
+            className="w-8 h-8 rounded-full bg-[#f1f5f9] justify-center items-center border border-[#e2e8f0]"
+          >
+            <Icon name="arrow-back" size={18} color="#0f172a" />
           </TouchableOpacity>
+          <View>
+            <Text className="text-sm font-black text-[#0f172a]">My Cart ({count} {count === 1 ? 'item' : 'items'})</Text>
+            <Text className="text-[10px] text-[#64748b]">Factory-Direct Wholesale</Text>
+          </View>
         </View>
+        <LocationHeaderPill />
       </View>
 
-      {/* Serviceability Banner */}
       <ServiceabilityBanner />
 
       <ScrollView
-        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: items.length > 0 ? 80 : 20 }}
+        contentContainerStyle={{ paddingBottom: items.length > 0 ? 85 : 30 }}
       >
-        {/* Fast Delivery & Dispatch Notice Bar */}
-        <View className="px-4 pt-4">
-          <View className="bg-white rounded-2xl p-3 shadow-sm flex-row items-center justify-between border border-[#eaedff]">
-            <View className="flex-row items-center gap-3 flex-1">
-              <View className="w-10 h-10 rounded-full bg-[#99efe5]/40 justify-center items-center">
-                <Icon name="electric-moped" size={22} color="#006a63" />
-              </View>
-              <View className="flex-1">
-                <View className="flex-row items-center gap-1.5">
-                  <Text className="text-[10px] font-bold text-[#006948] uppercase tracking-wider">
-                    Fast Dispatch
-                  </Text>
-                  <View className="w-1 h-1 rounded-full bg-[#006948]" />
-                  <Text className="text-[10px] text-[#006f67] font-semibold">Direct Factory Delivery</Text>
-                </View>
-                <Text className="text-xs font-bold text-[#131b2e]">
-                  Instant GST Invoice Generation
-                </Text>
-              </View>
+        {items.length === 0 ? (
+          <View className="py-20 px-4 items-center justify-center">
+            <View className="w-20 h-20 rounded-full bg-[#f1f5f9] justify-center items-center border border-[#e2e8f0] mb-4">
+              <Icon name="remove-shopping-cart" size={38} color="#94a3b8" />
             </View>
-          </View>
-        </View>
-
-        {/* Dynamic Cart Items List */}
-        <View className="px-4 pt-3">
-          <View className="bg-white rounded-2xl p-4 shadow-sm border border-[#eaedff]">
-            <View className="flex-row justify-between items-center pb-3 border-b border-[#f2f3ff]">
-              <Text className="text-xs font-extrabold text-[#131b2e] uppercase tracking-wider">
-                Cart Items ({items.length} {items.length === 1 ? 'Entry' : 'Entries'})
+            <Text className="text-base font-black text-[#0f172a]">Your Cart is Empty</Text>
+            <Text className="text-xs text-[#64748b] text-center mt-1.5 px-6">
+              Explore our best-selling commercial and household cleaning formulations.
+            </Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('ShopHome')}
+              activeOpacity={0.8}
+              className="mt-6 bg-[#006948] px-6 py-2.5 rounded-xl shadow-xs"
+            >
+              <Text className="text-xs font-black text-white uppercase tracking-wider">
+                Start Shopping
               </Text>
-              {items.length > 0 && (
-                <TouchableOpacity activeOpacity={0.7} onPress={() => clearCart()}>
-                  <Text className="text-xs font-bold text-[#ba1a1a]">Clear Cart</Text>
-                </TouchableOpacity>
-              )}
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View className="px-3.5 pt-3">
+            {/* Blinkit Delivery Promise Banner */}
+            <View className="bg-white rounded-2xl p-3 border border-[#e2e8f0] shadow-xs flex-row items-center justify-between mb-3">
+              <View className="flex-row items-center gap-2.5">
+                <View className="w-9 h-9 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] justify-center items-center">
+                  <Icon name="bolt" size={20} color="#006948" />
+                </View>
+                <View>
+                  <Text className="text-xs font-black text-[#0f172a]">
+                    Delivery in 24-48 Hours
+                  </Text>
+                  <Text className="text-[10px] text-[#006948] font-bold">
+                    Dispatched directly from factory hub
+                  </Text>
+                </View>
+              </View>
+              <View className="bg-[#f0fdf4] px-2 py-0.5 rounded border border-[#bbf7d0]">
+                <Text className="text-[9.5px] font-black text-[#006948]">⚡ Express</Text>
+              </View>
             </View>
 
-            {items.length > 0 ? (
-              items.map((item, idx) => {
+            {/* Cart Items List */}
+            <View className="bg-white rounded-2xl p-3.5 border border-[#e2e8f0] shadow-xs mb-3">
+              <View className="flex-row justify-between items-center pb-2.5 border-b border-[#f1f5f9]">
+                <Text className="text-xs font-black text-[#0f172a] uppercase tracking-wider">
+                  Review Items ({items.length})
+                </Text>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => clearCart()}>
+                  <Text className="text-xs font-bold text-[#e11d48]">Clear All</Text>
+                </TouchableOpacity>
+              </View>
+
+              {items.map((item, idx) => {
                 const itemKey = item.cartItemId || `${item._id}-${item.size || idx}`;
-                const itemTotal = (item.price || 99) * (item.quantity || 1);
+                const itemTotal = (item.price || 0) * (item.quantity || 1);
 
                 return (
                   <View
                     key={itemKey}
-                    className={`py-3.5 flex-row gap-3 ${
-                      idx < items.length - 1 ? 'border-b border-[#f2f3ff]' : ''
+                    className={`py-3 flex-row items-center gap-3 ${
+                      idx < items.length - 1 ? 'border-b border-[#f1f5f9]' : ''
                     }`}
                   >
-                    <View className="w-16 h-16 rounded-xl bg-[#f2f3ff] justify-center items-center border border-[#eaedff] overflow-hidden">
+                    {/* Item Image */}
+                    <View className="w-16 h-16 rounded-xl bg-[#f8fafc] justify-center items-center border border-[#e2e8f0] overflow-hidden">
                       {item.image ? (
                         <Image
                           source={{ uri: item.image }}
                           className="w-full h-full"
-                          resizeMode="cover"
+                          resizeMode="contain"
                         />
                       ) : (
-                        <Icon name="inventory-2" size={32} color="#bccac0" />
+                        <Icon name="inventory-2" size={26} color="#94a3b8" />
                       )}
                     </View>
-                    <View className="flex-1 justify-between">
-                      <View className="flex-row justify-between items-start">
-                        <View className="flex-1 pr-2">
-                          <Text className="text-xs font-bold text-[#131b2e]" numberOfLines={2}>
-                            {item.title || item.name}
-                          </Text>
-                          {item.bundleLabel ? (
-                            <View className="flex-row items-center gap-1.5 mt-1">
-                              <View className="bg-[#006948]/10 px-2 py-0.5 rounded border border-[#006948]/20">
-                                <Text className="text-[9.5px] font-bold text-[#006948]">
-                                  {item.bundleLabel}
-                                </Text>
-                              </View>
-                            </View>
-                          ) : null}
-                        </View>
-                        <TouchableOpacity
-                          onPress={() => removeItem(itemKey)}
-                          activeOpacity={0.7}
-                          className="p-1"
-                        >
-                          <Icon name="delete-outline" size={18} color="#ba1a1a" />
-                        </TouchableOpacity>
-                      </View>
 
-                      <View className="flex-row justify-between items-end mt-2">
-                        <View>
-                          <Text className="text-xs font-extrabold text-[#131b2e]">
-                            ₹{itemTotal.toLocaleString('en-IN')}
-                          </Text>
-                          <Text className="text-[9px] text-[#006948] font-semibold">
-                            ₹{item.price}/unit
+                    {/* Title & Bundle Info */}
+                    <View className="flex-1">
+                      <Text className="text-xs font-black text-[#0f172a]" numberOfLines={2}>
+                        {item.title || item.name}
+                      </Text>
+                      {item.bundleLabel && (
+                        <View className="bg-[#f0fdf4] self-start px-1.5 py-0.5 rounded border border-[#bbf7d0] mt-1">
+                          <Text className="text-[9px] font-bold text-[#006948]">
+                            {item.bundleLabel}
                           </Text>
                         </View>
-
-                        {/* Quantity Stepper */}
-                        <View className="h-7 bg-[#006948] rounded-lg flex-row items-center px-1">
-                          <TouchableOpacity
-                            onPress={() => updateQuantity(itemKey, (item.quantity || 1) - 1)}
-                            activeOpacity={0.7}
-                            className="w-6 h-full justify-center items-center"
-                          >
-                            <Icon name="remove" size={14} color="#ffffff" />
-                          </TouchableOpacity>
-                          <Text className="px-2 text-xs font-bold text-white">
-                            {item.quantity}
-                          </Text>
-                          <TouchableOpacity
-                            onPress={() => updateQuantity(itemKey, (item.quantity || 1) + 1)}
-                            activeOpacity={0.7}
-                            className="w-6 h-full justify-center items-center"
-                          >
-                            <Icon name="add" size={14} color="#ffffff" />
-                          </TouchableOpacity>
-                        </View>
+                      )}
+                      <View className="flex-row items-baseline gap-1 mt-1">
+                        <Text className="text-xs font-black text-[#0f172a]">
+                          ₹{itemTotal.toLocaleString('en-IN')}
+                        </Text>
+                        <Text className="text-[9px] text-[#64748b]">
+                          (₹{item.price}/unit)
+                        </Text>
                       </View>
                     </View>
+
+                    {/* Blinkit Stepper Button */}
+                    <BlinkitAddButton
+                      quantity={item.quantity || 1}
+                      onIncrement={() => updateQuantity(itemKey, (item.quantity || 1) + 1)}
+                      onDecrement={() => updateQuantity(itemKey, (item.quantity || 1) - 1)}
+                      size="sm"
+                    />
                   </View>
                 );
-              })
-            ) : (
-              <View className="py-10 items-center justify-center">
-                <Icon name="shopping-cart" size={36} color="#6d7a72" />
-                <Text className="text-xs font-bold text-[#131b2e] mt-2">Your Cart is Empty</Text>
-                <Text className="text-[10px] text-[#6d7a72] mt-0.5 mb-4">
-                  Browse products and select variants to add them to your cart.
-                </Text>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('Catalog')}
-                  className="bg-[#006948] px-4 py-2 rounded-xl"
-                >
-                  <Text className="text-xs text-white font-bold">Browse Products</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </View>
+              })}
+            </View>
 
-        {/* Payment Summary */}
-        {items.length > 0 && (
-          <View className="px-4 pt-3">
-            <View className="bg-white rounded-2xl p-4 shadow-sm border border-[#eaedff]">
-              <Text className="text-xs font-extrabold text-[#131b2e] uppercase tracking-wider pb-2 border-b border-[#f2f3ff]">
-                Payment Summary
+            {/* Blinkit Bill Details Card */}
+            <View className="bg-white rounded-2xl p-4 border border-[#e2e8f0] shadow-xs mb-3">
+              <Text className="text-xs font-black text-[#0f172a] uppercase tracking-wider pb-2 border-b border-[#f1f5f9]">
+                Bill Summary
               </Text>
 
-              <View className="py-2.5 gap-2 border-b border-[#f2f3ff]">
+              <View className="py-2.5 gap-2 border-b border-[#f1f5f9]">
                 <View className="flex-row justify-between">
-                  <Text className="text-xs text-[#3d4a42]">Subtotal</Text>
-                  <Text className="text-xs text-[#131b2e] font-bold">₹{subtotal.toLocaleString('en-IN')}</Text>
+                  <Text className="text-xs text-[#64748b]">Item Total</Text>
+                  <Text className="text-xs font-bold text-[#0f172a]">
+                    ₹{subtotal.toLocaleString('en-IN')}
+                  </Text>
                 </View>
 
                 <View className="flex-row justify-between">
-                  <Text className="text-xs text-[#3d4a42]">Delivery & Handling</Text>
-                  <Text className="text-xs text-[#006948] font-bold">FREE</Text>
+                  <Text className="text-xs text-[#64748b]">Delivery Partner Fee</Text>
+                  <View className="flex-row items-center gap-1">
+                    <Text className="text-[10px] text-[#94a3b8] line-through">₹40</Text>
+                    <Text className="text-xs font-bold text-[#006948]">FREE</Text>
+                  </View>
+                </View>
+
+                <View className="flex-row justify-between">
+                  <Text className="text-xs text-[#64748b]">Handling & Packing</Text>
+                  <Text className="text-xs font-bold text-[#006948]">FREE</Text>
                 </View>
               </View>
 
-              <View className="pt-3 flex-row justify-between items-center">
+              <View className="pt-2.5 flex-row justify-between items-center">
                 <View>
-                  <Text className="text-sm font-extrabold text-[#131b2e]">Total Amount</Text>
+                  <Text className="text-xs font-black text-[#0f172a]">Grand Total</Text>
+                  <Text className="text-[10px] text-[#006948] font-bold">Inclusive of all taxes</Text>
                 </View>
-                <Text className="text-lg font-black text-[#131b2e]">
+                <Text className="text-base font-black text-[#0f172a]">
                   ₹{grandTotal.toLocaleString('en-IN')}
+                </Text>
+              </View>
+            </View>
+
+            {/* Blinkit Cancellation Policy Note */}
+            <View className="bg-[#f8fafc] rounded-2xl p-3 border border-[#e2e8f0] mb-2 flex-row gap-2.5 items-center">
+              <Icon name="verified-user" size={18} color="#006948" />
+              <View className="flex-1">
+                <Text className="text-[10px] font-black text-[#0f172a]">
+                  100% Genuine Lab-Certified Chemicals
+                </Text>
+                <Text className="text-[9.5px] text-[#64748b]">
+                  Manufactured and packaged directly at RS Industries plant.
                 </Text>
               </View>
             </View>
@@ -298,19 +278,21 @@ export default function CartScreen({ navigation }) {
         )}
       </ScrollView>
 
-      {/* Checkout Bottom Bar (Directly connected to Bottom Nav with no space) */}
+      {/* Checkout Bottom Bar (Directly connected to Bottom Nav with zero space) */}
       {items.length > 0 && (
-        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-[#dae2fd] px-4 py-2.5 flex-row items-center justify-between shadow-xl z-30">
+        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-[#e2e8f0] px-4 py-2.5 flex-row items-center justify-between shadow-xl z-30">
           <View>
-            <Text className="text-[10px] text-[#3d4a42] font-semibold uppercase">Net Payable</Text>
-            <Text className="text-lg font-black text-[#131b2e]">₹{grandTotal.toLocaleString('en-IN')}</Text>
+            <Text className="text-[10px] text-[#64748b] font-bold uppercase">To Pay</Text>
+            <Text className="text-lg font-black text-[#0f172a]">
+              ₹{grandTotal.toLocaleString('en-IN')}
+            </Text>
           </View>
 
           {location && location.isServiceable === false ? (
             <TouchableOpacity
               onPress={openModal}
               activeOpacity={0.85}
-              className="bg-[#e11d48] px-5 py-3 rounded-xl flex-row items-center gap-2 shadow-md active:bg-[#be123c]"
+              className="bg-[#e11d48] px-5 py-3 rounded-xl flex-row items-center gap-2 shadow-sm"
             >
               <Icon name="location-off" size={18} color="#ffffff" />
               <Text className="text-xs font-bold text-white uppercase tracking-wider">
@@ -321,16 +303,17 @@ export default function CartScreen({ navigation }) {
             <TouchableOpacity
               onPress={handleCheckout}
               activeOpacity={0.85}
-              className="bg-[#006948] px-6 py-3 rounded-xl flex-row items-center gap-2 shadow-md active:bg-[#005238]"
+              className="bg-[#006948] px-6 py-3 rounded-xl flex-row items-center gap-2 shadow-sm active:bg-[#005238]"
             >
-              <Text className="text-xs font-bold text-white uppercase tracking-wider">Proceed to Checkout</Text>
+              <Text className="text-xs font-black text-white uppercase tracking-wider">
+                Proceed to Checkout
+              </Text>
               <Icon name="arrow-forward" size={18} color="#ffffff" />
             </TouchableOpacity>
           )}
         </View>
       )}
 
-      {/* Location Selector Bottom Modal */}
       <LocationSelectorModal />
     </SafeAreaView>
   );

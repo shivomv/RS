@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,13 +10,19 @@ import {
   TextInput,
   Modal,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { launchImageLibrary } from 'react-native-image-picker';
-import RSLogo from '../../components/RSLogo';
 import { useAuthStore } from '../../store/authStore';
 
+/**
+ * Blinkit-Style Account & Profile Screen
+ * - Clean white card sections with subtle borders
+ * - Verified B2B Customer badge
+ * - Instant access to addresses, orders, support, and company details
+ */
 export default function ProfileScreen({ navigation }) {
   const { session, logout, updateProfile } = useAuthStore();
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -25,7 +31,7 @@ export default function ProfileScreen({ navigation }) {
   const [updating, setUpdating] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  // Hardware Android Back Button Handler
+  // Hardware Back Handler
   useEffect(() => {
     const onBackPress = () => {
       if (navigation.canGoBack()) {
@@ -35,13 +41,12 @@ export default function ProfileScreen({ navigation }) {
       navigation.navigate('ShopHome');
       return true;
     };
-
-    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-    return () => subscription.remove();
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
   }, [navigation]);
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout from RS Industries?', [
+    Alert.alert('Logout', 'Are you sure you want to log out from RS Industries?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Logout',
@@ -69,21 +74,14 @@ export default function ProfileScreen({ navigation }) {
         const asset = result.assets[0];
         const base64Data = asset.base64
           ? `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`
-          : null;
-
-        if (!base64Data) {
-          Alert.alert('Error', 'Could not read image file.');
-          return;
-        }
+          : asset.uri;
 
         setUploadingImage(true);
-        const res = await updateProfile({ avatarUrl: base64Data });
-        if (res && res.success) {
-          Alert.alert('Success', 'Profile picture updated successfully!');
-        }
+        await updateProfile({ avatarUrl: base64Data });
+        Alert.alert('Success', 'Profile picture updated successfully!');
       }
     } catch (err) {
-      Alert.alert('Upload Failed', err.message || 'Could not upload profile picture.');
+      Alert.alert('Upload Error', err.message || 'Could not update profile picture.');
     } finally {
       setUploadingImage(false);
     }
@@ -91,13 +89,12 @@ export default function ProfileScreen({ navigation }) {
 
   const handleSaveProfile = async () => {
     if (!editName.trim()) {
-      Alert.alert('Error', 'Name cannot be empty');
+      Alert.alert('Error', 'Name cannot be empty.');
       return;
     }
-
-    const cleanedMobile = editMobile ? String(editMobile).replace(/\D/g, '').slice(-10) : '';
-    if (cleanedMobile && cleanedMobile.length !== 10) {
-      Alert.alert('Error', 'Mobile number must be a valid 10-digit number.');
+    const cleanMobile = editMobile.replace(/\D/g, '').slice(-10);
+    if (!cleanMobile || cleanMobile.length !== 10) {
+      Alert.alert('Invalid Mobile', 'Please provide a valid 10-digit mobile number.');
       return;
     }
 
@@ -105,259 +102,243 @@ export default function ProfileScreen({ navigation }) {
     try {
       await updateProfile({
         name: editName.trim(),
-        mobile: cleanedMobile,
+        shopName: editName.trim(),
+        mobile: cleanMobile,
       });
       setEditModalVisible(false);
-      Alert.alert('Success', 'Profile updated successfully!');
+      Alert.alert('Success', 'Profile details updated.');
     } catch (err) {
-      Alert.alert('Error', err.message || 'Failed to update profile');
+      Alert.alert('Error', err.message || 'Failed to update profile.');
     } finally {
       setUpdating(false);
     }
   };
 
-  // Render Guest Account Login Required View if user is not logged in
   if (!session) {
     return (
-      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#faf8ff]">
-        {/* Top Header */}
-        <View className="bg-white border-b border-[#dae2fd] px-4 py-3 flex-row items-center justify-between shadow-sm z-10">
-          <RSLogo size="md" />
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Login', { returnScreen: 'Profile' })}
-            activeOpacity={0.7}
-            className="bg-[#006948] px-3.5 py-1.5 rounded-full flex-row items-center gap-1 shadow-sm"
-          >
-            <Icon name="login" size={16} color="#ffffff" />
-            <Text className="text-xs text-white font-bold">Log In</Text>
-          </TouchableOpacity>
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#f8fafc]">
+        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+        <View className="bg-white border-b border-[#e2e8f0] px-4 py-3 flex-row items-center justify-between shadow-xs">
+          <Text className="text-base font-black text-[#0f172a]">My Account</Text>
         </View>
 
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          className="flex-1 px-4 pt-6"
-        >
-          {/* Guest Account Banner Card */}
-          <View className="bg-white rounded-3xl p-6 items-center shadow-sm border border-[#eaedff] mb-4">
-            <View className="w-20 h-20 rounded-full bg-[#006948]/10 justify-center items-center mb-4">
-              <Icon name="person-outline" size={44} color="#006948" />
-            </View>
-            <Text className="text-lg font-black text-[#131b2e] text-center">
-              Welcome to RS Industries Portal
-            </Text>
-            <Text className="text-xs text-[#3d4a42] text-center mt-1.5 px-2 leading-relaxed">
-              Log in with your Google account to track dispatches, inspect GST invoices, and access your profile.
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Login', { returnScreen: 'Profile' })}
-              activeOpacity={0.85}
-              className="bg-[#006948] w-full rounded-2xl py-3.5 items-center justify-center flex-row gap-2 mt-6 shadow-md"
-            >
-              <Icon name="login" size={20} color="#ffffff" />
-              <Text className="text-sm text-white font-extrabold">Log In / Register with Google</Text>
-            </TouchableOpacity>
+        <ScrollView contentContainerStyle={{ padding: 24, alignItems: 'center' }} className="flex-1">
+          <View className="w-18 h-18 rounded-full bg-[#f1f5f9] justify-center items-center mb-3 mt-12 border border-[#e2e8f0]">
+            <Icon name="person-outline" size={36} color="#94a3b8" />
           </View>
+          <Text className="text-base font-black text-[#0f172a] text-center">
+            Welcome to RS Industries
+          </Text>
+          <Text className="text-xs text-[#64748b] text-center mt-1 px-4 leading-relaxed">
+            Log in to manage wholesale orders, check saved delivery addresses, and track real-time dispatches.
+          </Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Login')}
+            activeOpacity={0.8}
+            className="mt-6 bg-[#006948] px-6 py-2.5 rounded-xl shadow-xs"
+          >
+            <Text className="text-xs font-black text-white uppercase tracking-wider">Log In / Register</Text>
+          </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
     );
   }
 
   const avatarUri = session.user?.avatarUrl || session.user?.avatar || null;
-
   const userMobile = session.mobile || session.user?.mobile || '';
 
-  // Render Full User Profile View for Authenticated Partners
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#faf8ff]">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#f8fafc]">
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+
       {/* Top Header */}
-      <View className="bg-white border-b border-[#dae2fd] px-4 py-3 flex-row items-center justify-between shadow-sm z-10">
-        <RSLogo size="md" />
-        <View className="bg-[#99efe5] px-2.5 py-1 rounded-full border border-[#006f67]/20">
-          <Text className="text-xs text-[#006f67] font-bold">GST Verified</Text>
+      <View className="bg-white border-b border-[#e2e8f0] px-4 py-2.5 flex-row items-center justify-between shadow-xs">
+        <View className="flex-row items-center gap-2">
+          <View className="w-8 h-8 rounded-lg bg-[#006948] justify-center items-center">
+            <Icon name="person" size={18} color="#ffffff" />
+          </View>
+          <View>
+            <Text className="text-sm font-black text-[#0f172a]">My Account</Text>
+            <Text className="text-[10px] text-[#64748b]">B2B Wholesale Partner</Text>
+          </View>
+        </View>
+        <View className="bg-[#f0fdf4] border border-[#bbf7d0] px-2.5 py-0.5 rounded-full">
+          <Text className="text-[10px] font-black text-[#006948]">Verified Buyer</Text>
         </View>
       </View>
 
       <ScrollView
-        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 60 }}
+        contentContainerStyle={{ padding: 12, paddingBottom: 60 }}
       >
-        {/* User Card */}
-        <View className="bg-[#006948] px-6 py-6 items-center relative">
-          {/* Avatar with Camera Upload Badge */}
-          <View className="relative mb-3">
-            <View className="w-24 h-24 rounded-full overflow-hidden border-2 border-white shadow-md bg-white/20 justify-center items-center">
-              {uploadingImage ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <Image
-                  source={{ uri: avatarUri }}
-                  className="w-full h-full"
-                  resizeMode="cover"
-                />
-              )}
-            </View>
-
-            <TouchableOpacity
-              onPress={handlePickProfileImage}
-              disabled={uploadingImage}
-              activeOpacity={0.8}
-              className="absolute bottom-0 right-0 bg-[#002114] w-8 h-8 rounded-full border-2 border-white items-center justify-center shadow"
-            >
-              <Icon name="photo-camera" size={16} color="#ffffff" />
-            </TouchableOpacity>
-          </View>
-
+        {/* Blinkit Profile Identity Card */}
+        <View className="bg-white rounded-2xl p-4 border border-[#e2e8f0] shadow-xs mb-3 flex-row items-center gap-3.5">
           <TouchableOpacity
             onPress={handlePickProfileImage}
-            disabled={uploadingImage}
-            className="mb-2"
+            activeOpacity={0.8}
+            className="relative"
           >
-            <Text className="text-[11px] text-[#85f8c4] font-bold">
-              📷 Tap to change profile picture
-            </Text>
+            <View className="w-16 h-16 rounded-full overflow-hidden bg-[#f1f5f9] border border-[#cbd5e1] justify-center items-center">
+              {uploadingImage ? (
+                <ActivityIndicator size="small" color="#006948" />
+              ) : avatarUri ? (
+                <Image source={{ uri: avatarUri }} className="w-full h-full" resizeMode="cover" />
+              ) : (
+                <Icon name="person" size={32} color="#94a3b8" />
+              )}
+            </View>
+            <View className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-[#006948] justify-center items-center border border-white">
+              <Icon name="photo-camera" size={10} color="#ffffff" />
+            </View>
           </TouchableOpacity>
 
-          <View className="flex-row items-center gap-2 justify-center">
-            <Text className="text-white text-lg font-bold">
-              {session.user?.name || session.user?.shopName || 'Registered Customer'}
+          <View className="flex-1">
+            <View className="flex-row items-center justify-between">
+              <Text className="text-sm font-black text-[#0f172a]" numberOfLines={1}>
+                {session.user?.name || session.user?.shopName || 'Registered Customer'}
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setEditName(session.user?.name || session.user?.shopName || '');
+                  setEditMobile(session.mobile || session.user?.mobile || '');
+                  setEditModalVisible(true);
+                }}
+                className="p-1 bg-[#f1f5f9] rounded-lg"
+              >
+                <Icon name="edit" size={14} color="#006948" />
+              </TouchableOpacity>
+            </View>
+            <Text className="text-xs text-[#006948] font-bold mt-0.5">
+              📞 {userMobile ? `+91 ${userMobile}` : 'Mobile not set'}
             </Text>
-            <TouchableOpacity
-              onPress={() => {
-                setEditName(session.user?.name || session.user?.shopName || '');
-                setEditMobile(session.mobile || session.user?.mobile || '');
-                setEditModalVisible(true);
-              }}
-              className="bg-white/20 p-1.5 rounded-full"
-            >
-              <Icon name="edit" size={14} color="#ffffff" />
-            </TouchableOpacity>
-          </View>
-
-          <Text className="text-[#85f8c4] text-xs font-semibold mt-0.5">
-            {userMobile ? `Mobile: ${userMobile}` : 'Mobile: Not Set (Required for Orders)'} • {session.user?.email || 'Google Account'}
-          </Text>
-        </View>
-
-        {/* Quick Settings Links */}
-        <View className="px-4 py-2">
-          <View className="bg-white rounded-2xl p-2 shadow-sm border border-[#eaedff]">
-            <TouchableOpacity
-              onPress={() => navigation.navigate('AddressList')}
-              activeOpacity={0.7}
-              className="flex-row items-center justify-between p-3 border-b border-[#f2f3ff]"
-            >
-              <View className="flex-row items-center gap-3">
-                <Icon name="location-on" size={20} color="#006948" />
-                <Text className="text-xs font-bold text-[#131b2e]">Manage Delivery Address</Text>
-              </View>
-              <Icon name="chevron-right" size={20} color="#006948" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => navigation.navigate('AboutUs')}
-              activeOpacity={0.7}
-              className="flex-row items-center justify-between p-3 border-b border-[#f2f3ff]"
-            >
-              <View className="flex-row items-center gap-3">
-                <Icon name="info" size={20} color="#006948" />
-                <Text className="text-xs font-bold text-[#131b2e]">About RS Industries</Text>
-              </View>
-              <Icon name="chevron-right" size={20} color="#006948" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Support')}
-              activeOpacity={0.7}
-              className="flex-row items-center justify-between p-3"
-            >
-              <View className="flex-row items-center gap-3">
-                <Icon name="headset-mic" size={20} color="#3d4a42" />
-                <Text className="text-xs font-bold text-[#131b2e]">Support & Ticket Helpdesk</Text>
-              </View>
-              <Icon name="chevron-right" size={20} color="#6d7a72" />
-            </TouchableOpacity>
+            <Text className="text-[10px] text-[#64748b] mt-0.5" numberOfLines={1}>
+              ✉️ {session.user?.email || 'Google Account'}
+            </Text>
           </View>
         </View>
 
-        {/* Logout Action */}
-        <View className="px-4 pt-4">
+        {/* Quick Account Links */}
+        <View className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs mb-3 overflow-hidden">
           <TouchableOpacity
-            onPress={handleLogout}
-            activeOpacity={0.85}
-            className="bg-[#ba1a1a]/10 rounded-2xl py-3.5 items-center border border-[#ba1a1a]/20"
+            onPress={() => navigation.navigate('AddressList')}
+            activeOpacity={0.7}
+            className="flex-row items-center justify-between p-3.5 border-b border-[#f1f5f9]"
           >
-            <Text className="text-xs font-bold text-[#ba1a1a]">Logout Account</Text>
+            <View className="flex-row items-center gap-3">
+              <View className="w-8 h-8 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] justify-center items-center">
+                <Icon name="place" size={18} color="#006948" />
+              </View>
+              <View>
+                <Text className="text-xs font-black text-[#0f172a]">Manage Delivery Addresses</Text>
+                <Text className="text-[10px] text-[#64748b]">Set wholesale warehouse and retail shops</Text>
+              </View>
+            </View>
+            <Icon name="chevron-right" size={20} color="#94a3b8" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Orders')}
+            activeOpacity={0.7}
+            className="flex-row items-center justify-between p-3.5 border-b border-[#f1f5f9]"
+          >
+            <View className="flex-row items-center gap-3">
+              <View className="w-8 h-8 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] justify-center items-center">
+                <Icon name="receipt" size={18} color="#006948" />
+              </View>
+              <View>
+                <Text className="text-xs font-black text-[#0f172a]">Your Orders</Text>
+                <Text className="text-[10px] text-[#64748b]">Track current dispatches and invoices</Text>
+              </View>
+            </View>
+            <Icon name="chevron-right" size={20} color="#94a3b8" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Support')}
+            activeOpacity={0.7}
+            className="flex-row items-center justify-between p-3.5 border-b border-[#f1f5f9]"
+          >
+            <View className="flex-row items-center gap-3">
+              <View className="w-8 h-8 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] justify-center items-center">
+                <Icon name="support-agent" size={18} color="#006948" />
+              </View>
+              <View>
+                <Text className="text-xs font-black text-[#0f172a]">Customer Support & Queries</Text>
+                <Text className="text-[10px] text-[#64748b]">Chat with RS chemical experts</Text>
+              </View>
+            </View>
+            <Icon name="chevron-right" size={20} color="#94a3b8" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('AboutUs')}
+            activeOpacity={0.7}
+            className="flex-row items-center justify-between p-3.5"
+          >
+            <View className="flex-row items-center gap-3">
+              <View className="w-8 h-8 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] justify-center items-center">
+                <Icon name="business" size={18} color="#006948" />
+              </View>
+              <View>
+                <Text className="text-xs font-black text-[#0f172a]">About RS Industries</Text>
+                <Text className="text-[10px] text-[#64748b]">Certifications, plants, and wholesale policies</Text>
+              </View>
+            </View>
+            <Icon name="chevron-right" size={20} color="#94a3b8" />
           </TouchableOpacity>
         </View>
+
+        {/* Logout Button */}
+        <TouchableOpacity
+          onPress={handleLogout}
+          activeOpacity={0.8}
+          className="bg-white rounded-2xl p-3.5 border border-[#fecdd3] shadow-xs flex-row items-center justify-center gap-2"
+        >
+          <Icon name="logout" size={18} color="#e11d48" />
+          <Text className="text-xs font-black text-[#e11d48] uppercase tracking-wider">Log Out</Text>
+        </TouchableOpacity>
       </ScrollView>
 
-      {/* Edit Profile Modal (Name & Mobile Number) */}
-      <Modal
-        visible={editModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setEditModalVisible(false)}
-      >
-        <View className="flex-1 bg-black/50 justify-center items-center p-4">
-          <View className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-lg">
-            <Text className="text-lg font-bold text-[#131b2e] mb-1">Edit Profile Details</Text>
-            <Text className="text-xs text-[#6d7a72] mb-4">
-              Your 10-digit mobile number is mandatory to place orders.
-            </Text>
+      {/* Edit Profile Modal */}
+      <Modal visible={editModalVisible} transparent animationType="fade">
+        <View className="flex-1 bg-black/60 justify-center items-center px-4">
+          <View className="bg-white rounded-3xl p-5 w-full max-w-sm border border-[#e2e8f0]">
+            <Text className="text-base font-black text-[#0f172a] mb-1">Edit Account Info</Text>
+            <Text className="text-xs text-[#64748b] mb-4">Update your business name and mobile</Text>
 
-            <View className="mb-3">
-              <Text className="text-[10px] font-bold text-[#6d7a72] mb-1 uppercase">Full Name</Text>
-              <TextInput
-                value={editName}
-                onChangeText={setEditName}
-                placeholder="Enter your name"
-                placeholderTextColor="#6d7a72"
-                className="bg-[#f2f3ff] rounded-xl px-4 py-2.5 text-[#131b2e] font-semibold text-sm"
-                editable={!updating}
-              />
-            </View>
+            <Text className="text-[11px] font-bold text-[#0f172a] mb-1">Full Name / Shop Name</Text>
+            <TextInput
+              value={editName}
+              onChangeText={setEditName}
+              className="bg-[#f8fafc] border border-[#cbd5e1] rounded-xl px-3 h-11 text-xs font-semibold text-[#0f172a] mb-3"
+            />
 
-            <View className="mb-5">
-              <Text className="text-[10px] font-bold text-[#6d7a72] mb-1 uppercase">
-                10-Digit Mobile Number (Mandatory for Orders)
-              </Text>
-              <TextInput
-                value={editMobile}
-                onChangeText={(t) => setEditMobile(t.replace(/\D/g, '').slice(0, 10))}
-                keyboardType="phone-pad"
-                maxLength={10}
-                placeholder="e.g. 9876543210"
-                placeholderTextColor="#6d7a72"
-                className="bg-[#f2f3ff] rounded-xl px-4 py-2.5 text-[#131b2e] font-semibold text-sm"
-                editable={!updating}
-              />
-            </View>
+            <Text className="text-[11px] font-bold text-[#0f172a] mb-1">10-Digit Mobile Number</Text>
+            <TextInput
+              value={editMobile}
+              onChangeText={setEditMobile}
+              keyboardType="phone-pad"
+              maxLength={10}
+              className="bg-[#f8fafc] border border-[#cbd5e1] rounded-xl px-3 h-11 text-xs font-semibold text-[#0f172a] mb-5"
+            />
 
-            <View className="flex-row gap-3">
+            <View className="flex-row gap-2">
               <TouchableOpacity
                 onPress={() => setEditModalVisible(false)}
-                disabled={updating}
-                className="flex-1 bg-[#f2f3ff] rounded-xl py-3 items-center"
+                className="flex-1 py-2.5 rounded-xl bg-[#f1f5f9] items-center"
               >
-                <Text className="text-[#131b2e] font-bold text-xs">Cancel</Text>
+                <Text className="text-xs font-bold text-[#64748b]">Cancel</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 onPress={handleSaveProfile}
                 disabled={updating}
-                className="flex-1 bg-[#006948] rounded-xl py-3 items-center flex-row justify-center gap-2"
+                className="flex-1 py-2.5 rounded-xl bg-[#006948] items-center"
               >
                 {updating ? (
-                  <ActivityIndicator color="#ffffff" size="small" />
+                  <ActivityIndicator size="small" color="#ffffff" />
                 ) : (
-                  <>
-                    <Icon name="check" size={16} color="#ffffff" />
-                    <Text className="text-white font-bold text-xs">Save</Text>
-                  </>
+                  <Text className="text-xs font-black text-white">Save Changes</Text>
                 )}
               </TouchableOpacity>
             </View>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,33 +14,32 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import FeatherIcon from 'react-native-vector-icons/Feather';
-import RSLogo from '../../components/RSLogo';
-import LocationHeaderPill from '../../components/LocationHeaderPill';
+import BlinkitHeader from '../../components/BlinkitHeader';
+import BlinkitProductCard from '../../components/BlinkitProductCard';
+import BlinkitCartStrip from '../../components/BlinkitCartStrip';
 import ServiceabilityBanner from '../../components/ServiceabilityBanner';
 import LocationSelectorModal from '../../components/LocationSelectorModal';
 import { ProductCardSkeleton, CategorySkeleton } from '../../components/Skeleton';
 import { useCartStore } from '../../store/cartStore';
-import { useAuthStore } from '../../store/authStore';
 import { useCompanyStore } from '../../store/companyStore';
 import { useLocationStore } from '../../store/locationStore';
 import { api } from '../../services/api';
-import { getDefaultProductPricing } from '../../utils/productHelper';
 
 export default function ShopkeeperHomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { items, addItem, removeItem, updateQuantity, totalAmount, itemCount } = useCartStore();
-  const { session } = useAuthStore();
+  const { items, addItem, removeItem, updateQuantity, itemCount } = useCartStore();
   const { ensureLoaded: loadCompanyDetails } = useCompanyStore();
   const { initLocation } = useLocationStore();
+
   const [dbProducts, setDbProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedCatId, setSelectedCatId] = useState('ALL');
   const lastBackPressRef = React.useRef(0);
 
-  // Handle hardware back press on root Home screen (prevent accidental app closure)
+  // Android Double Back to Exit
   useEffect(() => {
     const onBackPress = () => {
       const now = Date.now();
@@ -65,9 +64,7 @@ export default function ShopkeeperHomeScreen({ navigation }) {
 
   const loadData = useCallback(async () => {
     try {
-      // Load company details for use across app
       await loadCompanyDetails();
-      
       const [prodRes, catRes] = await Promise.all([
         api.getProducts().catch(() => []),
         api.getCategories().catch(() => []),
@@ -88,13 +85,9 @@ export default function ShopkeeperHomeScreen({ navigation }) {
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
-
     loadData().then(() => {
-      if (isMounted) {
-        setLoading(false);
-      }
+      if (isMounted) setLoading(false);
     });
-
     return () => {
       isMounted = false;
     };
@@ -121,402 +114,229 @@ export default function ShopkeeperHomeScreen({ navigation }) {
     }
   };
 
-  const filteredProducts = search
-    ? dbProducts.filter((p) => (p.name || p.title || '').toLowerCase().includes(search.toLowerCase()))
-    : dbProducts;
+  // Filtered products by search & selected category
+  const filteredProducts = useMemo(() => {
+    return dbProducts.filter((p) => {
+      const matchesSearch =
+        !search ||
+        (p.name || p.title || '').toLowerCase().includes(search.toLowerCase()) ||
+        (p.category || '').toLowerCase().includes(search.toLowerCase());
+
+      const matchesCat =
+        selectedCatId === 'ALL' ||
+        String(p.category || '').toLowerCase() === String(selectedCatId).toLowerCase() ||
+        String(p.categoryId || '') === String(selectedCatId);
+
+      return matchesSearch && matchesCat;
+    });
+  }, [dbProducts, search, selectedCatId]);
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#faf8ff]">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-[#f8fafc]">
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
-      {/* Top Header Bar */}
-      <View className="bg-white border-b border-[#dae2fd] px-4 py-3 shadow-sm z-10">
-        <View className="flex-row items-center justify-between">
-          <RSLogo size="md" />
-          <View className="flex-row items-center gap-3">
-            <TouchableOpacity activeOpacity={0.7} className="relative w-10 h-10 rounded-full bg-[#f2f3ff] justify-center items-center border border-[#dae2fd]">
-              <Icon name="notifications-none" size={22} color="#3d4a42" />
-              <View className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#ba1a1a]" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Profile')}
-              activeOpacity={0.7}
-              className="w-10 h-10 rounded-full overflow-hidden border border-[#bccac0] justify-center items-center bg-[#f2f3ff]"
-            >
-              {session?.user?.avatarUrl || session?.user?.avatar ? (
-                <Image
-                  source={{
-                    uri: session.user.avatarUrl || session.user.avatar,
-                  }}
-                  className="w-full h-full"
-                  resizeMode="cover"
-                />
-              ) : session?.user?.name ? (
-                <Text className="text-sm font-extrabold text-[#006948]">
-                  {session.user.name.charAt(0).toUpperCase()}
-                </Text>
-              ) : (
-                <Icon name="person-outline" size={22} color="#006948" />
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
-      {/* Location Sub-Header Bar */}
-      <View className="bg-white px-4 py-2 flex-row items-center justify-between border-b border-[#dae2fd]/60">
-        <LocationHeaderPill />
-        <Text className="text-[10px] text-[#64748b] font-medium">B2B Wholesale Hub</Text>
-      </View>
+      {/* Signature Blinkit Header */}
+      <BlinkitHeader navigation={navigation} />
 
       {/* Out-of-Stock / Service Unavailable Banner */}
       <ServiceabilityBanner />
 
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: itemCount() > 0 ? 75 : 25 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor="#006948"
-            colors={['#006948']}
+      {/* Blinkit Floating Search Bar (Pinned) */}
+      <View className="px-3.5 pt-2 pb-2 bg-white border-b border-[#e2e8f0]/80">
+        <View className="flex-row items-center bg-[#f1f5f9] rounded-2xl border border-[#cbd5e1]/60 px-3.5 h-11 shadow-xs">
+          <Icon name="search" size={20} color="#006948" />
+          <TextInput
+            placeholder='Search "floor cleaner", "phenyl 5L", "detergent"...'
+            placeholderTextColor="#94a3b8"
+            value={search}
+            onChangeText={setSearch}
+            className="flex-1 h-full ml-2 text-xs font-semibold text-[#0f172a]"
           />
-        }
-      >
-        {/* Search Bar */}
-        <View className="px-4 pt-3 pb-2">
-          <View className="flex-row items-center bg-white rounded-xl border border-[#bccac0]/40 px-3 h-12 shadow-sm">
-            <Icon name="search" size={20} color="#006948" />
-            <TextInput
-              placeholder="Search RS Industries cleaning products..."
-              placeholderTextColor="#6d7a72"
-              value={search}
-              onChangeText={setSearch}
-              className="flex-1 h-full ml-2 text-xs text-[#131b2e]"
-            />
-            {search ? (
-              <TouchableOpacity onPress={() => setSearch('')} activeOpacity={0.7}>
-                <Icon name="close" size={18} color="#6d7a72" />
-              </TouchableOpacity>
-            ) : (
-              <View className="flex-row items-center gap-2">
-                {/* <TouchableOpacity activeOpacity={0.7} className="w-8 h-8 rounded-full bg-[#f2f3ff] justify-center items-center">
-                  <Icon name="mic" size={18} color="#3d4a42" />
-                </TouchableOpacity> */}
-                <TouchableOpacity activeOpacity={0.7} className="w-8 h-8 rounded-full bg-[#f2f3ff] justify-center items-center">
-                  <Icon name="qr-code-scanner" size={18} color="#3d4a42" />
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* Express Delivery Banner */}
-        {/* <View className="px-4 pb-3">
-          <View className="bg-[#99efe5] rounded-xl px-4 py-2.5 flex-row items-center justify-between shadow-sm border border-[#006f67]/20">
-            <View className="flex-row items-center gap-2">
-              <Icon name="bolt" size={18} color="#006f67" />
-              <Text className="text-xs text-[#006f67] font-bold">
-                Express Delivery in 25 mins
-              </Text>
-            </View>
-            <View className="flex-row items-center gap-1.5">
-              <View className="w-1.5 h-1.5 rounded-full bg-[#006f67]" />
-              <Text className="text-[11px] text-[#006f67] font-semibold">Bulk Dispatch 24h</Text>
-            </View>
-          </View>
-        </View> */}
-
-        {/* Dynamic Shop by Category */}
-        <View className="py-2">
-          <View className="px-4 flex-row items-center justify-between mb-3">
-            <View className="flex-row items-center gap-1.5">
-              <Icon name="category" size={18} color="#006948" />
-              <Text className="text-base text-[#131b2e] font-bold">Shop by Category</Text>
-            </View>
-            <TouchableOpacity onPress={() => navigation.navigate('Catalog')} activeOpacity={0.7} className="flex-row items-center">
-              <Text className="text-xs text-[#006948] font-bold">See All</Text>
-              <Icon name="chevron-right" size={16} color="#006948" />
+          {search ? (
+            <TouchableOpacity onPress={() => setSearch('')} activeOpacity={0.7} className="p-1">
+              <Icon name="close" size={18} color="#64748b" />
             </TouchableOpacity>
-          </View>
-
-          <ScrollView horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} className="pl-4">
-            {loading ? (
-              <>
-                <CategorySkeleton />
-                <CategorySkeleton />
-                <CategorySkeleton />
-                <CategorySkeleton />
-                <CategorySkeleton />
-              </>
-            ) : (
-              categories.map((cat, idx) => (
-                <TouchableOpacity
-                  key={cat._id || cat.slug || idx}
-                  activeOpacity={0.7}
-                  delayPressIn={0}
-                  className="items-center mr-4 w-[74px]"
-                  onPress={() => navigation.navigate('Catalog', { categoryId: cat.slug || cat._id || cat.name })}
-                >
-                  <View className="w-16 h-16 rounded-2xl bg-[#f2f3ff] shadow-sm justify-center items-center mb-1.5 border border-[#eaedff] overflow-hidden">
-                    {cat.img || cat.image || cat.iconUrl ? (
-                      <Image
-                        source={{ uri: cat.img || cat.image || cat.iconUrl }}
-                        className="w-full h-full"
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <View className="w-full h-full justify-center items-center bg-[#006948]/10">
-                        <Icon name={cat.icon || 'cleaning-services'} size={28} color="#006948" />
-                      </View>
-                    )}
-                  </View>
-                  <Text className="text-[11px] text-[#131b2e] text-center font-semibold leading-tight" numberOfLines={2}>
-                    {cat.name || cat.title}
-                  </Text>
-                </TouchableOpacity>
-              ))
-            )}
-          </ScrollView>
+          ) : (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Catalog')}
+              activeOpacity={0.7}
+              className="flex-row items-center gap-1 bg-[#006948]/10 px-2.5 py-1 rounded-xl"
+            >
+              <Icon name="grid-view" size={14} color="#006948" />
+              <Text className="text-[10px] font-black text-[#006948] uppercase">Aisles</Text>
+            </TouchableOpacity>
+          )}
         </View>
+      </View>
 
-        {/* Dynamic Products Showcase */}
-        {loading ? (
-          <View className="px-4 py-3">
-            <View className="flex-row flex-wrap justify-between gap-y-3">
-              <ProductCardSkeleton />
-              <ProductCardSkeleton />
-              <ProductCardSkeleton />
-              <ProductCardSkeleton />
+      <View className="flex-1 relative">
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          className="flex-1"
+          contentContainerStyle={{ paddingBottom: itemCount() > 0 ? 80 : 30 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#006948"
+              colors={['#006948']}
+            />
+          }
+        >
+          {/* Blinkit Horizontal Categories / Aisles Bar */}
+          <View className="bg-white py-2.5 border-b border-[#e2e8f0]">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="pl-3.5"
+              contentContainerStyle={{ paddingRight: 20 }}
+            >
+              {/* 'ALL' Chip */}
+              <TouchableOpacity
+                onPress={() => setSelectedCatId('ALL')}
+                activeOpacity={0.8}
+                className={`px-3.5 py-1.5 rounded-full mr-2 border flex-row items-center gap-1.5 ${
+                  selectedCatId === 'ALL'
+                    ? 'bg-[#006948] border-[#006948]'
+                    : 'bg-[#f8fafc] border-[#e2e8f0]'
+                }`}
+              >
+                <Icon
+                  name="dashboard"
+                  size={14}
+                  color={selectedCatId === 'ALL' ? '#ffffff' : '#64748b'}
+                />
+                <Text
+                  className={`text-xs font-black ${
+                    selectedCatId === 'ALL' ? 'text-white' : 'text-[#475569]'
+                  }`}
+                >
+                  All Products
+                </Text>
+              </TouchableOpacity>
+
+              {/* Dynamic Categories */}
+              {categories.map((cat, idx) => {
+                const catName = cat.name || cat.title || 'Category';
+                const isSelected =
+                  String(selectedCatId).toLowerCase() === String(catName).toLowerCase() ||
+                  String(selectedCatId) === String(cat._id);
+
+                return (
+                  <TouchableOpacity
+                    key={cat._id || idx}
+                    onPress={() => setSelectedCatId(isSelected ? 'ALL' : cat.name || cat._id)}
+                    activeOpacity={0.8}
+                    className={`px-3.5 py-1.5 rounded-full mr-2 border flex-row items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-[#006948] border-[#006948]'
+                        : 'bg-[#f8fafc] border-[#e2e8f0]'
+                    }`}
+                  >
+                    <Icon
+                      name="cleaning-services"
+                      size={14}
+                      color={isSelected ? '#ffffff' : '#64748b'}
+                    />
+                    <Text
+                      className={`text-xs font-black ${
+                        isSelected ? 'text-white' : 'text-[#475569]'
+                      }`}
+                    >
+                      {catName}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          {/* Blinkit Quick Highlights / Value Props Banner */}
+          <View className="px-3.5 py-2.5">
+            <View className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-2xl p-3 flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2.5">
+                <View className="w-9 h-9 rounded-xl bg-[#006948] justify-center items-center shadow-xs">
+                  <Icon name="verified" size={20} color="#ffffff" />
+                </View>
+                <View>
+                  <Text className="text-xs font-black text-[#0f172a]">
+                    Factory-Direct Wholesale
+                  </Text>
+                  <Text className="text-[10px] text-[#006948] font-bold">
+                    100% Genuine Lab-Tested Formulations
+                  </Text>
+                </View>
+              </View>
+              <View className="bg-white px-2.5 py-1 rounded-xl border border-[#bbf7d0]">
+                <Text className="text-[10px] font-black text-[#006948]">COD Available</Text>
+              </View>
             </View>
           </View>
-        ) : (
-          <>
-            {/* Best Sellers Section */}
-            <View className="pt-4 pb-2">
-              <View className="px-4 flex-row items-center justify-between mb-3">
-                <View className="flex-row items-center gap-1.5">
-                  <Icon name="stars" size={20} color="#006948" />
-                  <Text className="text-base text-[#131b2e] font-bold">Best Sellers</Text>
-                </View>
-                <Text className="text-xs text-[#3d4a42] font-semibold">Top Rated</Text>
+
+          {/* Blinkit 2-Column Product Grid */}
+          <View className="px-3.5 pt-1">
+            <View className="flex-row items-center justify-between mb-2.5">
+              <View>
+                <Text className="text-sm font-black text-[#0f172a]">
+                  {selectedCatId === 'ALL' ? 'Explore RS Catalog' : selectedCatId}
+                </Text>
+                <Text className="text-[10px] font-bold text-[#64748b]">
+                  Showing {filteredProducts.length} wholesale options
+                </Text>
               </View>
-
-              <ScrollView horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} className="pl-4">
-                {filteredProducts.slice(0, 6).map((product) => {
-                  const pId = product._id || product.id;
-                  const qty = getItemQuantity(pId);
-                  return (
-                    <View
-                      key={pId}
-                      className="w-[200px] bg-white rounded-2xl p-3 mr-3 shadow-sm justify-between border border-[#eaedff]"
-                    >
-                      <TouchableOpacity
-                        activeOpacity={0.7}
-                        delayPressIn={0}
-                        onPress={() => navigation.navigate('ProductDetail', { product })}
-                      >
-                        <View className="relative w-full h-36 rounded-xl bg-[#f2f3ff] justify-center items-center mb-2 overflow-hidden border border-[#eaedff]">
-                          <Image
-                            source={{ uri: product.image }}
-                            className="w-full h-full"
-                            resizeMode="cover"
-                          />
-                          {product.badge && (
-                            <View className="absolute top-2 left-2 z-10 bg-[#85f8c4] px-1.5 py-0.5 rounded shadow-sm">
-                              <Text className="text-[10px] text-[#002114] font-bold">{product.badge}</Text>
-                            </View>
-                          )}
-                        </View>
-                        <Text className="text-xs font-bold text-[#131b2e]" numberOfLines={1}>
-                          {product.name}
-                        </Text>
-                        <Text className="text-[11px] text-[#3d4a42]" numberOfLines={1}>
-                          {product.subtitle || product.category}
-                        </Text>
-                      </TouchableOpacity>
-
-                      <View className="flex-row items-center justify-between mt-3 pt-2 border-t border-[#f2f3ff]">
-                        <View className="flex-row items-baseline gap-1">
-                          {product.mrp && Number(product.mrp) > Number(product.price) ? (
-                            <Text className="text-[10px] text-[#6d7a72] line-through">₹{product.mrp}</Text>
-                          ) : null}
-                        </View>
-
-                        {qty === 0 ? (
-                          <TouchableOpacity
-                            onPress={() => handleUpdateQty(product, 1)}
-                            activeOpacity={0.7}
-                            delayPressIn={0}
-                            className="h-8 px-3 bg-[#faf8ff] border border-[#006948] rounded-lg flex-row items-center gap-1"
-                          >
-                            <Text className="text-xs text-[#006948] font-bold">ADD</Text>
-                            <Icon name="add" size={14} color="#006948" />
-                          </TouchableOpacity>
-                        ) : (
-                          <View className="h-8 bg-[#006948] rounded-lg flex-row items-center px-1">
-                            <TouchableOpacity
-                              onPress={() => handleUpdateQty(product, -1)}
-                              activeOpacity={0.7}
-                              className="w-6 h-full justify-center items-center"
-                            >
-                              <Icon name="remove" size={14} color="#ffffff" />
-                            </TouchableOpacity>
-                            <Text className="px-2 text-xs font-bold text-white">{qty}</Text>
-                            <TouchableOpacity
-                              onPress={() => handleUpdateQty(product, 1)}
-                              activeOpacity={0.7}
-                              className="w-6 h-full justify-center items-center"
-                            >
-                              <Icon name="add" size={14} color="#ffffff" />
-                            </TouchableOpacity>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-                  );
-                })}
-              </ScrollView>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Catalog')}
+                activeOpacity={0.7}
+                className="flex-row items-center gap-0.5"
+              >
+                <Text className="text-xs font-black text-[#006948]">See All Aisles</Text>
+                <Icon name="chevron-right" size={16} color="#006948" />
+              </TouchableOpacity>
             </View>
 
-            {/* Commercial & Household Products 2-Column Grid */}
-            <View className="px-4 py-3">
-              <View className="flex-row items-center justify-between mb-3">
-                <View>
-                  <Text className="text-base font-bold text-[#131b2e]">Commercial & Household Products</Text>
-                  <Text className="text-xs text-[#3d4a42]">Certified safety formulations for all spaces</Text>
-                </View>
-                <TouchableOpacity activeOpacity={0.7} className="w-8 h-8 rounded-lg bg-[#e2e7ff] justify-center items-center">
-                  <Icon name="tune" size={18} color="#131b2e" />
-                </TouchableOpacity>
+            {loading ? (
+              <View className="flex-row flex-wrap justify-between">
+                <ProductCardSkeleton />
+                <ProductCardSkeleton />
+                <ProductCardSkeleton />
+                <ProductCardSkeleton />
               </View>
-
-              <View className="flex-row flex-wrap justify-between gap-y-3">
+            ) : filteredProducts.length === 0 ? (
+              <View className="py-12 items-center justify-center bg-white rounded-2xl border border-[#e2e8f0]">
+                <Icon name="search-off" size={44} color="#94a3b8" />
+                <Text className="text-sm font-black text-[#0f172a] mt-2">No Products Found</Text>
+                <Text className="text-xs text-[#64748b] mt-1 text-center px-4">
+                  Try searching for another cleaning item or switch category
+                </Text>
+              </View>
+            ) : (
+              <View className="flex-row flex-wrap justify-between">
                 {filteredProducts.map((product) => {
                   const pId = product._id || product.id;
                   const qty = getItemQuantity(pId);
-                  const defaultInfo = getDefaultProductPricing(product);
-                  const displayPrice = defaultInfo.price || product.price || 0;
-                  const displayMrp = defaultInfo.mrp || product.mrp || 0;
-                  const variantSubtitle = defaultInfo.variantLabel || product.subtitle || product.category;
-                  const bundleTag = defaultInfo.bundleLabel;
 
                   return (
-                    <View
+                    <BlinkitProductCard
                       key={pId}
-                      className="w-[48.5%] bg-white rounded-2xl p-3 shadow-sm justify-between border border-[#eaedff]"
-                    >
-                      <View>
-                        <TouchableOpacity
-                          activeOpacity={0.7}
-                          delayPressIn={0}
-                          onPress={() => navigation.navigate('ProductDetail', { product })}
-                        >
-                          <View className="relative w-full h-36 rounded-xl bg-[#f2f3ff] justify-center items-center mb-2 overflow-hidden border border-[#eaedff]">
-                            <Image
-                              source={{ uri: defaultInfo.image || product.image }}
-                              className="w-full h-full"
-                              resizeMode="cover"
-                            />
-                            {product.badge && (
-                              <View className="absolute top-1.5 left-1.5 z-10 bg-[#9cf2e8] px-1.5 py-0.5 rounded shadow-sm">
-                                <Text className="text-[9px] text-[#00201d] font-bold">{product.badge}</Text>
-                              </View>
-                            )}
-                            {bundleTag ? (
-                              <View className="absolute bottom-1.5 right-1.5 z-10 bg-[#006948] px-1.5 py-0.5 rounded shadow-sm">
-                                <Text className="text-[8px] text-white font-bold">{bundleTag}</Text>
-                              </View>
-                            ) : null}
-                          </View>
-                          <Text className="text-xs font-bold text-[#131b2e]" numberOfLines={1}>
-                            {product.name}
-                          </Text>
-                          <Text className="text-[10px] text-[#006948] font-semibold" numberOfLines={1}>
-                            {variantSubtitle}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-
-                      <View className="flex-row items-center justify-between mt-3 pt-2 border-t border-[#f2f3ff]">
-                        <View className="flex-row items-baseline gap-1">
-                          <Text className="text-sm font-extrabold text-[#131b2e]">₹{displayPrice}</Text>
-                          {displayMrp > displayPrice && (
-                            <Text className="text-[9px] text-[#6d7a72] line-through">₹{displayMrp}</Text>
-                          )}
-                        </View>
-
-                        <TouchableOpacity
-                          onPress={() => handleUpdateQty(product, 1)}
-                          activeOpacity={0.7}
-                          delayPressIn={0}
-                          className="h-7 px-2.5 bg-[#006948] rounded-lg justify-center items-center shadow-sm"
-                        >
-                          <Text className="text-[10px] text-white font-bold">
-                            {qty > 0 ? `ADD (${qty})` : 'ADD'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
+                      product={product}
+                      quantity={qty}
+                      onPress={() => navigation.navigate('ProductDetail', { product })}
+                      onAdd={() => handleUpdateQty(product, 1)}
+                      onIncrement={() => handleUpdateQty(product, 1)}
+                      onDecrement={() => handleUpdateQty(product, -1)}
+                    />
                   );
                 })}
               </View>
-            </View>
-          </>
-        )}
+            )}
+          </View>
+        </ScrollView>
 
-        {/* Custom Enterprise Barrels Card */}
-        <View className="px-4 pt-2 pb-6">
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Catalog')}
-            activeOpacity={0.7}
-            className="bg-white rounded-2xl p-4 shadow-sm flex-row items-center gap-3 border border-[#eaedff]"
-          >
-            <View className="w-12 h-12 rounded-xl bg-[#99efe5] justify-center items-center">
-              <Icon name="request-quote" size={24} color="#006f67" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-xs font-bold text-[#131b2e]">Need Custom Enterprise Barrels?</Text>
-              <Text className="text-[11px] text-[#3d4a42]">
-                Procure up to 200L drums with certified GST invoice
-              </Text>
-            </View>
-            <Icon name="chevron-right" size={22} color="#3d4a42" />
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+        {/* Docked Blinkit Sticky Cart Bar */}
+        <BlinkitCartStrip navigation={navigation} />
+      </View>
 
-      {/* Docked Cart Ribbon (Directly connected to Bottom Nav with no space) */}
-      {itemCount() > 0 && (
-        <View className="absolute left-0 right-0 bottom-0 z-40 bg-[#006948] px-4 py-2.5 border-t border-[#005a3e] shadow-xl">
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate('Cart')}
-            className="flex-row items-center justify-between"
-          >
-            <View className="flex-row items-center gap-3">
-              <View className="w-8 h-8 rounded-lg bg-white/15 justify-center items-center">
-                <FeatherIcon name="shopping-bag" size={16} color="#ffffff" />
-              </View>
-              <View>
-                <Text className="text-xs font-bold text-white">
-                  {itemCount()} {itemCount() === 1 ? 'item' : 'items'} • ₹{totalAmount().toLocaleString('en-IN')}
-                </Text>
-                <Text className="text-[10px] text-[#68dba9]">GST invoice included</Text>
-              </View>
-            </View>
-            <View className="flex-row items-center gap-1 pl-3">
-              <Text className="text-xs font-bold text-white">View Cart</Text>
-              <Icon name="arrow-forward" size={18} color="#ffffff" />
-            </View>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Location Selector Bottom Modal */}
       <LocationSelectorModal />
     </SafeAreaView>
   );
